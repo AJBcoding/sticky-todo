@@ -269,6 +269,12 @@ struct StickyToDoApp: App {
     private func setupHotkeys() {
         // Check for accessibility permissions
         if GlobalHotkeyManager.hasAccessibilityPermissions() {
+            // Load hotkey from configuration
+            let hotkeyConfig = HotkeyConfig(
+                keyCode: configManager.quickCaptureHotkey,
+                modifiers: modifierFlagsFromBits(configManager.quickCaptureHotkeyModifiers)
+            )
+            hotkeyManager.updateHotkey(hotkeyConfig)
             hotkeyManager.startMonitoring()
 
             // Watch for hotkey presses
@@ -279,10 +285,38 @@ struct StickyToDoApp: App {
             ) { _ in
                 openQuickCaptureWindow()
             }
+
+            // Watch for hotkey changes from settings
+            NotificationCenter.default.addObserver(
+                forName: NSNotification.Name("hotkeyChanged"),
+                object: nil,
+                queue: .main
+            ) { [weak self] notification in
+                guard let self = self else { return }
+                if let keyCode = notification.userInfo?["keyCode"] as? UInt16,
+                   let modifiers = notification.userInfo?["modifiers"] as? UInt {
+                    let newConfig = HotkeyConfig(
+                        keyCode: keyCode,
+                        modifiers: self.modifierFlagsFromBits(modifiers)
+                    )
+                    self.hotkeyManager.updateHotkey(newConfig)
+                    print("✅ Hotkey updated to: \(newConfig.description)")
+                }
+            }
         } else {
             // Show permission alert on first launch
             GlobalHotkeyManager.showPermissionAlertIfNeeded()
         }
+    }
+
+    /// Converts modifier bit flags to NSEvent.ModifierFlags
+    private func modifierFlagsFromBits(_ bits: UInt) -> NSEvent.ModifierFlags {
+        var flags: NSEvent.ModifierFlags = []
+        if bits & 0x001 != 0 { flags.insert(.control) }
+        if bits & 0x008 != 0 { flags.insert(.shift) }
+        if bits & 0x020 != 0 { flags.insert(.option) }
+        if bits & 0x100 != 0 { flags.insert(.command) }
+        return flags
     }
 
     // MARK: - Quick Capture

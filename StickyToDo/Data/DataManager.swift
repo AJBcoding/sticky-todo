@@ -376,6 +376,22 @@ final class DataManager: ObservableObject {
     private func reloadBoardFromFile(_ url: URL) {
         do {
             if let updatedBoard = try fileIO.readBoard(from: url) {
+                // Check for conflicts with our in-memory version
+                if let existingBoard = boardStore.board(withID: updatedBoard.id) {
+                    // For boards, we check if the board was modified in memory
+                    // A simple heuristic: if the board exists and has been modified, check timestamps
+                    if let conflict = fileWatcher.checkForConflict(
+                        url: url,
+                        ourModificationDate: Date() // Boards don't track modification dates, so we use current time as proxy
+                    ) {
+                        if conflict.hasConflict {
+                            // We have a conflict - notify user
+                            handleConflict(conflict)
+                            return
+                        }
+                    }
+                }
+
                 boardStore.update(updatedBoard)
                 log("Reloaded modified board: \(updatedBoard.displayTitle)")
             }
@@ -430,8 +446,71 @@ final class DataManager: ObservableObject {
     func resolveConflictWithOurVersion(_ conflict: FileWatcher.FileConflict) {
         log("Resolving conflict with our version: \(conflict.url.lastPathComponent)")
 
-        // Just remove from pending - our version is already in memory
+        // Save our version to disk to overwrite external changes
+        if fileWatcher.isTaskFile(conflict.url) {
+            if let taskID = extractTaskID(from: conflict.url),
+               let task = taskStore.task(withID: taskID) {
+                try? taskStore.saveImmediately(task)
+            }
+        } else if fileWatcher.isBoardFile(conflict.url) {
+            let boardID = conflict.url.deletingPathExtension().lastPathComponent
+            if let board = boardStore.board(withID: boardID) {
+                try? boardStore.saveImmediately(board)
+            }
+        }
+
+        // Remove from pending conflicts
         pendingConflicts.removeAll { $0.url == conflict.url }
+    }
+
+    /// Reloads a file from disk (generic method for both tasks and boards)
+    func reloadFile(at url: URL) {
+        log("Reloading file from disk: \(url.lastPathComponent)")
+
+        if fileWatcher.isTaskFile(url) {
+            reloadTaskFromFile(url)
+        } else if fileWatcher.isBoardFile(url) {
+            reloadBoardFromFile(url)
+        } else {
+            log("Unknown file type for reload: \(url.path)")
+        }
+    }
+
+    /// Resumes file watching after conflicts are resolved
+    func resumeFileWatching() {
+        log("Resuming file watching")
+
+        // If there are still pending conflicts, handle the next one
+        if !pendingConflicts.isEmpty {
+            log("Warning: \(pendingConflicts.count) conflicts still pending after resume")
+        }
+    }
+
+    /// Extracts task ID from a task file URL
+    func extractTaskID(from url: URL) -> UUID? {
+        let filename = url.deletingPathExtension().lastPathComponent
+        // Task files are named with UUID
+        return UUID(uuidString: filename)
+    }
+
+    /// Gets the markdown content for a task or board
+    func getMarkdownContent(for url: URL) -> String? {
+        do {
+            if fileWatcher.isTaskFile(url) {
+                if let taskID = extractTaskID(from: url),
+                   let task = taskStore.task(withID: taskID) {
+                    return try YAMLParser.generateTask(task, body: task.notes)
+                }
+            } else if fileWatcher.isBoardFile(url) {
+                let boardID = url.deletingPathExtension().lastPathComponent
+                if let board = boardStore.board(withID: boardID) {
+                    return try YAMLParser.generateBoard(board, body: board.notes ?? "")
+                }
+            }
+        } catch {
+            log("Failed to generate markdown: \(error)")
+        }
+        return nil
     }
 
     // MARK: - Convenience Methods
@@ -592,13 +671,22 @@ extension DataManager {
     ///
     /// - Parameter createSampleData: Whether to create sample tasks and boards
     func performFirstRunSetup(createSampleData: Bool = false) {
-        guard isInitialized else { return }
+        guard isInitialized else {
+            log("⚠️ Cannot perform first-run setup: DataManager not initialized")
+            return
+        }
 
         log("Performing first-run setup")
 
         // Check if this is actually a first run (no tasks or boards exist)
         guard taskStore.taskCount == 0 && boardStore.boardCount <= Board.builtInBoards.count else {
-            log("Not a first run, skipping setup")
+            log("Not a first run, skipping setup (found \(taskStore.taskCount) tasks, \(boardStore.boardCount) boards)")
+            return
+        }
+
+        // Check if sample data was already created via onboarding
+        if OnboardingManager.shared.hasCreatedSampleData {
+            log("Sample data already created via onboarding flow, skipping")
             return
         }
 
@@ -611,44 +699,36 @@ extension DataManager {
         log("First-run setup complete")
     }
 
-    /// Creates sample tasks for demonstration
+    /// Creates sample tasks and boards for demonstration using the comprehensive generator
     private func createSampleTasks() {
-        // Inbox tasks
-        createTask(
-            title: "Review getting started guide",
-            notes: "Learn about StickyToDo's features and workflows.",
-            status: .inbox
-        )
+        log("Generating comprehensive sample data for first-run experience")
 
-        createTask(
-            title: "Set up your contexts",
-            notes: "Go to Settings → Contexts to customize your contexts.",
-            status: .inbox
-        )
+        // Use the SampleDataGenerator from StickyToDoCore
+        let result = SampleDataGenerator.generateSampleData()
 
-        // Next action tasks
-        var task1 = createTask(
-            title: "Try the freeform board",
-            notes: "Create some notes on a freeform board and promote them to tasks.",
-            status: .nextAction
-        )
-        task1.context = "@computer"
-        task1.priority = .high
-        updateTask(task1)
+        switch result {
+        case .success(let sampleData):
+            // Add all sample tasks to the task store
+            for task in sampleData.tasks {
+                taskStore.add(task)
+            }
+            log("Added \(sampleData.tasks.count) sample tasks")
 
-        var task2 = createTask(
-            title: "Practice quick capture",
-            notes: "Use ⌘⇧Space to quickly capture tasks from anywhere.",
-            status: .nextAction
-        )
-        task2.context = "@computer"
-        updateTask(task2)
+            // Add all sample boards to the board store
+            for board in sampleData.boards {
+                boardStore.add(board)
+            }
+            log("Added \(sampleData.boards.count) sample boards")
 
-        // Someday task
-        createTask(
-            title: "Explore advanced features",
-            notes: "Check out custom boards, perspectives, and natural language parsing.",
-            status: .someday
-        )
+            // Mark sample data as created in OnboardingManager
+            Task { @MainActor in
+                OnboardingManager.shared.markSampleDataCreated()
+            }
+
+            log("✅ Sample data created successfully: \(sampleData.totalItems) total items")
+
+        case .failure(let error):
+            log("❌ Failed to generate sample data: \(error.localizedDescription)")
+        }
     }
 }

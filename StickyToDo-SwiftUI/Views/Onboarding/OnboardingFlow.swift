@@ -32,16 +32,24 @@ class OnboardingCoordinator: ObservableObject {
 
     private let onboardingManager = OnboardingManager.shared
     private let configManager = ConfigurationManager.shared
+    private var dataManager: DataManager?
 
     // MARK: - Initialization
 
-    init() {
+    init(dataManager: DataManager? = nil) {
+        self.dataManager = dataManager
+
         // Default directory
         let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         self.selectedDirectory = documentsURL.appendingPathComponent("StickyToDo")
     }
 
     // MARK: - Methods
+
+    /// Updates the data manager reference (called from view when environment object is available)
+    func updateDataManager(_ dataManager: DataManager) {
+        self.dataManager = dataManager
+    }
 
     /// Checks if onboarding should be shown
     func checkForFirstRun() {
@@ -161,9 +169,29 @@ class OnboardingCoordinator: ObservableObject {
 
         switch result {
         case .success(let sampleData):
-            // TODO: Add tasks and boards to data stores
-            // This would require access to TaskStore and BoardStore
-            print("✅ Sample data created: \(sampleData.totalItems) items")
+            // Add tasks and boards to data stores
+            if let dataManager = dataManager,
+               let taskStore = dataManager.taskStore,
+               let boardStore = dataManager.boardStore {
+
+                // Add all sample tasks
+                for task in sampleData.tasks {
+                    taskStore.add(task)
+                }
+                print("✅ Added \(sampleData.tasks.count) sample tasks")
+
+                // Add all sample boards
+                for board in sampleData.boards {
+                    boardStore.add(board)
+                }
+                print("✅ Added \(sampleData.boards.count) sample boards")
+
+                print("✅ Sample data created: \(sampleData.totalItems) total items")
+            } else {
+                print("⚠️ DataManager not available, sample data generated but not added to stores")
+                print("   Sample data will be created via DataManager.performFirstRunSetup() instead")
+            }
+
             onboardingManager.markSampleDataCreated()
 
         case .failure(let error):
@@ -187,7 +215,13 @@ enum OnboardingStep {
 /// Container view that manages onboarding presentation
 struct OnboardingContainer: View {
 
-    @StateObject private var coordinator = OnboardingCoordinator()
+    @EnvironmentObject var dataManager: DataManager
+    @StateObject private var coordinator: OnboardingCoordinator
+
+    init() {
+        // Note: We can't access @EnvironmentObject in init, so we use a wrapper
+        _coordinator = StateObject(wrappedValue: OnboardingCoordinator())
+    }
 
     var body: some View {
         Color.clear
@@ -195,6 +229,8 @@ struct OnboardingContainer: View {
                 onboardingFlow
             }
             .onAppear {
+                // Update coordinator with dataManager once available
+                coordinator.updateDataManager(dataManager)
                 coordinator.checkForFirstRun()
             }
     }

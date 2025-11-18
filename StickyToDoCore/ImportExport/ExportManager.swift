@@ -6,6 +6,12 @@
 //
 
 import Foundation
+#if canImport(PDFKit)
+import PDFKit
+#endif
+#if canImport(AppKit)
+import AppKit
+#endif
 
 /// Manages export operations for tasks and boards
 ///
@@ -1178,61 +1184,314 @@ public class ExportManager {
 
     // MARK: - PDF Export
 
-    /// Exports tasks as PDF report (via HTML rendering)
+    /// Exports tasks as PDF report using PDFKit
     private func exportPDF(tasks: [Task], to url: URL, options: ExportOptions) async throws -> ExportResult {
-        reportProgress(0.2, "Generating PDF report...")
+        #if canImport(PDFKit) && canImport(AppKit)
+        reportProgress(0.1, "Calculating analytics...")
 
-        // First generate HTML
         let analytics = AnalyticsCalculator().calculate(for: tasks)
-        let html = generateHTMLReport(tasks: tasks, analytics: analytics, options: options)
 
-        // Create temporary HTML file
-        let tempHTMLURL = FileManager.default.temporaryDirectory.appendingPathComponent("export.html")
-        try html.write(to: tempHTMLURL, atomically: true, encoding: .utf8)
+        reportProgress(0.3, "Creating PDF document...")
 
-        defer {
-            try? FileManager.default.removeItem(at: tempHTMLURL)
+        // Create PDF document
+        let pdfDocument = PDFDocument()
+        let pageWidth: CGFloat = 612 // 8.5 inches at 72 DPI
+        let pageHeight: CGFloat = 792 // 11 inches at 72 DPI
+        let margin: CGFloat = 50
+
+        var currentPage = 0
+        var yPosition: CGFloat = margin
+
+        // Helper function to add a new page
+        func addPage() -> PDFPage? {
+            let page = PDFPage()
+            pdfDocument.insert(page, at: currentPage)
+            currentPage += 1
+            yPosition = margin
+            return page
         }
 
-        reportProgress(0.5, "Converting to PDF...")
+        // Helper function to check if we need a new page
+        func checkPageBreak(requiredSpace: CGFloat) -> PDFPage? {
+            if yPosition + requiredSpace > pageHeight - margin {
+                return addPage()
+            }
+            return nil
+        }
 
-        // Use wkhtmltopdf or similar tool to convert HTML to PDF
-        // For macOS, we can use the built-in HTML to PDF conversion
+        // Page 1: Title and Summary
+        reportProgress(0.4, "Generating title page...")
+
+        guard var page = addPage() else {
+            throw ExportError.encodingFailed("Failed to create PDF page")
+        }
+
+        // Title
+        let titleFont = NSFont.boldSystemFont(ofSize: 28)
+        let titleAttributes: [NSAttributedString.Key: Any] = [
+            .font: titleFont,
+            .foregroundColor: NSColor.black
+        ]
+        let title = "StickyToDo Export Report"
+        let titleSize = title.size(withAttributes: titleAttributes)
+        let titleRect = CGRect(x: margin, y: pageHeight - yPosition - titleSize.height, width: pageWidth - 2 * margin, height: titleSize.height)
+        title.draw(in: titleRect, withAttributes: titleAttributes)
+        yPosition += titleSize.height + 10
+
+        // Subtitle
+        let subtitleFont = NSFont.systemFont(ofSize: 14)
+        let subtitleAttributes: [NSAttributedString.Key: Any] = [
+            .font: subtitleFont,
+            .foregroundColor: NSColor.darkGray
+        ]
+        let subtitle = "Generated on \(formatLongDate(Date()))"
+        let subtitleSize = subtitle.size(withAttributes: subtitleAttributes)
+        let subtitleRect = CGRect(x: margin, y: pageHeight - yPosition - subtitleSize.height, width: pageWidth - 2 * margin, height: subtitleSize.height)
+        subtitle.draw(in: subtitleRect, withAttributes: subtitleAttributes)
+        yPosition += subtitleSize.height + 40
+
+        // Summary Statistics Box
+        let statsBoxY = pageHeight - yPosition - 150
+        let statsBox = CGRect(x: margin, y: statsBoxY, width: pageWidth - 2 * margin, height: 140)
+
+        // Draw box background
+        NSColor(calibratedRed: 0.95, green: 0.95, blue: 0.98, alpha: 1.0).setFill()
+        NSBezierPath(roundedRect: statsBox, xRadius: 8, yRadius: 8).fill()
+
+        // Draw stats
+        let statsFont = NSFont.systemFont(ofSize: 12)
+        let statsLabelFont = NSFont.boldSystemFont(ofSize: 12)
+        let statsY = statsBoxY + 100
+
+        let stats = [
+            ("Total Tasks:", "\(analytics.totalTasks)"),
+            ("Completed:", "\(analytics.completedTasks)"),
+            ("Active:", "\(analytics.activeTasks)"),
+            ("Completion Rate:", analytics.completionRateString)
+        ]
+
+        for (index, (label, value)) in stats.enumerated() {
+            let x = margin + 20 + CGFloat(index % 2) * 250
+            let y = statsY - CGFloat(index / 2) * 30
+
+            let labelAttrs: [NSAttributedString.Key: Any] = [.font: statsLabelFont, .foregroundColor: NSColor.darkGray]
+            let valueAttrs: [NSAttributedString.Key: Any] = [.font: statsFont, .foregroundColor: NSColor.black]
+
+            label.draw(at: CGPoint(x: x, y: y), withAttributes: labelAttrs)
+            value.draw(at: CGPoint(x: x + 120, y: y), withAttributes: valueAttrs)
+        }
+
+        yPosition += 180
+
+        // Task Distribution
+        reportProgress(0.5, "Adding task distribution...")
+
+        if let newPage = checkPageBreak(requiredSpace: 200) {
+            page = newPage
+        }
+
+        let sectionFont = NSFont.boldSystemFont(ofSize: 18)
+        let sectionAttributes: [NSAttributedString.Key: Any] = [
+            .font: sectionFont,
+            .foregroundColor: NSColor.black
+        ]
+
+        let distributionTitle = "Task Distribution"
+        let distTitleSize = distributionTitle.size(withAttributes: sectionAttributes)
+        let distTitleRect = CGRect(x: margin, y: pageHeight - yPosition - distTitleSize.height, width: pageWidth - 2 * margin, height: distTitleSize.height)
+        distributionTitle.draw(in: distTitleRect, withAttributes: sectionAttributes)
+        yPosition += distTitleSize.height + 20
+
+        // By Status
+        let subsectionFont = NSFont.boldSystemFont(ofSize: 14)
+        let subsectionAttributes: [NSAttributedString.Key: Any] = [
+            .font: subsectionFont,
+            .foregroundColor: NSColor.darkGray
+        ]
+
+        let statusTitle = "By Status:"
+        let statusTitleSize = statusTitle.size(withAttributes: subsectionAttributes)
+        let statusTitleRect = CGRect(x: margin, y: pageHeight - yPosition - statusTitleSize.height, width: pageWidth - 2 * margin, height: statusTitleSize.height)
+        statusTitle.draw(in: statusTitleRect, withAttributes: subsectionAttributes)
+        yPosition += statusTitleSize.height + 10
+
+        let itemFont = NSFont.systemFont(ofSize: 12)
+        let itemAttributes: [NSAttributedString.Key: Any] = [
+            .font: itemFont,
+            .foregroundColor: NSColor.black
+        ]
+
+        for status in Status.allCases {
+            if let newPage = checkPageBreak(requiredSpace: 20) {
+                page = newPage
+            }
+
+            let count = analytics.tasksByStatus[status] ?? 0
+            let statusLine = "  • \(status.displayName): \(count)"
+            let statusLineSize = statusLine.size(withAttributes: itemAttributes)
+            let statusLineRect = CGRect(x: margin + 10, y: pageHeight - yPosition - statusLineSize.height, width: pageWidth - 2 * margin, height: statusLineSize.height)
+            statusLine.draw(in: statusLineRect, withAttributes: itemAttributes)
+            yPosition += statusLineSize.height + 5
+        }
+
+        yPosition += 15
+
+        // By Priority
+        if let newPage = checkPageBreak(requiredSpace: 100) {
+            page = newPage
+        }
+
+        let priorityTitle = "By Priority:"
+        let priorityTitleSize = priorityTitle.size(withAttributes: subsectionAttributes)
+        let priorityTitleRect = CGRect(x: margin, y: pageHeight - yPosition - priorityTitleSize.height, width: pageWidth - 2 * margin, height: priorityTitleSize.height)
+        priorityTitle.draw(in: priorityTitleRect, withAttributes: subsectionAttributes)
+        yPosition += priorityTitleSize.height + 10
+
+        for priority in Priority.allCases {
+            if let newPage = checkPageBreak(requiredSpace: 20) {
+                page = newPage
+            }
+
+            let count = analytics.tasksByPriority[priority] ?? 0
+            let priorityLine = "  • \(priority.displayName): \(count)"
+            let priorityLineSize = priorityLine.size(withAttributes: itemAttributes)
+            let priorityLineRect = CGRect(x: margin + 10, y: pageHeight - yPosition - priorityLineSize.height, width: pageWidth - 2 * margin, height: priorityLineSize.height)
+            priorityLine.draw(in: priorityLineRect, withAttributes: itemAttributes)
+            yPosition += priorityLineSize.height + 5
+        }
+
+        yPosition += 30
+
+        // Task Details
+        reportProgress(0.6, "Adding task details...")
+
+        // Start new page for tasks
+        page = addPage() ?? page
+
+        let tasksTitle = "Task Details"
+        let tasksTitleSize = tasksTitle.size(withAttributes: sectionAttributes)
+        let tasksTitleRect = CGRect(x: margin, y: pageHeight - yPosition - tasksTitleSize.height, width: pageWidth - 2 * margin, height: tasksTitleSize.height)
+        tasksTitle.draw(in: tasksTitleRect, withAttributes: sectionAttributes)
+        yPosition += tasksTitleSize.height + 20
+
+        // Group tasks by project
+        let grouped = Dictionary(grouping: tasks) { $0.project ?? "Inbox" }
+        let sortedProjects = grouped.keys.sorted()
+
+        let taskTitleFont = NSFont.boldSystemFont(ofSize: 11)
+        let taskMetaFont = NSFont.systemFont(ofSize: 10)
+
+        for (projectIndex, project) in sortedProjects.enumerated() {
+            reportProgress(0.6 + (Double(projectIndex) / Double(sortedProjects.count)) * 0.3, "Adding tasks for \(project)...")
+
+            if let newPage = checkPageBreak(requiredSpace: 40) {
+                page = newPage
+            }
+
+            // Project header
+            let projectHeader = "Project: \(project)"
+            let projectHeaderSize = projectHeader.size(withAttributes: subsectionAttributes)
+            let projectHeaderRect = CGRect(x: margin, y: pageHeight - yPosition - projectHeaderSize.height, width: pageWidth - 2 * margin, height: projectHeaderSize.height)
+            projectHeader.draw(in: projectHeaderRect, withAttributes: subsectionAttributes)
+            yPosition += projectHeaderSize.height + 10
+
+            // Draw line
+            let lineY = pageHeight - yPosition
+            NSColor.lightGray.setStroke()
+            let linePath = NSBezierPath()
+            linePath.move(to: CGPoint(x: margin, y: lineY))
+            linePath.line(to: CGPoint(x: pageWidth - margin, y: lineY))
+            linePath.lineWidth = 0.5
+            linePath.stroke()
+            yPosition += 10
+
+            // Tasks in project
+            let projectTasks = grouped[project] ?? []
+            let sortedTasks = projectTasks.sorted { $0.created > $1.created }
+
+            for task in sortedTasks {
+                let requiredSpace: CGFloat = task.notes.isEmpty ? 40 : 80
+                if let newPage = checkPageBreak(requiredSpace: requiredSpace) {
+                    page = newPage
+                }
+
+                // Task title with status indicator
+                let statusIcon = task.status == .completed ? "✓" : "○"
+                let taskTitle = "\(statusIcon) \(task.title)"
+                let taskTitleAttrs: [NSAttributedString.Key: Any] = [
+                    .font: taskTitleFont,
+                    .foregroundColor: task.status == .completed ? NSColor.darkGray : NSColor.black
+                ]
+
+                let taskTitleSize = taskTitle.size(withAttributes: taskTitleAttrs)
+                let taskTitleRect = CGRect(x: margin + 20, y: pageHeight - yPosition - taskTitleSize.height, width: pageWidth - 2 * margin - 40, height: taskTitleSize.height)
+                taskTitle.draw(in: taskTitleRect, withAttributes: taskTitleAttrs)
+                yPosition += taskTitleSize.height + 5
+
+                // Metadata line
+                var metadata: [String] = []
+                metadata.append("Status: \(task.status.displayName)")
+                metadata.append("Priority: \(task.priority.displayName)")
+
+                if let context = task.context {
+                    metadata.append("Context: \(context)")
+                }
+
+                if let due = task.due {
+                    metadata.append("Due: \(formatShortDate(due))")
+                }
+
+                let metadataLine = metadata.joined(separator: " • ")
+                let metadataAttrs: [NSAttributedString.Key: Any] = [
+                    .font: taskMetaFont,
+                    .foregroundColor: NSColor.gray
+                ]
+
+                let metadataSize = metadataLine.size(withAttributes: metadataAttrs)
+                let metadataRect = CGRect(x: margin + 30, y: pageHeight - yPosition - metadataSize.height, width: pageWidth - 2 * margin - 50, height: metadataSize.height)
+                metadataLine.draw(in: metadataRect, withAttributes: metadataAttrs)
+                yPosition += metadataSize.height + 3
+
+                // Notes (truncated if too long)
+                if !task.notes.isEmpty {
+                    let notesPreview = task.notes.prefix(200) + (task.notes.count > 200 ? "..." : "")
+                    let notesAttrs: [NSAttributedString.Key: Any] = [
+                        .font: NSFont.systemFont(ofSize: 9),
+                        .foregroundColor: NSColor.darkGray
+                    ]
+
+                    let notesSize = String(notesPreview).size(withAttributes: notesAttrs)
+                    let notesRect = CGRect(x: margin + 30, y: pageHeight - yPosition - notesSize.height, width: pageWidth - 2 * margin - 50, height: min(notesSize.height, 30))
+                    String(notesPreview).draw(in: notesRect, withAttributes: notesAttrs)
+                    yPosition += min(notesSize.height, 30) + 3
+                }
+
+                yPosition += 15 // Space between tasks
+            }
+
+            yPosition += 10 // Space between projects
+        }
+
+        reportProgress(0.95, "Writing PDF file...")
+
+        // Write to file
         let pdfURL = url.pathExtension == "pdf" ? url : url.appendingPathExtension("pdf")
-
-        // This is a placeholder - actual PDF generation would require PDFKit or similar
-        // For now, we'll create a simple note that PDF generation requires additional setup
-        let pdfNote = """
-        StickyToDo PDF Export
-
-        Note: PDF export requires additional setup.
-
-        To generate a PDF from this export:
-        1. Export as HTML format
-        2. Open the HTML file in a web browser
-        3. Use Print > Save as PDF
-
-        Or install wkhtmltopdf for automatic PDF generation.
-
-        Tasks exported: \(tasks.count)
-        Export date: \(formatLongDate(Date()))
-        """
-
-        try pdfNote.write(to: pdfURL, atomically: true, encoding: .utf8)
+        pdfDocument.write(to: pdfURL)
 
         let attrs = try FileManager.default.attributesOfItem(atPath: pdfURL.path)
         let fileSize = attrs[.size] as? Int64 ?? 0
-
-        var warnings = ExportFormat.pdf.dataLossWarnings
-        warnings.append("PDF generation requires additional tools - exported as text file with instructions")
 
         return ExportResult(
             fileURL: pdfURL,
             format: .pdf,
             taskCount: tasks.count,
             fileSize: fileSize,
-            warnings: warnings
+            warnings: ExportFormat.pdf.dataLossWarnings
         )
+        #else
+        // Fallback for platforms without PDFKit
+        throw ExportError.encodingFailed("PDF export requires PDFKit which is not available on this platform")
+        #endif
     }
 
     // MARK: - iCal Export

@@ -113,7 +113,11 @@ struct ContentView: View {
                 boards: boardStore.visibleBoards,
                 onDelete: deleteSelectedTask,
                 onDuplicate: duplicateSelectedTask,
-                onTaskModified: saveTask
+                onTaskModified: saveTask,
+                onSaveAsTemplate: saveTaskAsTemplate,
+                onCreateSubtask: createSubtask,
+                onCompleteSeries: completeRecurringSeries,
+                availableTags: Tag.defaultTags
             )
             .navigationSplitViewColumnWidth(min: 250, ideal: 300, max: 400)
         }
@@ -312,6 +316,35 @@ struct ContentView: View {
 
     private func saveTask(_ task: Task) {
         taskStore.update(task)
+    }
+
+    private func saveTaskAsTemplate(_ task: Task) {
+        // Save task as a template - this would typically create a reusable template
+        // For now, we'll create a duplicate and mark it in a special way
+        var template = task.duplicate()
+        template.title = "[Template] \(task.title)"
+        taskStore.add(template)
+    }
+
+    private func createSubtask(parentTask: Task, title: String) {
+        let subtask = taskStore.createSubtask(title: title, under: parentTask)
+        selectedTaskIds = [subtask.id]
+    }
+
+    private func completeRecurringSeries(_ task: Task) {
+        guard task.isRecurringInstance, let templateId = task.originalTaskId else { return }
+        guard let template = taskStore.task(withID: templateId) else { return }
+
+        // Complete the current instance
+        var completedTask = task
+        completedTask.complete()
+        taskStore.update(completedTask)
+
+        // Stop the recurrence pattern
+        taskStore.stopRecurrence(for: template)
+
+        // Complete all future instances
+        taskStore.deleteFutureInstances(of: template)
     }
 
     private func showSettings() {

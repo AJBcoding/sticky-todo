@@ -345,6 +345,46 @@ class SwiftUICoordinator: BaseAppCoordinator, AppCoordinatorProtocol {
                 self?.objectWillChange.send()
             }
             .store(in: &cancellables)
+
+        // Set up file conflict detection callback
+        dataManager.onConflictDetected = { [weak self] conflict in
+            self?.handleFileConflict(conflict)
+        }
+    }
+
+    /// Handles a file conflict detected by the file watcher
+    private func handleFileConflict(_ conflict: FileWatcher.FileConflict) {
+        // Convert FileWatcher.FileConflict to FileConflictItem and show UI
+        DispatchQueue.main.async { [weak self] in
+            self?.convertAndShowConflictResolution(for: conflict)
+        }
+    }
+
+    /// Converts a FileWatcher conflict to FileConflictItem and shows resolution UI
+    private func convertAndShowConflictResolution(for conflict: FileWatcher.FileConflict) {
+        // Read the current file content from disk
+        guard let theirContent = try? String(contentsOf: conflict.url, encoding: .utf8) else {
+            print("Failed to read file content for conflict: \(conflict.url.path)")
+            return
+        }
+
+        // Get our in-memory content as markdown
+        guard let ourContent = dataManager.getMarkdownContent(for: conflict.url) else {
+            print("Failed to get in-memory content for conflict: \(conflict.url.path)")
+            return
+        }
+
+        // Create FileConflictItem
+        let conflictItem = FileConflictItem(
+            url: conflict.url,
+            ourContent: ourContent,
+            theirContent: theirContent,
+            ourModificationDate: conflict.ourModificationDate,
+            theirModificationDate: conflict.diskModificationDate
+        )
+
+        // Show conflict resolution UI
+        showConflictResolution(conflicts: [conflictItem])
     }
 
     private func setupURLHandling() {
