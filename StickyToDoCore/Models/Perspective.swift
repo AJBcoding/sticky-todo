@@ -8,7 +8,7 @@
 import Foundation
 
 /// Grouping option for list views
-enum GroupBy: String, Codable, CaseIterable {
+public enum GroupBy: String, Codable, CaseIterable {
     case none
     case context
     case project
@@ -18,7 +18,7 @@ enum GroupBy: String, Codable, CaseIterable {
 }
 
 /// Sorting option for list views
-enum SortBy: String, Codable, CaseIterable {
+public enum SortBy: String, Codable, CaseIterable {
     case title
     case created
     case modified
@@ -30,7 +30,7 @@ enum SortBy: String, Codable, CaseIterable {
 }
 
 /// Sort direction
-enum SortDirection: String, Codable {
+public enum SortDirection: String, Codable {
     case ascending
     case descending
 }
@@ -39,7 +39,7 @@ enum SortDirection: String, Codable {
 ///
 /// Perspectives define how tasks are displayed in list view, similar to saved searches
 /// or smart folders in other applications.
-struct Perspective: Identifiable, Codable, Equatable {
+public struct Perspective: Identifiable, Codable, Equatable {
     // MARK: - Core Properties
 
     /// Unique identifier for the perspective
@@ -98,7 +98,7 @@ struct Perspective: Identifiable, Codable, Equatable {
     ///   - isBuiltIn: Whether this is a system perspective
     ///   - isVisible: Whether visible in sidebar
     ///   - order: Sort order
-    init(
+    public init(
         id: String,
         name: String,
         filter: Filter = Filter(),

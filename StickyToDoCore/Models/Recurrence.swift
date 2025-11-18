@@ -8,7 +8,7 @@
 import Foundation
 
 /// Frequency options for recurring tasks
-enum RecurrenceFrequency: String, Codable, CaseIterable {
+public enum RecurrenceFrequency: String, Codable, CaseIterable {
     case daily = "daily"
     case weekly = "weekly"
     case monthly = "monthly"
@@ -28,7 +28,7 @@ enum RecurrenceFrequency: String, Codable, CaseIterable {
 }
 
 /// Defines how a task should recur
-struct Recurrence: Codable, Equatable {
+public struct Recurrence: Codable, Equatable {
 
     // MARK: - Properties
 
@@ -71,7 +71,7 @@ struct Recurrence: Codable, Equatable {
     ///   - endDate: When recurrence should end
     ///   - count: Maximum number of occurrences
     ///   - occurrenceCount: Current occurrence count
-    init(
+    public init(
         frequency: RecurrenceFrequency,
         interval: Int = 1,
         daysOfWeek: [Int]? = nil,

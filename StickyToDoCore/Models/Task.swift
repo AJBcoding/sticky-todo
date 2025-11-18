@@ -11,7 +11,7 @@ import Foundation
 ///
 /// Tasks are stored as markdown files with YAML frontmatter in the tasks/ directory.
 /// The file system organization is: tasks/active/YYYY/MM/uuid-slug.md or tasks/archive/YYYY/MM/uuid-slug.md
-struct Task: Identifiable, Codable, Equatable {
+public struct Task: Identifiable, Codable, Equatable {
     // MARK: - Core Properties
 
     /// Unique identifier for the task
@@ -148,7 +148,7 @@ struct Task: Identifiable, Codable, Equatable {
     ///   - notificationIds: Array of scheduled notification identifiers (defaults to empty)
     ///   - created: Creation timestamp (defaults to now)
     ///   - modified: Modification timestamp (defaults to now)
-    init(
+    public init(
         id: UUID = UUID(),
         type: TaskType = .task,
         title: String,

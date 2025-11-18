@@ -9,7 +9,7 @@ import Foundation
 import AppIntents
 
 @available(iOS 16.0, macOS 13.0, *)
-struct CompleteTaskIntent: AppIntent {
+public struct CompleteTaskIntent: AppIntent {
     static var title: LocalizedStringResource = "Complete Task"
 
     static var description = IntentDescription(
@@ -76,7 +76,7 @@ struct CompleteTaskIntent: AppIntent {
 
 /// Intent to disambiguate when multiple tasks match
 @available(iOS 16.0, macOS 13.0, *)
-struct CompleteTaskDisambiguationIntent: AppIntent {
+public struct CompleteTaskDisambiguationIntent: AppIntent {
     static var title: LocalizedStringResource = "Choose Task to Complete"
 
     @Parameter(title: "Task")

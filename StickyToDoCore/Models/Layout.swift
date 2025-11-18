@@ -12,7 +12,7 @@ import Foundation
 /// - freeform: Infinite canvas with drag-anywhere positioning, ideal for brainstorming
 /// - kanban: Vertical columns for workflow stages, tasks move between columns
 /// - grid: Named sections with grid/auto-arrange layout, organized by criteria
-enum Layout: String, Codable, CaseIterable {
+public enum Layout: String, Codable, CaseIterable {
     case freeform
     case kanban
     case grid

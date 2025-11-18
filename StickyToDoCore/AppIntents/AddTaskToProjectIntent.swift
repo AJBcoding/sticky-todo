@@ -9,7 +9,7 @@ import Foundation
 import AppIntents
 
 @available(iOS 16.0, macOS 13.0, *)
-struct AddTaskToProjectIntent: AppIntent {
+public struct AddTaskToProjectIntent: AppIntent {
     static var title: LocalizedStringResource = "Add Task to Project"
 
     static var description = IntentDescription(
@@ -89,7 +89,7 @@ struct AddTaskToProjectIntent: AppIntent {
 
 /// Result view shown after adding a task to a project
 @available(iOS 16.0, macOS 13.0, *)
-struct AddTaskToProjectResultView: View {
+public struct AddTaskToProjectResultView: View {
     var title: String
     var project: String
     var context: String?
@@ -145,7 +145,7 @@ struct AddTaskToProjectResultView: View {
 
 /// Dynamic project query for autocomplete
 @available(iOS 16.0, macOS 13.0, *)
-struct ProjectQuery: EntityQuery {
+public struct ProjectQuery: EntityQuery {
     func entities(for identifiers: [String]) async throws -> [ProjectEntity] {
         guard let taskStore = AppDelegate.shared?.taskStore else {
             return []
@@ -185,7 +185,7 @@ struct ProjectQuery: EntityQuery {
 
 /// Project entity for autocomplete
 @available(iOS 16.0, macOS 13.0, *)
-struct ProjectEntity: AppEntity {
+public struct ProjectEntity: AppEntity {
     static var typeDisplayRepresentation: TypeDisplayRepresentation = "Project"
     static var defaultQuery = ProjectQuery()
 

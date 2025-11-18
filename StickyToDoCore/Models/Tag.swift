@@ -11,7 +11,7 @@ import Foundation
 ///
 /// Tags provide flexible categorization beyond projects and contexts.
 /// Each tag has a name, color, and optional icon for visual identification.
-struct Tag: Identifiable, Codable, Hashable {
+public struct Tag: Identifiable, Codable, Hashable {
     // MARK: - Core Properties
 
     /// Unique identifier for the tag
@@ -42,7 +42,7 @@ struct Tag: Identifiable, Codable, Hashable {
     ///   - icon: Optional SF Symbol name
     ///   - created: Creation timestamp (defaults to now)
     ///   - modified: Modification timestamp (defaults to now)
-    init(
+    public init(
         id: UUID = UUID(),
         name: String,
         color: String,

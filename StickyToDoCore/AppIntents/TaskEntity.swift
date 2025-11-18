@@ -10,7 +10,7 @@ import AppIntents
 
 /// App Intents entity representing a Task for Siri integration
 @available(iOS 16.0, macOS 13.0, *)
-struct TaskEntity: AppEntity {
+public struct TaskEntity: AppEntity {
     static var typeDisplayRepresentation: TypeDisplayRepresentation = "Task"
 
     static var defaultQuery = TaskQuery()
@@ -68,7 +68,7 @@ struct TaskEntity: AppEntity {
 
 /// Query for finding tasks via Siri
 @available(iOS 16.0, macOS 13.0, *)
-struct TaskQuery: EntityQuery {
+public struct TaskQuery: EntityQuery {
     func entities(for identifiers: [UUID]) async throws -> [TaskEntity] {
         // Access shared task store
         guard let taskStore = AppDelegate.shared?.taskStore else {
@@ -112,7 +112,7 @@ struct TaskQuery: EntityQuery {
 
 /// Priority parameter for Siri intents
 @available(iOS 16.0, macOS 13.0, *)
-enum PriorityOption: String, AppEnum {
+public enum PriorityOption: String, AppEnum {
     case high
     case medium
     case low

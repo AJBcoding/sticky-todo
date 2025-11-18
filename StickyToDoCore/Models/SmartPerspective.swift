@@ -8,13 +8,13 @@
 import Foundation
 
 /// Logic operator for combining filter rules
-enum FilterLogic: String, Codable, CaseIterable {
+public enum FilterLogic: String, Codable, CaseIterable {
     case and
     case or
 }
 
 /// Filter rule for advanced search
-struct FilterRule: Codable, Equatable, Identifiable {
+public struct FilterRule: Codable, Equatable, Identifiable {
     // MARK: - Core Properties
 
     /// Unique identifier for the rule
@@ -31,7 +31,7 @@ struct FilterRule: Codable, Equatable, Identifiable {
 
     // MARK: - Initialization
 
-    init(
+    public init(
         id: UUID = UUID(),
         property: FilterProperty,
         operatorType: FilterOperator,
@@ -45,7 +45,7 @@ struct FilterRule: Codable, Equatable, Identifiable {
 }
 
 /// Property that can be filtered
-enum FilterProperty: String, Codable, CaseIterable {
+public enum FilterProperty: String, Codable, CaseIterable {
     case title
     case notes
     case status
@@ -65,7 +65,7 @@ enum FilterProperty: String, Codable, CaseIterable {
 }
 
 /// Filter operator
-enum FilterOperator: String, Codable {
+public enum FilterOperator: String, Codable {
     // String operators
     case contains
     case notContains
@@ -91,7 +91,7 @@ enum FilterOperator: String, Codable {
 }
 
 /// Filter value (can be string, number, date, or boolean)
-enum FilterValue: Codable, Equatable {
+public enum FilterValue: Codable, Equatable {
     case string(String)
     case number(Int)
     case date(Date)
@@ -101,7 +101,7 @@ enum FilterValue: Codable, Equatable {
 }
 
 /// Date range for filtering
-enum DateRange: String, Codable, CaseIterable {
+public enum DateRange: String, Codable, CaseIterable {
     case today
     case tomorrow
     case thisWeek
@@ -117,7 +117,7 @@ enum DateRange: String, Codable, CaseIterable {
 }
 
 /// Smart perspective with advanced filtering capabilities
-struct SmartPerspective: Identifiable, Codable, Equatable {
+public struct SmartPerspective: Identifiable, Codable, Equatable {
     // MARK: - Core Properties
 
     /// Unique identifier
@@ -167,7 +167,7 @@ struct SmartPerspective: Identifiable, Codable, Equatable {
 
     // MARK: - Initialization
 
-    init(
+    public init(
         id: UUID = UUID(),
         name: String,
         description: String? = nil,

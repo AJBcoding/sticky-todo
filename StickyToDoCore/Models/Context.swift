@@ -11,7 +11,7 @@ import Foundation
 ///
 /// Contexts are predefined in config/contexts.md and help filter tasks by
 /// where or how they can be completed (e.g., @computer, @phone, @home).
-struct Context: Identifiable, Codable, Equatable, Hashable {
+public struct Context: Identifiable, Codable, Equatable, Hashable {
     /// Unique identifier for the context
     var id: String { name }
 
@@ -33,7 +33,7 @@ struct Context: Identifiable, Codable, Equatable, Hashable {
     ///   - icon: Icon/emoji (e.g., "💻")
     ///   - color: Color name (e.g., "blue")
     ///   - order: Sort order index
-    init(name: String, icon: String, color: String, order: Int? = nil) {
+    public init(name: String, icon: String, color: String, order: Int? = nil) {
         self.name = name
         self.icon = icon
         self.color = color

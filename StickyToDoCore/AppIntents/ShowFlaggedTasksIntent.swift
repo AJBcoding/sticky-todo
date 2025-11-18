@@ -9,7 +9,7 @@ import Foundation
 import AppIntents
 
 @available(iOS 16.0, macOS 13.0, *)
-struct ShowFlaggedTasksIntent: AppIntent {
+public struct ShowFlaggedTasksIntent: AppIntent {
     static var title: LocalizedStringResource = "Show Flagged Tasks"
 
     static var description = IntentDescription(
@@ -88,7 +88,7 @@ struct ShowFlaggedTasksIntent: AppIntent {
 
 /// Snippet view showing flagged tasks summary
 @available(iOS 16.0, macOS 13.0, *)
-struct FlaggedTasksSummaryView: View {
+public struct FlaggedTasksSummaryView: View {
     var taskCount: Int
     var tasks: [Task]
     var project: String?

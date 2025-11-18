@@ -12,7 +12,7 @@ import Foundation
 /// Project notes provide a space for reference materials, goals, objectives,
 /// and other information related to a specific project. They are stored as
 /// markdown files in the projects directory.
-struct ProjectNote: Identifiable, Codable, Equatable {
+public struct ProjectNote: Identifiable, Codable, Equatable {
     // MARK: - Core Properties
 
     /// Unique identifier for the note
@@ -47,7 +47,7 @@ struct ProjectNote: Identifiable, Codable, Equatable {
     ///   - modified: Modification timestamp (defaults to now)
     ///   - title: Optional title
     ///   - tags: Tags for organization
-    init(
+    public init(
         id: UUID = UUID(),
         projectName: String,
         content: String = "",

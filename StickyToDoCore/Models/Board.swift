@@ -11,7 +11,7 @@ import Foundation
 ///
 /// Boards are stored as markdown files in the boards/ directory.
 /// They define how tasks are filtered, displayed, and organized visually.
-struct Board: Identifiable, Codable, Equatable {
+public struct Board: Identifiable, Codable, Equatable {
     // MARK: - Core Properties
 
     /// Unique identifier for the board (also used as filename)
@@ -74,7 +74,7 @@ struct Board: Identifiable, Codable, Equatable {
     ///   - isBuiltIn: Whether this is a system board
     ///   - isVisible: Whether visible in sidebar
     ///   - order: Sort order
-    init(
+    public init(
         id: String,
         type: BoardType,
         layout: Layout = .freeform,

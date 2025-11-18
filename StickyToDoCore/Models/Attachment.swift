@@ -8,7 +8,7 @@
 import Foundation
 
 /// Type of attachment
-enum AttachmentType: Codable, Equatable, Hashable {
+public enum AttachmentType: Codable, Equatable, Hashable {
     /// File attachment with URL reference
     case file(URL)
 
@@ -23,7 +23,7 @@ enum AttachmentType: Codable, Equatable, Hashable {
 ///
 /// Attachments can be files (stored externally), links, or text notes.
 /// For files, we store references rather than copies to avoid duplication.
-struct Attachment: Identifiable, Codable, Hashable {
+public struct Attachment: Identifiable, Codable, Hashable {
     // MARK: - Core Properties
 
     /// Unique identifier for the attachment
@@ -50,7 +50,7 @@ struct Attachment: Identifiable, Codable, Hashable {
     ///   - name: Display name
     ///   - dateAdded: When the attachment was added (defaults to now)
     ///   - description: Optional description
-    init(
+    public init(
         id: UUID = UUID(),
         type: AttachmentType,
         name: String,

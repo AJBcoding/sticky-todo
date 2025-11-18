@@ -13,7 +13,7 @@ import Foundation
 /// - project: Moving a task to this board sets the task's project field
 /// - status: Moving a task to this board sets the task's status field
 /// - custom: User-defined rules determine what metadata is updated
-enum BoardType: String, Codable, CaseIterable {
+public enum BoardType: String, Codable, CaseIterable {
     case context
     case project
     case status

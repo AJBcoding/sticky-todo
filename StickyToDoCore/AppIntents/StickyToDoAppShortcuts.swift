@@ -11,7 +11,7 @@ import AppIntents
 
 /// Provides app shortcuts for StickyToDo
 @available(iOS 16.0, macOS 13.0, *)
-struct StickyToDoAppShortcuts: AppShortcutsProvider {
+public struct StickyToDoAppShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         // Quick Capture
         AppShortcut(
@@ -175,7 +175,7 @@ extension AppDelegate {
 
 /// Sample phrases for documentation and testing
 @available(iOS 16.0, macOS 13.0, *)
-struct SiriPhraseSamples {
+public struct SiriPhraseSamples {
     static let addTask = [
         "Hey Siri, add a task in StickyToDo",
         "Hey Siri, create 'Call the dentist' in StickyToDo",

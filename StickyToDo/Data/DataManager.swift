@@ -685,6 +685,8 @@ extension DataManager {
         }
 
         // Check if sample data was already created via onboarding
+        // Note: Direct property access is safe here as UserDefaults is thread-safe
+        // and the property is just a Bool backed by UserDefaults
         if OnboardingManager.shared.hasCreatedSampleData {
             log("Sample data already created via onboarding flow, skipping")
             return

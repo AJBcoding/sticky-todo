@@ -14,7 +14,7 @@ import Foundation
 /// - waiting: Task blocked, waiting for something
 /// - someday: Task deferred to future consideration
 /// - completed: Task finished
-enum Status: String, Codable, CaseIterable {
+public enum Status: String, Codable, CaseIterable {
     case inbox = "inbox"
     case nextAction = "next-action"
     case waiting = "waiting"

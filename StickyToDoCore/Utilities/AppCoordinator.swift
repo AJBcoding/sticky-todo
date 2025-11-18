@@ -18,7 +18,7 @@ import Combine
 /// - Managing window state
 ///
 /// Both AppKit and SwiftUI implementations conform to this protocol
-protocol AppCoordinatorProtocol: AnyObject {
+public protocol AppCoordinatorProtocol: AnyObject {
 
     // MARK: - Data Stores
 
@@ -147,7 +147,7 @@ protocol AppCoordinatorProtocol: AnyObject {
 }
 
 /// View mode enumeration
-enum ViewMode: String, Codable {
+public enum ViewMode: String, Codable {
     case list
     case board
 
@@ -163,7 +163,7 @@ enum ViewMode: String, Codable {
 ///
 /// This class provides common implementation that both AppKit and SwiftUI
 /// coordinators can inherit from or use as a reference.
-class BaseAppCoordinator: ObservableObject {
+public class BaseAppCoordinator: ObservableObject {
 
     // MARK: - Published Properties
 
@@ -196,7 +196,7 @@ class BaseAppCoordinator: ObservableObject {
 
     // MARK: - Initialization
 
-    init(dataManager: DataManager = .shared, configManager: ConfigurationManager = .shared) {
+    public init(dataManager: DataManager = .shared, configManager: ConfigurationManager = .shared) {
         self.dataManager = dataManager
         self.configManager = configManager
 

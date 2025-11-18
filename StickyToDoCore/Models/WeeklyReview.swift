@@ -9,7 +9,7 @@
 import Foundation
 
 /// Represents a single step in the weekly review process
-struct WeeklyReviewStep: Identifiable, Codable, Equatable {
+public struct WeeklyReviewStep: Identifiable, Codable, Equatable {
     /// Unique identifier for the step
     let id: String
 
@@ -37,7 +37,7 @@ struct WeeklyReviewStep: Identifiable, Codable, Equatable {
     /// Notes taken during this step
     var notes: String
 
-    init(
+    public init(
         id: String,
         title: String,
         description: String,
@@ -61,7 +61,7 @@ struct WeeklyReviewStep: Identifiable, Codable, Equatable {
 }
 
 /// Represents a weekly review session
-struct WeeklyReviewSession: Identifiable, Codable, Equatable {
+public struct WeeklyReviewSession: Identifiable, Codable, Equatable {
     /// Unique identifier for the session
     let id: UUID
 
@@ -86,7 +86,7 @@ struct WeeklyReviewSession: Identifiable, Codable, Equatable {
     /// Whether the session is currently paused
     var isPaused: Bool
 
-    init(
+    public init(
         id: UUID = UUID(),
         startDate: Date = Date(),
         completedDate: Date? = nil,
@@ -298,7 +298,7 @@ extension WeeklyReviewStep {
 // MARK: - Review History Summary
 
 /// Summary of weekly review completion history
-struct WeeklyReviewHistory: Codable {
+public struct WeeklyReviewHistory: Codable {
     /// Date of last completed review
     var lastReviewDate: Date?
 
@@ -317,7 +317,7 @@ struct WeeklyReviewHistory: Codable {
     /// IDs of all completed review sessions
     var completedSessionIDs: [UUID]
 
-    init(
+    public init(
         lastReviewDate: Date? = nil,
         totalReviewsCompleted: Int = 0,
         currentStreak: Int = 0,

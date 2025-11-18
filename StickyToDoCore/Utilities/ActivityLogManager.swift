@@ -52,7 +52,7 @@ final class ActivityLogManager: ObservableObject {
     /// - Parameters:
     ///   - fileIO: The file I/O handler for persistence
     ///   - retentionDays: Number of days to retain logs (default 90)
-    init(fileIO: MarkdownFileIO, retentionDays: Int = 90) {
+    public init(fileIO: MarkdownFileIO, retentionDays: Int = 90) {
         self.fileIO = fileIO
         self.retentionDays = retentionDays
     }

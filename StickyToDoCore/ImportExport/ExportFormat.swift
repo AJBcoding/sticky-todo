@@ -21,7 +21,7 @@ import Foundation
 /// - iCal: Calendar format for calendar apps
 /// - OmniFocus: Compatible with OmniFocus using TaskPaper-like format
 /// - Things: Compatible with Things app using JSON format
-enum ExportFormat: String, CaseIterable {
+public enum ExportFormat: String, CaseIterable {
     case nativeMarkdownArchive = "native-archive"
     case simplifiedMarkdown = "simplified-markdown"
     case taskpaper = "taskpaper"
@@ -441,7 +441,7 @@ public struct ExportOptions {
 // MARK: - Export Result
 
 /// Result of an export operation
-struct ExportResult {
+public struct ExportResult {
     /// The exported file URL
     var fileURL: URL
 
@@ -464,7 +464,7 @@ struct ExportResult {
     var warnings: [String]
 
     /// Creates an export result
-    init(
+    public init(
         fileURL: URL,
         format: ExportFormat,
         taskCount: Int,

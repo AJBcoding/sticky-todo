@@ -418,7 +418,7 @@ final class ConfigurationManager: ObservableObject {
 // MARK: - Grouping Options
 
 /// Options for grouping tasks in list view
-enum GroupOption: String, Codable, CaseIterable {
+public enum GroupOption: String, Codable, CaseIterable {
     case none = "none"
     case status = "status"
     case project = "project"
@@ -441,7 +441,7 @@ enum GroupOption: String, Codable, CaseIterable {
 // MARK: - Sorting Options
 
 /// Options for sorting tasks in list view
-enum SortOption: String, Codable, CaseIterable {
+public enum SortOption: String, Codable, CaseIterable {
     case title = "title"
     case created = "created"
     case modified = "modified"

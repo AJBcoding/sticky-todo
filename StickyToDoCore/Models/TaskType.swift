@@ -13,7 +13,7 @@ import Foundation
 ///
 /// - note: Lightweight entry for brainstorming and idea capture
 /// - task: Full GTD task with complete metadata and actionable status
-enum TaskType: String, Codable, CaseIterable {
+public enum TaskType: String, Codable, CaseIterable {
     case note
     case task
 }

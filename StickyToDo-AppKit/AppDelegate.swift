@@ -77,14 +77,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ aNotification: Notification) {
+        // Save all pending changes before quitting to prevent data loss
+        do {
+            try dataManager.saveBeforeQuit()
+            print("✅ All data saved successfully before quit")
+        } catch {
+            print("❌ CRITICAL: Failed to save data before quit: \(error.localizedDescription)")
+
+            // Show critical error alert - data may be lost
+            let alert = NSAlert()
+            alert.messageText = "Failed to Save Changes"
+            alert.informativeText = "Some changes may not have been saved: \(error.localizedDescription)"
+            alert.alertStyle = .critical
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+        }
+
         // Cleanup
         quickCaptureController.unregisterHotKey()
 
         // Clear shared instance
         AppDelegate.shared = nil
-
-        // Save all tasks to ensure notifications are persisted
-        // This would be handled by the TaskStore in a real implementation
     }
 
     // MARK: - Notification Setup

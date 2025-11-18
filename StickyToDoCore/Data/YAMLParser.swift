@@ -10,7 +10,7 @@ import Foundation
 import Yams
 
 /// Errors that can occur during YAML parsing
-enum YAMLParseError: Error, LocalizedError {
+public enum YAMLParseError: Error, LocalizedError {
     case invalidFormat(String)
     case missingFrontmatter
     case decodingError(Error)
@@ -47,7 +47,7 @@ enum YAMLParseError: Error, LocalizedError {
 ///
 /// The parser extracts the frontmatter into a Swift Codable object and returns
 /// the body content separately.
-struct YAMLParser {
+public struct YAMLParser {
 
     // MARK: - Configuration
 
