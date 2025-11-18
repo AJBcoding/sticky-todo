@@ -37,11 +37,21 @@ struct PerspectiveSidebarView: View {
     /// View mode (list or board)
     @Binding var viewMode: ViewMode
 
+    /// PerspectiveStore for managing smart perspectives
+    @ObservedObject var perspectiveStore: PerspectiveStore
+
+    /// Callback when user wants to create new perspective
+    var onCreatePerspective: (() -> Void)?
+
+    /// Callback when user wants to edit perspectives
+    var onEditPerspectives: (() -> Void)?
+
     // MARK: - State
 
     @State private var showContexts = true
     @State private var showProjects = true
     @State private var showCustomBoards = true
+    @State private var showSmartPerspectives = true
 
     // MARK: - Computed Properties
 
@@ -55,6 +65,16 @@ struct PerspectiveSidebarView: View {
     private var customPerspectives: [Perspective] {
         perspectives.filter { !$0.isBuiltIn && $0.isVisible }
             .sorted { $0.name < $1.name }
+    }
+
+    /// Smart perspectives from PerspectiveStore
+    private var smartPerspectives: [SmartPerspective] {
+        perspectiveStore.customPerspectives
+    }
+
+    /// Built-in smart perspectives
+    private var builtInSmartPerspectives: [SmartPerspective] {
+        perspectiveStore.builtInPerspectives
     }
 
     /// Context boards
@@ -80,7 +100,7 @@ struct PerspectiveSidebarView: View {
     var body: some View {
         List(selection: selectionBinding) {
             // GTD Perspectives
-            Section("SMART") {
+            Section("PERSPECTIVES") {
                 ForEach(builtInPerspectives) { perspective in
                     PerspectiveRow(
                         perspective: perspective,
@@ -88,6 +108,20 @@ struct PerspectiveSidebarView: View {
                         isSelected: selectedPerspectiveId == perspective.id
                     )
                     .tag(SidebarItem.perspective(perspective.id))
+                }
+            }
+
+            // Smart Perspectives (Built-in)
+            if !builtInSmartPerspectives.isEmpty {
+                Section("SMART PERSPECTIVES", isExpanded: $showSmartPerspectives) {
+                    ForEach(builtInSmartPerspectives) { smartPerspective in
+                        SmartPerspectiveRow(
+                            perspective: smartPerspective,
+                            count: taskCount(for: smartPerspective),
+                            isSelected: false
+                        )
+                        .tag(SidebarItem.smartPerspective(smartPerspective.id.uuidString))
+                    }
                 }
             }
 
@@ -146,6 +180,66 @@ struct PerspectiveSidebarView: View {
                     }
                 }
             }
+
+            // Custom Smart Perspectives
+            if !smartPerspectives.isEmpty {
+                Section {
+                    ForEach(smartPerspectives) { smartPerspective in
+                        SmartPerspectiveRow(
+                            perspective: smartPerspective,
+                            count: taskCount(for: smartPerspective),
+                            isSelected: false
+                        )
+                        .tag(SidebarItem.smartPerspective(smartPerspective.id.uuidString))
+                        .contextMenu {
+                            Button("Edit") {
+                                // TODO: Edit perspective
+                            }
+                            Button("Duplicate") {
+                                var duplicated = smartPerspective
+                                duplicated.name = "\(smartPerspective.name) Copy"
+                                perspectiveStore.create(duplicated)
+                            }
+                            Divider()
+                            Button("Delete", role: .destructive) {
+                                perspectiveStore.delete(smartPerspective)
+                            }
+                        }
+                    }
+
+                    // Add perspective button
+                    Button {
+                        onCreatePerspective?()
+                    } label: {
+                        Label("New Perspective", systemImage: "plus.circle")
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                } header: {
+                    HStack {
+                        Text("CUSTOM PERSPECTIVES")
+                        Spacer()
+                        Button {
+                            onEditPerspectives?()
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            } else {
+                // Empty state with add button
+                Section("CUSTOM PERSPECTIVES") {
+                    Button {
+                        onCreatePerspective?()
+                    } label: {
+                        Label("New Perspective", systemImage: "plus.circle")
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
         }
         .listStyle(.sidebar)
         .frame(minWidth: 180, idealWidth: 220, maxWidth: 300)
@@ -191,6 +285,11 @@ struct PerspectiveSidebarView: View {
     /// Calculates the number of tasks matching a board filter
     private func taskCount(for board: Board) -> Int {
         tasks.filter { $0.matches(board.filter) }.count
+    }
+
+    /// Calculates the number of tasks matching a smart perspective
+    private func taskCount(for perspective: SmartPerspective) -> Int {
+        perspective.apply(to: tasks).count
     }
 }
 
@@ -269,11 +368,49 @@ struct BoardRow: View {
     }
 }
 
+// MARK: - Smart Perspective Row
+
+struct SmartPerspectiveRow: View {
+    let perspective: SmartPerspective
+    let count: Int
+    let isSelected: Bool
+
+    var body: some View {
+        HStack {
+            // Icon
+            if let icon = perspective.icon {
+                Text(icon)
+                    .font(.body)
+            }
+
+            // Name
+            Text(perspective.name)
+                .font(.body)
+
+            Spacer()
+
+            // Badge count
+            if count > 0 {
+                Text("\(count)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(
+                        Capsule()
+                            .fill(Color.secondary.opacity(0.2))
+                    )
+            }
+        }
+    }
+}
+
 // MARK: - Sidebar Item
 
 enum SidebarItem: Hashable {
     case perspective(String)
     case board(String)
+    case smartPerspective(String)
 }
 
 // MARK: - View Mode
@@ -305,6 +442,13 @@ enum ViewMode: String {
         ],
         selectedPerspectiveId: .constant("inbox"),
         selectedBoardId: .constant(nil),
-        viewMode: .constant(.list)
+        viewMode: .constant(.list),
+        perspectiveStore: {
+            let store = PerspectiveStore(rootDirectory: FileManager.default.temporaryDirectory)
+            try? store.loadAll()
+            return store
+        }(),
+        onCreatePerspective: {},
+        onEditPerspectives: {}
     )
 }

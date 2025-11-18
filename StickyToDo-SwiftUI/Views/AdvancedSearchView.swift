@@ -251,9 +251,10 @@ struct AdvancedSearchView: View {
 
         var results = perspective.apply(to: tasks)
 
-        // Apply text search if present
+        // Apply text search if present using SearchManager for better results
         if !searchText.isEmpty {
-            results = results.filter { $0.matchesSearch(searchText) }
+            let searchResults = SearchManager.search(tasks: results, queryString: searchText)
+            results = searchResults.map { $0.task }
         }
 
         return results

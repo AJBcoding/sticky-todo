@@ -328,3 +328,57 @@ enum DateRange: String, CaseIterable {
 #Preview {
     CalendarEventPickerView()
 }
+
+// MARK: - Calendar Event to Task Conversion
+
+@available(macOS 10.15, *)
+extension CalendarEventPickerView {
+    /// Converts a calendar event to a task
+    static func createTask(from event: EKEvent) -> Task {
+        // Extract project and context from notes if they exist
+        var project: String? = nil
+        var context: String? = nil
+        var cleanNotes = ""
+        
+        if let notes = event.notes {
+            // Split notes by metadata separator
+            let parts = notes.components(separatedBy: "---")
+            if parts.count > 1 {
+                // First part is user notes
+                cleanNotes = parts[0].trimmingCharacters(in: .whitespacesAndNewlines)
+                
+                // Second part contains metadata
+                let metadata = parts[1]
+                let lines = metadata.components(separatedBy: "\n")
+                for line in lines {
+                    if line.hasPrefix("Project: ") {
+                        project = line.replacingOccurrences(of: "Project: ", with: "").trimmingCharacters(in: .whitespaces)
+                    } else if line.hasPrefix("Context: ") {
+                        context = line.replacingOccurrences(of: "Context: ", with: "").trimmingCharacters(in: .whitespaces)
+                    }
+                }
+            } else {
+                cleanNotes = notes
+            }
+        }
+        
+        // If no context found in notes, use calendar name as context
+        if context == nil {
+            context = event.calendar.title
+        }
+        
+        // Create the task
+        let task = Task(
+            title: event.title ?? "Untitled Event",
+            notes: cleanNotes,
+            status: .inbox,
+            project: project,
+            context: context,
+            due: event.startDate,
+            flagged: event.hasAlarms,
+            calendarEventId: event.eventIdentifier
+        )
+        
+        return task
+    }
+}

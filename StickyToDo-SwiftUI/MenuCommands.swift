@@ -22,6 +22,11 @@ struct AppMenuCommands: Commands {
             }
             .keyboardShortcut("n", modifiers: .command)
 
+            Button("New From Template...") {
+                NotificationCenter.default.post(name: .showTemplateLibrary, object: nil)
+            }
+            .keyboardShortcut("t", modifiers: [.command, .shift])
+
             Button("Quick Capture...") {
                 NotificationCenter.default.post(name: .showQuickCapture, object: nil)
             }
@@ -127,10 +132,22 @@ struct AppMenuCommands: Commands {
 
         // Tools menu
         CommandMenu("Tools") {
+            Button("Template Library...") {
+                NotificationCenter.default.post(name: .showTemplateLibrary, object: nil)
+            }
+            .keyboardShortcut("t", modifiers: [.command, .option])
+
+            Button("Manage Perspectives...") {
+                NotificationCenter.default.post(name: .showPerspectiveManager, object: nil)
+            }
+            .keyboardShortcut("p", modifiers: [.command, .option])
+
+            Divider()
+
             Button("Analytics Dashboard...") {
                 NotificationCenter.default.post(name: .showAnalyticsDashboard, object: nil)
             }
-            .keyboardShortcut("a", modifiers: [.command, .option])
+            .keyboardShortcut("a", modifiers: [.command, .shift])
 
             Button("Automation Rules...") {
                 NotificationCenter.default.post(name: .showAutomationRules, object: nil)
@@ -268,6 +285,8 @@ extension FocusedValues {
 public extension Notification.Name {
     static let createNewTask = Notification.Name("createNewTask")
     static let showQuickCapture = Notification.Name("showQuickCapture")
+    static let showTemplateLibrary = Notification.Name("showTemplateLibrary")
+    static let showPerspectiveManager = Notification.Name("showPerspectiveManager")
     static let importTasks = Notification.Name("importTasks")
     static let exportTasks = Notification.Name("exportTasks")
     static let completeTask = Notification.Name("completeTask")

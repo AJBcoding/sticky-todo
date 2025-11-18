@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 /// Search bar with autocomplete and recent searches
 struct SearchBar: View {
@@ -18,6 +19,10 @@ struct SearchBar: View {
     @State private var showingRecents: Bool = false
     @State private var recentSearches: [String] = []
     @FocusState private var isFocused: Bool
+
+    // Debouncing
+    @State private var searchDebouncer = PassthroughSubject<String, Never>()
+    @State private var cancellables = Set<AnyCancellable>()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,6 +42,9 @@ struct SearchBar: View {
                         if newValue.isEmpty {
                             isSearching = false
                             onClear()
+                        } else {
+                            // Debounce search - send to debouncer instead of searching immediately
+                            searchDebouncer.send(newValue)
                         }
                     }
 
@@ -81,6 +89,7 @@ struct SearchBar: View {
         }
         .onAppear {
             loadRecentSearches()
+            setupDebouncer()
         }
     }
 
@@ -222,6 +231,17 @@ struct SearchBar: View {
 
     private func loadRecentSearches() {
         recentSearches = SearchManager.getRecentSearches()
+    }
+
+    private func setupDebouncer() {
+        // Debounce search queries by 300ms to avoid too many searches
+        searchDebouncer
+            .debounce(for: .milliseconds(300), scheduler: DispatchQueue.main)
+            .sink { query in
+                isSearching = true
+                onSearch(query)
+            }
+            .store(in: &cancellables)
     }
 }
 

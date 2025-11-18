@@ -8,7 +8,9 @@
 
 import Foundation
 import Combine
+import EventKit
 
+@available(macOS 10.15, *)
 /// In-memory store managing all tasks in the application
 ///
 /// TaskStore is the single source of truth for task data. It:
@@ -56,6 +58,12 @@ final class TaskStore: ObservableObject {
 
     /// Notification manager for scheduling notifications
     private let notificationManager = NotificationManager.shared
+
+    /// Calendar manager for syncing tasks with EventKit
+    private let calendarManager = CalendarManager.shared
+
+    /// Spotlight manager for search integration
+    private let spotlightManager = SpotlightManager.shared
 
     /// Serial queue for thread-safe access to tasks
     private let queue = DispatchQueue(label: "com.stickytodo.taskstore", qos: .userInitiated)
@@ -201,7 +209,18 @@ final class TaskStore: ObservableObject {
                 if !self.tasks.contains(where: { $0.id == task.id }) {
                     // Apply automation rules for task creation
                     let context = TaskChangeContext.taskCreated(task)
-                    let modifiedTask = self.rulesEngine.evaluateRules(for: context, task: task)
+                    var modifiedTask = self.rulesEngine.evaluateRules(for: context, task: task)
+
+                    // Schedule notifications for the task
+                    Task {
+                        await self.scheduleNotifications(for: &modifiedTask)
+
+                        // Update the task with notification IDs
+                        if let index = self.tasks.firstIndex(where: { $0.id == modifiedTask.id }) {
+                            self.tasks[index] = modifiedTask
+                            self.scheduleSave(for: modifiedTask)
+                        }
+                    }
 
                     self.tasks.append(modifiedTask)
                     self.updateDerivedData()
@@ -210,6 +229,21 @@ final class TaskStore: ObservableObject {
                     // Log the creation
                     let log = ActivityLog.taskCreated(task: modifiedTask)
                     self.activityLogManager?.addLog(log)
+
+                    // Sync with calendar if auto-sync is enabled
+                    if self.calendarManager.preferences.autoSyncEnabled {
+                        let syncResult = self.calendarManager.syncTask(modifiedTask)
+                        if case .success(let eventId) = syncResult, let eventId = eventId {
+                            modifiedTask.calendarEventId = eventId
+                            if let idx = self.tasks.firstIndex(where: { $0.id == modifiedTask.id }) {
+                                self.tasks[idx] = modifiedTask
+                            }
+                            self.logger?("Synced task to calendar: \(eventId)")
+                        }
+                    }
+
+                    // Index task in Spotlight for system-wide search
+                    self.spotlightManager.indexTask(modifiedTask)
 
                     // Schedule debounced save
                     self.scheduleSave(for: modifiedTask)
@@ -234,8 +268,40 @@ final class TaskStore: ObservableObject {
                     // Generate activity logs for changes
                     self.logTaskChanges(from: oldTask, to: updatedTask)
 
+                    // Trigger automation rules based on changes
+                    self.triggerRulesForChanges(from: oldTask, to: &updatedTask)
+
+                    // Re-schedule notifications if dates changed or task status changed
+                    let needsReschedule = oldTask.due != updatedTask.due ||
+                                         oldTask.defer != updatedTask.defer ||
+                                         oldTask.status != updatedTask.status
+
+                    if needsReschedule {
+                        Task {
+                            await self.scheduleNotifications(for: &updatedTask)
+
+                            // Update the task with new notification IDs
+                            if let currentIndex = self.tasks.firstIndex(where: { $0.id == updatedTask.id }) {
+                                self.tasks[currentIndex] = updatedTask
+                                self.scheduleSave(for: updatedTask)
+                            }
+                        }
+                    }
+
+                    // Sync with calendar if auto-sync is enabled and task has calendar integration
+                    if self.calendarManager.preferences.autoSyncEnabled {
+                        let syncResult = self.calendarManager.syncTask(updatedTask)
+                        if case .success(let eventId) = syncResult, let eventId = eventId {
+                            updatedTask.calendarEventId = eventId
+                            self.logger?("Updated calendar event: \(eventId)")
+                        }
+                    }
+
                     self.tasks[index] = updatedTask
                     self.updateDerivedData()
+                    // Update task in Spotlight index
+                    self.spotlightManager.indexTask(updatedTask)
+
                     self.logger?("Updated task: \(task.title)")
 
                     // Schedule debounced save
@@ -254,6 +320,11 @@ final class TaskStore: ObservableObject {
 
             DispatchQueue.main.async {
                 if let index = self.tasks.firstIndex(where: { $0.id == task.id }) {
+                    let taskToDelete = self.tasks[index]
+
+                    // Cancel all notifications for this task
+                    self.notificationManager.cancelNotifications(for: taskToDelete)
+
                     self.tasks.remove(at: index)
                     self.updateDerivedData()
                     self.logger?("Deleted task: \(task.title)")
@@ -262,8 +333,24 @@ final class TaskStore: ObservableObject {
                     let log = ActivityLog.taskDeleted(task: task)
                     self.activityLogManager?.addLog(log)
 
+                    // Delete calendar event if it exists
+                    if let eventId = task.calendarEventId {
+                        let result = self.calendarManager.deleteEvent(eventId)
+                        if case .failure(let error) = result {
+                            self.logger?("Failed to delete calendar event: \(error.localizedDescription)")
+                        } else {
+                            self.logger?("Deleted calendar event: \(eventId)")
+                        }
+                    }
+
                     // Cancel any pending save
+                    // Remove task from Spotlight index
+                    self.spotlightManager.deindexTask(taskToDelete)
+
                     self.cancelSave(for: task.id)
+
+                    // Update badge count after deletion
+                    self.updateBadgeCount()
 
                     // Delete from file system
                     self.queue.async {
@@ -1431,5 +1518,84 @@ extension TaskStore {
 
         logger?("Donated WeeklyReview intent")
         #endif
+    }
+}
+
+// MARK: - Calendar Integration
+
+@available(macOS 10.15, *)
+extension TaskStore {
+    /// Syncs all tasks with calendar
+    func syncAllTasksWithCalendar() {
+        let taskIds = tasks.map { $0.id }
+        var syncedCount = 0
+        
+        for taskId in taskIds {
+            if let task = task(withID: taskId) {
+                let syncResult = calendarManager.syncTask(task)
+                if case .success(let eventId) = syncResult, let eventId = eventId {
+                    if let index = tasks.firstIndex(where: { $0.id == taskId }) {
+                        tasks[index].calendarEventId = eventId
+                        scheduleSave(for: tasks[index])
+                        syncedCount += 1
+                    }
+                }
+            }
+        }
+        
+        logger?("Synced \(syncedCount) tasks with calendar")
+    }
+    
+    /// Triggers automation rules based on task changes
+    private func triggerRulesForChanges(from oldTask: Task, to updatedTask: inout Task) {
+        // Status changed
+        if oldTask.status != updatedTask.status {
+            let context = TaskChangeContext.statusChanged(from: oldTask.status, to: updatedTask.status, task: updatedTask)
+            updatedTask = rulesEngine.evaluateRules(for: context, task: updatedTask)
+
+            // Check if completed
+            if updatedTask.status == .completed && oldTask.status != .completed {
+                let completedContext = TaskChangeContext.taskCompleted(updatedTask)
+                updatedTask = rulesEngine.evaluateRules(for: completedContext, task: updatedTask)
+            }
+        }
+
+        // Priority changed
+        if oldTask.priority != updatedTask.priority {
+            let context = TaskChangeContext.priorityChanged(from: oldTask.priority, to: updatedTask.priority, task: updatedTask)
+            updatedTask = rulesEngine.evaluateRules(for: context, task: updatedTask)
+        }
+
+        // Flagged state changed
+        if oldTask.flagged != updatedTask.flagged {
+            if updatedTask.flagged {
+                let context = TaskChangeContext.taskFlagged(updatedTask)
+                updatedTask = rulesEngine.evaluateRules(for: context, task: updatedTask)
+            } else {
+                let context = TaskChangeContext.taskUnflagged(updatedTask)
+                updatedTask = rulesEngine.evaluateRules(for: context, task: updatedTask)
+            }
+        }
+
+        // Project changed
+        if oldTask.project != updatedTask.project, let project = updatedTask.project {
+            let context = TaskChangeContext.projectSet(project, to: updatedTask)
+            updatedTask = rulesEngine.evaluateRules(for: context, task: updatedTask)
+        }
+
+        // Context changed
+        if oldTask.context != updatedTask.context, let context = updatedTask.context {
+            let changeContext = TaskChangeContext.contextSet(context, to: updatedTask)
+            updatedTask = rulesEngine.evaluateRules(for: changeContext, task: updatedTask)
+        }
+
+        // Tags added
+        let oldTagNames = Set(oldTask.tags.map { $0.name })
+        let newTagNames = Set(updatedTask.tags.map { $0.name })
+        let addedTags = newTagNames.subtracting(oldTagNames)
+        for tagName in addedTags {
+            let context = TaskChangeContext.tagAdded(tagName, to: updatedTask)
+            updatedTask = rulesEngine.evaluateRules(for: context, task: updatedTask)
+        }
     }
 }

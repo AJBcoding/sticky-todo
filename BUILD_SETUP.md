@@ -5,6 +5,7 @@ Complete guide for building and running both StickyToDo applications.
 ## Table of Contents
 
 - [Requirements](#requirements)
+- [First-Time Xcode Configuration](#first-time-xcode-configuration)
 - [Initial Setup](#initial-setup)
 - [Swift Package Manager Dependencies](#swift-package-manager-dependencies)
 - [Xcode Project Configuration](#xcode-project-configuration)
@@ -35,6 +36,53 @@ xcodebuild -version
 # Check Swift version
 swift --version
 ```
+
+## First-Time Xcode Configuration
+
+### ⚠️ Important: Complete Xcode Setup First
+
+**If this is your first time setting up the project**, you MUST complete the Xcode configuration before building:
+
+1. **Read the comprehensive setup guide**: [XCODE_SETUP.md](XCODE_SETUP.md)
+2. **Add required package dependencies** (especially Yams - CRITICAL!)
+3. **Configure Info.plist keys** for Siri, Calendar, and Notifications
+4. **Verify frameworks and capabilities** are properly configured
+
+### Quick Configuration Check
+
+Run the verification script to check your setup:
+
+```bash
+./scripts/configure-xcode.sh
+```
+
+This script will verify:
+- ✓ Swift package dependencies (Yams)
+- ✓ Framework references
+- ✓ Entitlements configuration
+- ✓ Build settings
+- ✓ Test build of StickyToDoCore
+
+**If any checks fail**, refer to [XCODE_SETUP.md](XCODE_SETUP.md) for detailed resolution steps.
+
+### Critical Dependencies
+
+The project **will not compile** without:
+- **Yams package** (YAML parsing) - See [Adding Yams](#adding-yams) below
+- **AppIntents framework** (Siri shortcuts) - Requires macOS 13.0+ deployment target
+- **Proper Info.plist configuration** - See [XCODE_SETUP.md](XCODE_SETUP.md)
+
+### Adding Yams
+
+**Yams is REQUIRED** - add it via Xcode:
+
+1. Open `StickyToDo.xcodeproj`
+2. Select the project > **Package Dependencies** tab
+3. Click **+** > Enter URL: `https://github.com/jpsim/Yams.git`
+4. Select version **5.0.0** or later
+5. Add to targets: **StickyToDoCore**, **StickyToDo-SwiftUI**, **StickyToDo-AppKit**
+
+See [XCODE_SETUP.md](XCODE_SETUP.md) for detailed instructions with screenshots guidance.
 
 ## Initial Setup
 
@@ -421,12 +469,47 @@ time xcodebuild -scheme StickyToDo-SwiftUI clean build
 # Product > Profile (⌘I)
 ```
 
+### App Intents and Siri Shortcuts Issues
+
+#### Problem: "No such module 'AppIntents'"
+
+**Cause**: AppIntents framework requires macOS 13.0+
+
+**Solution**:
+1. Select target > **Build Settings**
+2. Search for "deployment target"
+3. Set **macOS Deployment Target** to **13.0** or later
+4. Clean and rebuild
+
+#### Problem: Siri shortcuts not appearing in System Settings
+
+**Cause**: Info.plist not configured or app not launched
+
+**Solution**:
+1. Verify `NSUserActivityTypes` in Info.plist (see [XCODE_SETUP.md](XCODE_SETUP.md))
+2. Verify `NSSiriUsageDescription` is set
+3. Build and run the app at least once
+4. Shortcuts register on first launch
+5. Check: System Settings > Siri & Search > Search for "StickyToDo"
+
+#### Problem: "Cannot find type 'TaskEntity' in scope"
+
+**Cause**: AppIntents files not added to correct target
+
+**Solution**:
+1. Select `TaskEntity.swift` in Project Navigator
+2. File Inspector (⌥⌘1)
+3. **Target Membership** section
+4. Ensure **StickyToDoCore** is checked
+5. Repeat for all AppIntents files
+
 ## Next Steps
 
+- Review [XCODE_SETUP.md](XCODE_SETUP.md) for comprehensive Xcode configuration
 - Review [DEVELOPMENT.md](docs/DEVELOPMENT.md) for coding guidelines
-- Check [ASSETS.md](docs/ASSETS.md) for creating app icons
-- Run `scripts/quick-start.sh` for automated setup
-- Run `scripts/verify-project.sh` to validate configuration
+- Check [ASSETS.md](docs/ASSETS.md) for creating app icons (if file exists)
+- Run `scripts/configure-xcode.sh` to verify configuration
+- See [NEXT_STEPS.md](NEXT_STEPS.md) for development roadmap
 
 ## Support
 

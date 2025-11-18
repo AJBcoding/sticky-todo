@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+    Info.plist Template for StickyToDo Applications
+
+    This template contains all required keys for:
+    - Siri Shortcuts (App Intents)
+    - Calendar Integration (EventKit)
+    - User Notifications
+    - Spotlight Search
+
+    USAGE:
+    Modern Xcode projects often don't use a separate Info.plist file.
+    Instead, add these keys via:
+    1. Select target in Xcode
+    2. Go to Info tab
+    3. Click + to add each key
+    4. Copy the key name and value from this template
+
+    OR if your project uses an Info.plist file:
+    1. Merge the relevant sections below into your existing Info.plist
+    2. Do NOT copy the entire file - merge selectively
+
+    TARGETS:
+    Configure for both:
+    - StickyToDo-SwiftUI
+    - StickyToDo-AppKit
+-->
+<plist version="1.0">
+<dict>
+    <!-- ==================== Bundle Information ==================== -->
+
+    <key>CFBundleDevelopmentRegion</key>
+    <string>$(DEVELOPMENT_LANGUAGE)</string>
+
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+
+    <key>CFBundleName</key>
+    <string>$(PRODUCT_NAME)</string>
+
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+
+    <key>CFBundleVersion</key>
+    <string>1</string>
+
+    <!-- ==================== App Category ==================== -->
+
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.productivity</string>
+
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+
+    <!-- ==================== Privacy Descriptions (REQUIRED) ==================== -->
+
+    <!-- Siri Integration - REQUIRED for App Intents -->
+    <key>NSSiriUsageDescription</key>
+    <string>StickyToDo uses Siri to help you manage tasks with your voice. You can add tasks, check your inbox, start timers, and manage your to-do list using Siri shortcuts.</string>
+
+    <!-- User Notifications - REQUIRED for task reminders and alerts -->
+    <key>NSUserNotificationsUsageDescription</key>
+    <string>StickyToDo sends notifications for task reminders, due dates, and timer alerts to help you stay on track with your work.</string>
+
+    <!-- Calendar Access - REQUIRED for calendar integration -->
+    <key>NSCalendarsUsageDescription</key>
+    <string>StickyToDo can sync with your calendar to show tasks with due dates alongside your events, helping you plan your day more effectively.</string>
+
+    <!-- Reminders Access - OPTIONAL for importing from Reminders app -->
+    <key>NSRemindersUsageDescription</key>
+    <string>StickyToDo can import tasks from Reminders to help you consolidate all your task lists in one place.</string>
+
+    <!-- Contacts Access - OPTIONAL if you add contact-related features -->
+    <key>NSContactsUsageDescription</key>
+    <string>StickyToDo can access contacts to help you assign tasks to people you work with.</string>
+
+    <!-- ==================== App Intents / Siri Shortcuts (REQUIRED) ==================== -->
+
+    <!--
+        User Activity Types - REQUIRED for Siri Shortcuts
+        These must match the intent class names in your AppIntents implementation
+    -->
+    <key>NSUserActivityTypes</key>
+    <array>
+        <!-- Task Management -->
+        <string>AddTaskIntent</string>
+        <string>CompleteTaskIntent</string>
+        <string>FlagTaskIntent</string>
+        <string>AddTaskToProjectIntent</string>
+
+        <!-- Task Views -->
+        <string>ShowInboxIntent</string>
+        <string>ShowNextActionsIntent</string>
+        <string>ShowTodayTasksIntent</string>
+        <string>ShowFlaggedTasksIntent</string>
+        <string>ShowWeeklyReviewIntent</string>
+
+        <!-- Time Tracking -->
+        <string>StartTimerIntent</string>
+        <string>StopTimerIntent</string>
+    </array>
+
+    <!-- ==================== Document Types (OPTIONAL) ==================== -->
+
+    <!--
+        Configure if you want StickyToDo to open .md or .yaml files
+        Currently set as "Alternate" so it doesn't override your default markdown editor
+    -->
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <!-- Markdown Files -->
+        <dict>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>md</string>
+                <string>markdown</string>
+            </array>
+            <key>CFBundleTypeName</key>
+            <string>Markdown Document</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>net.daringfireball.markdown</string>
+            </array>
+        </dict>
+
+        <!-- YAML Files -->
+        <dict>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>yaml</string>
+                <string>yml</string>
+            </array>
+            <key>CFBundleTypeName</key>
+            <string>YAML Document</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.yaml</string>
+            </array>
+        </dict>
+    </array>
+
+    <!-- ==================== URL Schemes (OPTIONAL - Future Feature) ==================== -->
+
+    <!--
+        URL Scheme for deep linking
+        Example: stickytodo://add?title=Task&project=Work
+        Uncomment when implementing URL scheme support
+    -->
+    <!--
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>CFBundleURLName</key>
+            <string>com.yourcompany.stickytodo</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>stickytodo</string>
+            </array>
+        </dict>
+    </array>
+    -->
+
+    <!-- ==================== Application Configuration ==================== -->
+
+    <!-- Application Scene Manifest (for SwiftUI apps) -->
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <true/>
+    </dict>
+
+    <!-- Launch Services (macOS specific) -->
+    <key>LSUIElement</key>
+    <false/>
+
+    <!-- ==================== Background Modes (OPTIONAL - Future Feature) ==================== -->
+
+    <!--
+        Background modes for file watching and notifications
+        Uncomment if implementing background refresh
+    -->
+    <!--
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>processing</string>
+        <string>fetch</string>
+    </array>
+    -->
+
+    <!-- ==================== Spotlight Integration ==================== -->
+
+    <!--
+        Spotlight integration is code-based and doesn't require Info.plist configuration
+        It's handled in SpotlightManager.swift using CoreSpotlight framework
+    -->
+
+    <!-- ==================== App Transport Security ==================== -->
+
+    <!--
+        If your app needs network access in the future, configure ATS
+        Currently, network is disabled in entitlements
+    -->
+    <!--
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <false/>
+    </dict>
+    -->
+
+    <!-- ==================== Main Storyboard / SwiftUI App ==================== -->
+
+    <!-- For SwiftUI apps, no main storyboard needed -->
+    <!-- For AppKit apps with XIB/Storyboard, set NSMainStoryboardFile -->
+
+    <!-- ==================== Copyright and Credits ==================== -->
+
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2025 Your Company. All rights reserved.</string>
+
+    <!-- ==================== Additional Settings ==================== -->
+
+    <!-- High Resolution Display Support -->
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+
+    <!-- Supports Retina Displays -->
+    <key>NSHighResolutionCapable</key>
+    <true/>
+
+    <!-- Supports Automatic Graphics Switching (for MacBooks with dual GPUs) -->
+    <key>NSSupportsAutomaticGraphicsSwitching</key>
+    <true/>
+
+</dict>
+</plist>

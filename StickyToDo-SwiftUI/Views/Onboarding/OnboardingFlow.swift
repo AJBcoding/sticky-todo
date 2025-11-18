@@ -8,6 +8,7 @@
 
 import SwiftUI
 import Combine
+import StickyToDoCore
 
 /// Coordinator for the onboarding flow
 @MainActor
@@ -17,140 +18,168 @@ class OnboardingCoordinator: ObservableObject {
 
     @Published var showOnboarding = false
     @Published var isComplete = false
+    @Published var currentStep: OnboardingStep = .welcome
+    @Published var showDirectoryPicker = false
+    @Published var showPermissions = false
+    @Published var showQuickTour = false
+
+    // MARK: - Configuration State
+
+    @Published var selectedDirectory: URL?
+    @Published var createSampleData = true
 
     // MARK: - Properties
 
-    private let configManager: ConfigurationManager
-    private let dataManager: DataManager
+    private let onboardingManager = OnboardingManager.shared
+    private let configManager = ConfigurationManager.shared
 
     // MARK: - Initialization
 
-    init(configManager: ConfigurationManager = .shared,
-         dataManager: DataManager = .shared) {
-        self.configManager = configManager
-        self.dataManager = dataManager
+    init() {
+        // Default directory
+        let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        self.selectedDirectory = documentsURL.appendingPathComponent("StickyToDo")
     }
 
     // MARK: - Methods
 
     /// Checks if onboarding should be shown
     func checkForFirstRun() {
-        showOnboarding = configManager.isFirstRun
+        showOnboarding = onboardingManager.shouldShowOnboarding
     }
 
-    /// Completes the onboarding flow with user configuration
-    func completeOnboarding(with config: WelcomeConfiguration) {
-        // Update data directory if changed
-        if config.dataDirectory != configManager.dataDirectory {
-            configManager.changeDataDirectory(to: config.dataDirectory)
-        }
-
-        // Create sample data if requested
-        if config.createSampleData {
-            createSampleData()
-        }
-
-        // Mark first run as complete
-        configManager.isFirstRun = false
-        configManager.save()
-
-        isComplete = true
-        showOnboarding = false
+    /// Starts the onboarding flow
+    func startOnboarding() {
+        currentStep = .welcome
+        showOnboarding = true
     }
 
-    /// Creates sample data for the user to explore
-    private func createSampleData() {
-        print("Creating sample data...")
-
-        // Sample tasks for Inbox
-        let sampleTasks: [(String, Context?, String?)] = [
-            ("Review project proposal", .work, "Q1 Planning"),
-            ("Buy groceries", .errands, nil),
-            ("Call dentist to schedule appointment", .errands, nil),
-            ("Read 'Getting Things Done' book", .personal, "Learning"),
-            ("Plan weekend trip", .personal, "Travel"),
-            ("Update team on progress", .work, "Team Sync"),
-            ("Fix leaky faucet", .home, nil),
-            ("Meditate for 10 minutes", .personal, nil)
-        ]
-
-        for (title, context, project) in sampleTasks {
-            let task = Task(title: title)
-            task.context = context
-            task.project = project
-            task.status = .inbox
-            dataManager.taskStore.add(task)
+    /// Advances to the next onboarding step
+    func nextStep() {
+        switch currentStep {
+        case .welcome:
+            currentStep = .directory
+        case .directory:
+            currentStep = .permissions
+        case .permissions:
+            currentStep = .quickTour
+        case .quickTour:
+            completeOnboarding()
         }
-
-        // Sample tasks with due dates
-        let todayTask = Task(title: "Complete onboarding tutorial")
-        todayTask.dueDate = Date()
-        todayTask.status = .active
-        todayTask.context = .work
-        dataManager.taskStore.add(todayTask)
-
-        let upcomingTask = Task(title: "Prepare presentation for Monday")
-        upcomingTask.dueDate = Calendar.current.date(byAdding: .day, value: 3, to: Date())
-        upcomingTask.status = .active
-        upcomingTask.context = .work
-        upcomingTask.project = "Q1 Planning"
-        dataManager.taskStore.add(upcomingTask)
-
-        // Create sample boards
-        createSampleBoards()
-
-        print("Sample data created successfully")
     }
 
-    private func createSampleBoards() {
-        // Weekly Planning board
-        let weeklyBoard = Board(name: "Weekly Planning")
-        weeklyBoard.boardDescription = "Plan and track your weekly goals"
+    /// Skips optional steps
+    func skipToCompletion() {
+        completeOnboarding()
+    }
 
-        let mondayNote = StickyNote(content: "Monday\n- Team standup\n- Review emails")
-        mondayNote.position = CGPoint(x: 50, y: 50)
-        mondayNote.color = .blue
+    /// Completes the onboarding flow
+    func completeOnboarding() {
+        Task {
+            // 1. Setup directory structure
+            await setupDirectoryStructure()
 
-        let tuesdayNote = StickyNote(content: "Tuesday\n- Client meeting\n- Project review")
-        tuesdayNote.position = CGPoint(x: 250, y: 50)
-        tuesdayNote.color = .green
+            // 2. Update configuration
+            if let directory = selectedDirectory {
+                configManager.changeDataDirectory(to: directory)
+            }
 
-        let ideasNote = StickyNote(content: "Ideas\n- Improve workflow\n- Automate reports")
-        ideasNote.position = CGPoint(x: 450, y: 50)
-        ideasNote.color = .yellow
+            // 3. Create sample data if requested
+            if createSampleData {
+                await createSampleData()
+            }
 
-        weeklyBoard.notes = [mondayNote, tuesdayNote, ideasNote]
-        dataManager.boardStore.add(weeklyBoard)
+            // 4. Mark onboarding as complete
+            onboardingManager.markOnboardingComplete()
+            configManager.isFirstRun = false
+            configManager.save()
 
-        // Project Planning board
-        let projectBoard = Board(name: "Q1 Planning")
-        projectBoard.boardDescription = "Quarterly planning and objectives"
-
-        let goalsNote = StickyNote(content: "Q1 Goals\n✓ Launch new feature\n✓ Improve performance\n- Expand team")
-        goalsNote.position = CGPoint(x: 50, y: 50)
-        goalsNote.color = .purple
-
-        let milestonesNote = StickyNote(content: "Milestones\nJan: Planning\nFeb: Development\nMar: Launch")
-        milestonesNote.position = CGPoint(x: 50, y: 250)
-        milestonesNote.color = .orange
-
-        projectBoard.notes = [goalsNote, milestonesNote]
-        dataManager.boardStore.add(projectBoard)
-
-        // Create context boards
-        for context in Context.defaults {
-            let board = dataManager.boardStore.getOrCreateContextBoard(for: context)
-
-            // Add a welcome note to the work context board
-            if context == .work {
-                let welcomeNote = StickyNote(content: "Welcome to StickyToDo!\n\nUse this board to organize your work tasks visually.")
-                welcomeNote.position = CGPoint(x: 100, y: 100)
-                welcomeNote.color = .blue
-                board.notes.append(welcomeNote)
-                dataManager.boardStore.update(board)
+            // 5. Finish
+            await MainActor.run {
+                isComplete = true
+                showOnboarding = false
             }
         }
     }
+
+    // MARK: - Directory Setup
+
+    /// Sets up the directory structure
+    private func setupDirectoryStructure() async {
+        guard let directory = selectedDirectory else { return }
+
+        do {
+            let fileManager = FileManager.default
+
+            // Create main directory
+            if !fileManager.fileExists(atPath: directory.path) {
+                try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+            }
+
+            // Create subdirectories
+            let subdirectories = [
+                "tasks",
+                "tasks/active",
+                "tasks/archive",
+                "boards",
+                "perspectives",
+                "templates",
+                "attachments",
+                "config"
+            ]
+
+            for subdir in subdirectories {
+                let subdirURL = directory.appendingPathComponent(subdir)
+                if !fileManager.fileExists(atPath: subdirURL.path) {
+                    try fileManager.createDirectory(at: subdirURL, withIntermediateDirectories: true)
+                }
+            }
+
+            // Create .stickytodo marker file
+            let markerURL = directory.appendingPathComponent(".stickytodo")
+            let markerContent = """
+            # StickyToDo Data Directory
+            Created: \(Date())
+            Version: 1.0
+            """
+            try markerContent.write(to: markerURL, atomically: true, encoding: .utf8)
+
+            onboardingManager.markDirectorySetupComplete()
+            print("✅ Directory structure created at: \(directory.path)")
+        } catch {
+            print("❌ Error creating directory structure: \(error)")
+        }
+    }
+
+    // MARK: - Sample Data
+
+    /// Creates sample data for the user to explore
+    private func createSampleData() async {
+        print("📦 Creating sample data...")
+
+        let result = SampleDataGenerator.generateSampleData()
+
+        switch result {
+        case .success(let sampleData):
+            // TODO: Add tasks and boards to data stores
+            // This would require access to TaskStore and BoardStore
+            print("✅ Sample data created: \(sampleData.totalItems) items")
+            onboardingManager.markSampleDataCreated()
+
+        case .failure(let error):
+            print("❌ Error creating sample data: \(error.localizedDescription)")
+        }
+    }
+}
+
+// MARK: - Supporting Types
+
+/// Onboarding flow steps
+enum OnboardingStep {
+    case welcome
+    case directory
+    case permissions
+    case quickTour
 }
 
 // MARK: - Onboarding Container View
@@ -158,26 +187,44 @@ class OnboardingCoordinator: ObservableObject {
 /// Container view that manages onboarding presentation
 struct OnboardingContainer: View {
 
-    @StateObject private var coordinator: OnboardingCoordinator
-
-    init(configManager: ConfigurationManager = .shared,
-         dataManager: DataManager = .shared) {
-        _coordinator = StateObject(wrappedValue: OnboardingCoordinator(
-            configManager: configManager,
-            dataManager: dataManager
-        ))
-    }
+    @StateObject private var coordinator = OnboardingCoordinator()
 
     var body: some View {
         Color.clear
             .sheet(isPresented: $coordinator.showOnboarding) {
-                WelcomeView { config in
-                    coordinator.completeOnboarding(with: config)
-                }
+                onboardingFlow
             }
             .onAppear {
                 coordinator.checkForFirstRun()
             }
+    }
+
+    @ViewBuilder
+    private var onboardingFlow: some View {
+        switch coordinator.currentStep {
+        case .welcome:
+            WelcomeView { config in
+                coordinator.selectedDirectory = config.dataDirectory
+                coordinator.createSampleData = config.createSampleData
+                coordinator.nextStep()
+            }
+
+        case .directory:
+            DirectoryPickerView { directory in
+                coordinator.selectedDirectory = directory
+                coordinator.nextStep()
+            }
+
+        case .permissions:
+            PermissionRequestView {
+                coordinator.nextStep()
+            }
+
+        case .quickTour:
+            QuickTourView {
+                coordinator.completeOnboarding()
+            }
+        }
     }
 }
 
@@ -185,10 +232,9 @@ struct OnboardingContainer: View {
 
 extension View {
     /// Presents onboarding flow if needed
-    func withOnboarding(configManager: ConfigurationManager = .shared,
-                       dataManager: DataManager = .shared) -> some View {
+    func withOnboarding() -> some View {
         self.overlay(
-            OnboardingContainer(configManager: configManager, dataManager: dataManager)
+            OnboardingContainer()
         )
     }
 }

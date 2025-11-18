@@ -39,11 +39,15 @@ struct TaskInspectorView: View {
     /// Callback when task is modified
     var onTaskModified: () -> Void
 
+    /// Callback when "Save as Template" is requested
+    var onSaveAsTemplate: ((Task) -> Void)?
+
     // MARK: - State
 
     @State private var editedTitle: String = ""
     @State private var editedNotes: String = ""
     @State private var showingDeleteAlert = false
+    @State private var showingSaveTemplateDialog = false
 
     // MARK: - Body
 
@@ -85,6 +89,15 @@ struct TaskInspectorView: View {
 
                 // Recurrence
                 recurrenceSection(task: task)
+
+                // Subtasks
+                subtasksSection(task: task)
+
+                // Attachments
+                attachmentsSection(task: task)
+
+                // Tags
+                tagsSection(task: task)
 
                 // Notes
                 notesSection(task: task)
@@ -400,6 +413,227 @@ struct TaskInspectorView: View {
         }
     }
 
+    // MARK: - Subtasks Section
+
+    private func subtasksSection(task: Task) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Subtasks")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                Spacer()
+
+                if !task.subtaskIds.isEmpty {
+                    Text("\(task.subtaskIds.count) subtasks")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            if task.isSubtask {
+                // Show parent task info for subtasks
+                HStack {
+                    Image(systemName: "arrow.up.backward")
+                        .font(.caption)
+                        .foregroundColor(.blue)
+
+                    Text("This is a subtask")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(8)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.blue.opacity(0.1))
+                )
+            } else {
+                // Show subtasks list for parent tasks
+                if task.subtaskIds.isEmpty {
+                    Text("No subtasks")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .italic()
+                } else {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(task.subtaskIds, id: \.self) { subtaskId in
+                            HStack {
+                                Image(systemName: "circle")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+
+                                Text("Subtask")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+
+                                Spacer()
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                    .padding(8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.secondary.opacity(0.1))
+                    )
+                }
+
+                // Add subtask button
+                Button(action: {
+                    // TODO: Add subtask functionality
+                    // This would need to be wired to TaskStore.createSubtask()
+                }) {
+                    Label("Add Subtask", systemImage: "plus.circle")
+                        .font(.caption)
+                }
+                .buttonStyle(.borderless)
+            }
+        }
+    }
+
+    // MARK: - Attachments Section
+
+    private func attachmentsSection(task: Task) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Attachments")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                Spacer()
+
+                if !task.attachments.isEmpty {
+                    Text("\(task.attachments.count) items")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            if task.attachments.isEmpty {
+                Text("No attachments")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .italic()
+            } else {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(task.attachments) { attachment in
+                        HStack(spacing: 8) {
+                            Image(systemName: attachment.iconName)
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                                .frame(width: 16)
+
+                            Text(attachment.name)
+                                .font(.caption)
+                                .lineLimit(1)
+
+                            Spacer()
+
+                            Text(attachment.typeDescription)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 8)
+                        .background(Color.secondary.opacity(0.05))
+                        .cornerRadius(4)
+                    }
+                }
+            }
+
+            // Add attachment button
+            Menu {
+                Button(action: {
+                    // TODO: Add file attachment
+                }) {
+                    Label("Add File", systemImage: "doc")
+                }
+
+                Button(action: {
+                    // TODO: Add link attachment
+                }) {
+                    Label("Add Link", systemImage: "link")
+                }
+
+                Button(action: {
+                    // TODO: Add note attachment
+                }) {
+                    Label("Add Note", systemImage: "note.text")
+                }
+            } label: {
+                Label("Add Attachment", systemImage: "plus.circle")
+                    .font(.caption)
+            }
+            .buttonStyle(.borderless)
+        }
+    }
+
+    // MARK: - Tags Section
+
+    private func tagsSection(task: Task) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Tags")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                Spacer()
+
+                if !task.tags.isEmpty {
+                    Text("\(task.tags.count) tags")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            if task.tags.isEmpty {
+                Text("No tags")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .italic()
+            } else {
+                // Display tags as colored pills
+                FlowLayout(spacing: 6) {
+                    ForEach(task.tags) { tag in
+                        HStack(spacing: 4) {
+                            if let icon = tag.icon {
+                                Image(systemName: icon)
+                                    .font(.caption2)
+                            }
+
+                            Text(tag.name)
+                                .font(.caption)
+                                .fontWeight(.medium)
+
+                            Button(action: {
+                                removeTag(tag)
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.caption2)
+                                    .foregroundColor(.white.opacity(0.8))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color(hex: tag.color))
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                    }
+                }
+            }
+
+            // Add tag button
+            Button(action: {
+                // TODO: Show tag picker
+            }) {
+                Label("Add Tag", systemImage: "plus.circle")
+                    .font(.caption)
+            }
+            .buttonStyle(.borderless)
+        }
+    }
+
     // MARK: - Notes Section
 
     private func notesSection(task: Task) -> some View {
@@ -473,6 +707,28 @@ struct TaskInspectorView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
+
+            Button(action: {
+                showingSaveTemplateDialog = true
+            }) {
+                Label("Save as Template", systemImage: "square.and.arrow.down")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .sheet(isPresented: $showingSaveTemplateDialog) {
+                if let task = task {
+                    SaveAsTemplateView(
+                        task: task,
+                        onSave: { template in
+                            onSaveAsTemplate?(task)
+                            showingSaveTemplateDialog = false
+                        },
+                        onCancel: {
+                            showingSaveTemplateDialog = false
+                        }
+                    )
+                }
+            }
 
             // Complete series button for recurring instances
             if let task = task, task.isRecurringInstance {
@@ -605,4 +861,92 @@ struct TaskInspectorView: View {
         onDuplicate: {},
         onTaskModified: {}
     )
+}
+
+// MARK: - Helper Views and Extensions
+
+extension TaskInspectorView {
+    private func removeTag(_ tag: Tag) {
+        task?.tags.removeAll { $0.id == tag.id }
+        onTaskModified()
+    }
+}
+
+/// Flow layout for tags that wraps to multiple lines
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let result = FlowResult(
+            in: proposal.replacingUnspecifiedDimensions().width,
+            subviews: subviews,
+            spacing: spacing
+        )
+        return result.size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let result = FlowResult(
+            in: bounds.width,
+            subviews: subviews,
+            spacing: spacing
+        )
+        for (index, subview) in subviews.enumerated() {
+            subview.place(at: CGPoint(x: bounds.minX + result.frames[index].minX, y: bounds.minY + result.frames[index].minY), proposal: .unspecified)
+        }
+    }
+
+    struct FlowResult {
+        var frames: [CGRect] = []
+        var size: CGSize = .zero
+
+        init(in maxWidth: CGFloat, subviews: Subviews, spacing: CGFloat) {
+            var currentX: CGFloat = 0
+            var currentY: CGFloat = 0
+            var lineHeight: CGFloat = 0
+
+            for subview in subviews {
+                let size = subview.sizeThatFits(.unspecified)
+
+                if currentX + size.width > maxWidth && currentX > 0 {
+                    currentX = 0
+                    currentY += lineHeight + spacing
+                    lineHeight = 0
+                }
+
+                frames.append(CGRect(x: currentX, y: currentY, width: size.width, height: size.height))
+                lineHeight = max(lineHeight, size.height)
+                currentX += size.width + spacing
+            }
+
+            self.size = CGSize(width: maxWidth, height: currentY + lineHeight)
+        }
+    }
+}
+
+extension Color {
+    init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 3: // RGB (12-bit)
+            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6: // RGB (24-bit)
+            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8: // ARGB (32-bit)
+            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default:
+            (a, r, g, b) = (255, 0, 0, 0)
+        }
+
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue:  Double(b) / 255,
+            opacity: Double(a) / 255
+        )
+    }
 }

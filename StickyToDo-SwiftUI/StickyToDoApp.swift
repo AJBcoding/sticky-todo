@@ -22,12 +22,7 @@ struct StickyToDoApp: App {
             ContentView()
         }
         .commands {
-            CommandGroup(replacing: .newItem) {
-                Button("Quick Capture") {
-                    // TODO: Implement quick capture
-                }
-                .keyboardShortcut("n", modifiers: [.command, .shift])
-            }
+            AppMenuCommands()
         }
     }
 
