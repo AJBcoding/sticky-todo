@@ -80,6 +80,56 @@ final class TaskStore: ObservableObject {
     /// Track which tasks have pending saves
     private var pendingSaves: Set<UUID> = []
 
+    // MARK: - Performance Monitoring
+
+    /// Performance thresholds for task count
+    private enum PerformanceThreshold {
+        static let warning = 500
+        static let alert = 1000
+        static let critical = 1500
+    }
+
+    /// Last logged performance level to avoid duplicate warnings
+    private var lastPerformanceLevel: PerformanceLevel = .normal
+
+    /// Performance monitoring level
+    private enum PerformanceLevel {
+        case normal
+        case warning
+        case alert
+        case critical
+    }
+
+    /// Performance metrics for monitoring
+    private struct PerformanceMetrics {
+        let taskCount: Int
+        let activeTaskCount: Int
+        let completedTaskCount: Int
+        let timestamp: Date
+        let level: PerformanceLevel
+
+        func logMessage() -> String {
+            let levelEmoji: String
+            switch level {
+            case .normal:
+                levelEmoji = "✓"
+            case .warning:
+                levelEmoji = "⚠️"
+            case .alert:
+                levelEmoji = "🚨"
+            case .critical:
+                levelEmoji = "❌"
+            }
+
+            return """
+            \(levelEmoji) Performance Metrics [\(timestamp)]
+            Total Tasks: \(taskCount)
+            Active Tasks: \(activeTaskCount)
+            Completed Tasks: \(completedTaskCount)
+            """
+        }
+    }
+
     // MARK: - Initialization
 
     /// Creates a new TaskStore
@@ -103,6 +153,157 @@ final class TaskStore: ObservableObject {
     func setActivityLogManager(_ manager: ActivityLogManager) {
         self.activityLogManager = manager
         self.activityLogManager?.setLogger(logger ?? { _ in })
+    }
+
+    // MARK: - Performance Monitoring Methods
+
+    /// Checks task count and logs performance warnings/alerts
+    /// This method is called after loading and adding tasks
+    private func checkPerformanceMetrics() {
+        let count = tasks.count
+        let activeCount = activeTaskCount
+        let completedCount = completedTaskCount
+
+        // Determine performance level
+        let currentLevel: PerformanceLevel
+        if count >= PerformanceThreshold.critical {
+            currentLevel = .critical
+        } else if count >= PerformanceThreshold.alert {
+            currentLevel = .alert
+        } else if count >= PerformanceThreshold.warning {
+            currentLevel = .warning
+        } else {
+            currentLevel = .normal
+        }
+
+        // Only log if level has changed or is above normal
+        guard currentLevel != lastPerformanceLevel || currentLevel != .normal else {
+            return
+        }
+
+        // Create metrics
+        let metrics = PerformanceMetrics(
+            taskCount: count,
+            activeTaskCount: activeCount,
+            completedTaskCount: completedCount,
+            timestamp: Date(),
+            level: currentLevel
+        )
+
+        // Log metrics
+        logger?(metrics.logMessage())
+
+        // Log specific warnings/alerts with actionable suggestions
+        switch currentLevel {
+        case .normal:
+            if lastPerformanceLevel != .normal {
+                logger?("✓ Task count is back to normal levels")
+            }
+
+        case .warning:
+            logger?("""
+            ⚠️ WARNING: Task count approaching performance threshold
+            Current: \(count) tasks (Warning threshold: \(PerformanceThreshold.warning))
+
+            Recommendation: Consider archiving completed tasks to maintain optimal performance.
+            Active tasks: \(activeCount) | Completed tasks: \(completedCount)
+            """)
+
+        case .alert:
+            logger?("""
+            🚨 ALERT: Task count exceeds recommended limit
+            Current: \(count) tasks (Alert threshold: \(PerformanceThreshold.alert))
+
+            URGENT: Archive or delete old completed tasks to prevent performance degradation.
+            - You have \(completedCount) completed tasks that could be archived
+            - Active tasks: \(activeCount)
+
+            Performance may be impacted with this many tasks.
+            """)
+
+        case .critical:
+            logger?("""
+            ❌ CRITICAL: Task count at critical level
+            Current: \(count) tasks (Critical threshold: \(PerformanceThreshold.critical))
+
+            IMMEDIATE ACTION REQUIRED:
+            1. Archive completed tasks (\(completedCount) available)
+            2. Delete unnecessary tasks
+            3. Consider splitting tasks into separate data files
+
+            Severe performance degradation likely at this task count!
+            """)
+        }
+
+        // Update last logged level
+        lastPerformanceLevel = currentLevel
+    }
+
+    /// Returns current performance metrics as a public API
+    /// - Returns: Dictionary with performance information
+    func getPerformanceMetrics() -> [String: Any] {
+        let count = tasks.count
+        let level: String
+
+        if count >= PerformanceThreshold.critical {
+            level = "critical"
+        } else if count >= PerformanceThreshold.alert {
+            level = "alert"
+        } else if count >= PerformanceThreshold.warning {
+            level = "warning"
+        } else {
+            level = "normal"
+        }
+
+        return [
+            "taskCount": count,
+            "activeTaskCount": activeTaskCount,
+            "completedTaskCount": completedTaskCount,
+            "level": level,
+            "warningThreshold": PerformanceThreshold.warning,
+            "alertThreshold": PerformanceThreshold.alert,
+            "criticalThreshold": PerformanceThreshold.critical,
+            "percentOfWarning": Double(count) / Double(PerformanceThreshold.warning) * 100.0,
+            "percentOfAlert": Double(count) / Double(PerformanceThreshold.alert) * 100.0
+        ]
+    }
+
+    /// Checks if task count is at or above warning threshold
+    var isAtWarningThreshold: Bool {
+        return tasks.count >= PerformanceThreshold.warning
+    }
+
+    /// Checks if task count is at or above alert threshold
+    var isAtAlertThreshold: Bool {
+        return tasks.count >= PerformanceThreshold.alert
+    }
+
+    /// Checks if task count is at or above critical threshold
+    var isAtCriticalThreshold: Bool {
+        return tasks.count >= PerformanceThreshold.critical
+    }
+
+    /// Returns tasks that are eligible for archiving (completed and older than 30 days)
+    func archivableTasksCount() -> Int {
+        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+        return tasks.filter { task in
+            task.status == .completed && task.modified < thirtyDaysAgo
+        }.count
+    }
+
+    /// Returns a suggestion message based on current task count
+    func getPerformanceSuggestion() -> String? {
+        let count = tasks.count
+
+        if count >= PerformanceThreshold.critical {
+            return "Critical: \(count) tasks. Archive \(archivableTasksCount()) old completed tasks immediately."
+        } else if count >= PerformanceThreshold.alert {
+            return "Alert: \(count) tasks. Consider archiving \(archivableTasksCount()) completed tasks."
+        } else if count >= PerformanceThreshold.warning {
+            return "Warning: \(count) tasks. You may want to archive old completed tasks soon."
+        }
+
+        return nil
     }
 
     // MARK: - Rules Management
@@ -176,6 +377,9 @@ final class TaskStore: ObservableObject {
                 self.tasks = loadedTasks
                 self.updateDerivedData()
                 self.logger?("Loaded \(loadedTasks.count) tasks into store")
+
+                // Check performance metrics after loading
+                self.checkPerformanceMetrics()
             }
         }
     }
@@ -189,6 +393,9 @@ final class TaskStore: ObservableObject {
             self.tasks = loadedTasks
             self.updateDerivedData()
             self.logger?("Loaded \(loadedTasks.count) tasks into store")
+
+            // Check performance metrics after loading
+            self.checkPerformanceMetrics()
         }
     }
 
@@ -247,6 +454,9 @@ final class TaskStore: ObservableObject {
 
                     // Schedule debounced save
                     self.scheduleSave(for: modifiedTask)
+
+                    // Check performance metrics after adding task
+                    self.checkPerformanceMetrics()
                 }
             }
         }
@@ -260,55 +470,81 @@ final class TaskStore: ObservableObject {
             guard let self = self else { return }
 
             DispatchQueue.main.async {
-                if let index = self.tasks.firstIndex(where: { $0.id == task.id }) {
-                    let oldTask = self.tasks[index]
-                    var updatedTask = task
-                    updatedTask.modified = Date()
+                guard let index = self.tasks.firstIndex(where: { $0.id == task.id }) else { return }
 
-                    // Generate activity logs for changes
-                    self.logTaskChanges(from: oldTask, to: updatedTask)
+                let oldTask = self.tasks[index]
+                var updatedTask = task
+                updatedTask.modified = Date()
 
-                    // Trigger automation rules based on changes
-                    self.triggerRulesForChanges(from: oldTask, to: &updatedTask)
+                // Generate activity logs for changes
+                self.logTaskChanges(from: oldTask, to: updatedTask)
 
-                    // Re-schedule notifications if dates changed or task status changed
-                    let needsReschedule = oldTask.due != updatedTask.due ||
-                                         oldTask.defer != updatedTask.defer ||
-                                         oldTask.status != updatedTask.status
+                // Trigger automation rules based on changes
+                self.triggerRulesForChanges(from: oldTask, to: &updatedTask)
 
-                    if needsReschedule {
-                        Task {
-                            await self.scheduleNotifications(for: &updatedTask)
+                // Re-schedule notifications if needed
+                self.updateNotifications(from: oldTask, to: &updatedTask)
 
-                            // Update the task with new notification IDs
-                            if let currentIndex = self.tasks.firstIndex(where: { $0.id == updatedTask.id }) {
-                                self.tasks[currentIndex] = updatedTask
-                                self.scheduleSave(for: updatedTask)
-                            }
-                        }
-                    }
+                // Sync with external services (Calendar, Spotlight)
+                self.syncWithExternalServices(&updatedTask)
 
-                    // Sync with calendar if auto-sync is enabled and task has calendar integration
-                    if self.calendarManager.preferences.autoSyncEnabled {
-                        let syncResult = self.calendarManager.syncTask(updatedTask)
-                        if case .success(let eventId) = syncResult, let eventId = eventId {
-                            updatedTask.calendarEventId = eventId
-                            self.logger?("Updated calendar event: \(eventId)")
-                        }
-                    }
+                self.tasks[index] = updatedTask
+                self.updateDerivedData()
+                self.logger?("Updated task: \(task.title)")
 
-                    self.tasks[index] = updatedTask
-                    self.updateDerivedData()
-                    // Update task in Spotlight index
-                    self.spotlightManager.indexTask(updatedTask)
-
-                    self.logger?("Updated task: \(task.title)")
-
-                    // Schedule debounced save
-                    self.scheduleSave(for: updatedTask)
-                }
+                // Schedule debounced save
+                self.scheduleSave(for: updatedTask)
             }
         }
+    }
+
+    /// Updates notifications for a task if dates or status changed
+    ///
+    /// This method handles notification rescheduling when:
+    /// - Due date changes
+    /// - Defer date changes
+    /// - Task status changes
+    ///
+    /// - Parameters:
+    ///   - oldTask: The previous task state
+    ///   - updatedTask: The updated task (modified in-place with new notification IDs)
+    private func updateNotifications(from oldTask: Task, to updatedTask: inout Task) {
+        let needsReschedule = oldTask.due != updatedTask.due ||
+                             oldTask.defer != updatedTask.defer ||
+                             oldTask.status != updatedTask.status
+
+        guard needsReschedule else { return }
+
+        Task {
+            await self.scheduleNotifications(for: &updatedTask)
+
+            // Update the task with new notification IDs
+            if let currentIndex = self.tasks.firstIndex(where: { $0.id == updatedTask.id }) {
+                self.tasks[currentIndex] = updatedTask
+                self.scheduleSave(for: updatedTask)
+            }
+        }
+    }
+
+    /// Syncs a task with external services (Calendar and Spotlight)
+    ///
+    /// This method handles:
+    /// - Calendar event creation/update when auto-sync is enabled
+    /// - Spotlight search index updates
+    ///
+    /// - Parameter task: The task to sync (modified in-place if calendar event ID changes)
+    private func syncWithExternalServices(_ task: inout Task) {
+        // Sync with calendar if auto-sync is enabled
+        if calendarManager.preferences.autoSyncEnabled {
+            let syncResult = calendarManager.syncTask(task)
+            if case .success(let eventId) = syncResult, let eventId = eventId {
+                task.calendarEventId = eventId
+                logger?("Updated calendar event: \(eventId)")
+            }
+        }
+
+        // Update task in Spotlight index
+        spotlightManager.indexTask(task)
     }
 
     /// Deletes a task from the store
@@ -351,6 +587,9 @@ final class TaskStore: ObservableObject {
 
                     // Update badge count after deletion
                     self.updateBadgeCount()
+
+                    // Check performance metrics after deletion (may have improved)
+                    self.checkPerformanceMetrics()
 
                     // Delete from file system
                     self.queue.async {
@@ -525,6 +764,9 @@ final class TaskStore: ObservableObject {
                 self.tasks.removeAll { taskIDs.contains($0.id) }
                 self.updateDerivedData()
                 self.logger?("Batch deleted \(tasks.count) tasks")
+
+                // Check performance metrics after batch deletion
+                self.checkPerformanceMetrics()
 
                 // Delete from file system
                 self.queue.async {

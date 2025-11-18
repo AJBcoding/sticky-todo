@@ -24,30 +24,40 @@ struct SettingsView: View {
                     Label("General", systemImage: "gear")
                 }
                 .tag(0)
+                .accessibilityLabel("General settings")
+                .accessibilityHint("Configure general application settings")
 
             QuickCaptureSettingsView()
                 .tabItem {
                     Label("Quick Capture", systemImage: "bolt.fill")
                 }
                 .tag(1)
+                .accessibilityLabel("Quick Capture settings")
+                .accessibilityHint("Configure quick task capture and hotkeys")
 
             ContextsSettingsView()
                 .tabItem {
                     Label("Contexts", systemImage: "mappin.circle")
                 }
                 .tag(2)
+                .accessibilityLabel("Contexts settings")
+                .accessibilityHint("Manage task contexts")
 
             BoardsSettingsView()
                 .tabItem {
                     Label("Boards", systemImage: "square.grid.3x2")
                 }
                 .tag(3)
+                .accessibilityLabel("Boards settings")
+                .accessibilityHint("Configure board visibility and defaults")
 
             AdvancedSettingsView()
                 .tabItem {
                     Label("Advanced", systemImage: "wrench.and.screwdriver")
                 }
                 .tag(4)
+                .accessibilityLabel("Advanced settings")
+                .accessibilityHint("Configure advanced options and debug settings")
         }
         .frame(width: 600, height: 500)
     }
@@ -75,6 +85,8 @@ struct GeneralSettingsView: View {
                     Button("Choose...") {
                         chooseStorageLocation()
                     }
+                    .accessibilityLabel("Choose storage location")
+                    .accessibilityHint("Select a different directory for storing task data")
                 }
 
                 Text("All tasks and boards are stored in plain text markdown files")
@@ -95,6 +107,8 @@ struct GeneralSettingsView: View {
                     Text("Next Actions").tag("next-actions" as String?)
                     Text("Flagged").tag("flagged" as String?)
                 }
+                .accessibilityLabel("Default board on launch")
+                .accessibilityHint("Choose which board to show when the app starts")
 
                 HStack {
                     Text("Auto-hide Inactive Projects After")
@@ -298,6 +312,8 @@ struct ContextsSettingsView: View {
                 Button(action: { showingAddContext = true }) {
                     Label("Add Context", systemImage: "plus")
                 }
+                .accessibilityLabel("Add new context")
+                .accessibilityHint("Double-tap to create a new context")
             }
             .padding()
 
@@ -324,6 +340,8 @@ struct ContextsSettingsView: View {
                 Button(action: {}) {
                     Label("Restore Defaults", systemImage: "arrow.counterclockwise")
                 }
+                .accessibilityLabel("Restore default contexts")
+                .accessibilityHint("Reset contexts to default values")
 
                 Spacer()
 
@@ -331,6 +349,8 @@ struct ContextsSettingsView: View {
                     Label("Delete", systemImage: "trash")
                 }
                 .disabled(selectedContext == nil)
+                .accessibilityLabel("Delete selected context")
+                .accessibilityHint("Remove the currently selected context")
             }
             .padding()
         }

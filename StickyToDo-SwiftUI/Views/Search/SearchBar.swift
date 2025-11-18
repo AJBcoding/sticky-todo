@@ -30,6 +30,7 @@ struct SearchBar: View {
                 // Search icon
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.secondary)
+                    .accessibilityHidden(true)
 
                 // Search field
                 TextField("Search tasks (try: AND, OR, NOT, \"exact phrase\")", text: $searchText)
@@ -38,6 +39,8 @@ struct SearchBar: View {
                     .onSubmit {
                         performSearch()
                     }
+                    .accessibilityLabel("Search tasks")
+                    .accessibilityHint("Type to search tasks. Supports AND, OR, NOT operators and exact phrase matching with quotes")
                     .onChange(of: searchText) { newValue in
                         if newValue.isEmpty {
                             isSearching = false
@@ -55,6 +58,8 @@ struct SearchBar: View {
                             .foregroundColor(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                    .accessibilityHint("Double-tap to clear search text")
                 }
 
                 // Search button
@@ -64,6 +69,8 @@ struct SearchBar: View {
                 }
                 .keyboardShortcut(.return, modifiers: [])
                 .disabled(searchText.isEmpty)
+                .accessibilityLabel("Perform search")
+                .accessibilityHint("Double-tap to search for tasks matching your query")
 
                 // Recent searches button
                 Button(action: { showingRecents.toggle() }) {
@@ -72,6 +79,8 @@ struct SearchBar: View {
                 }
                 .buttonStyle(.plain)
                 .help("Recent searches")
+                .accessibilityLabel("Recent searches")
+                .accessibilityHint("Double-tap to view and select from recent searches")
             }
             .padding(8)
             .background(Color(.textBackgroundColor))
@@ -100,6 +109,7 @@ struct SearchBar: View {
                     .font(.caption)
                     .fontWeight(.medium)
                     .foregroundColor(.secondary)
+                    .accessibilityAddTraits(.isHeader)
 
                 Spacer()
 
@@ -112,6 +122,8 @@ struct SearchBar: View {
                         .foregroundColor(.blue)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Clear recent searches")
+                .accessibilityHint("Double-tap to delete all recent search history")
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
@@ -130,6 +142,7 @@ struct SearchBar: View {
                                 Image(systemName: "clock")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
+                                    .accessibilityHidden(true)
 
                                 Text(query)
                                     .font(.body)
@@ -140,12 +153,15 @@ struct SearchBar: View {
                                 Image(systemName: "arrow.up.backward")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
+                                    .accessibilityHidden(true)
                             }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 6)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Search for: \(query)")
+                        .accessibilityHint("Double-tap to search for \(query)")
                         .background(
                             Color(.controlBackgroundColor)
                                 .opacity(0)
@@ -179,6 +195,7 @@ struct SearchBar: View {
                 .font(.caption)
                 .fontWeight(.medium)
                 .foregroundColor(.secondary)
+                .accessibilityAddTraits(.isHeader)
 
             VStack(alignment: .leading, spacing: 2) {
                 SearchTipRow(
@@ -205,6 +222,7 @@ struct SearchBar: View {
                     example: "\"weekly review\""
                 )
             }
+            .accessibilityElement(children: .contain)
         }
         .padding(8)
         .background(Color(.controlBackgroundColor).opacity(0.5))
@@ -275,6 +293,8 @@ struct SearchTipRow: View {
                 .foregroundColor(.secondary)
                 .italic()
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Search operator \(`operator`): \(description). Example: \(example)")
     }
 }
 

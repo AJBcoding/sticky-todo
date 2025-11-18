@@ -14,6 +14,11 @@ import StickyToDoCore
 @main
 class AppDelegate: NSObject, NSApplicationDelegate {
 
+    // MARK: - Shared Instance (for App Intents)
+
+    /// Shared instance for App Intents to access task store and managers
+    static weak var shared: AppDelegate?
+
     // MARK: - Properties
 
     /// Main window controller
@@ -25,9 +30,34 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Notification manager
     private let notificationManager = NotificationManager.shared
 
+    /// Data manager for accessing stores
+    private let dataManager = DataManager.shared
+
+    /// Import manager for task imports
+    private let importManager = ImportManager()
+
+    /// Export manager for task exports
+    private let exportManager = ExportManager()
+
+    /// Time tracking manager for timer operations (exposed for App Intents)
+    private(set) var timeTrackingManager: TimeTrackingManager!
+
+    // MARK: - App Intents Compatibility
+
+    /// TaskStore accessor for App Intents
+    var taskStore: TaskStore? {
+        return dataManager.taskStore
+    }
+
     // MARK: - Application Lifecycle
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
+        // Set shared instance for App Intents
+        AppDelegate.shared = self
+
+        // Initialize time tracking manager
+        timeTrackingManager = TimeTrackingManager()
+
         // Setup notifications
         setupNotifications()
 
@@ -49,6 +79,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ aNotification: Notification) {
         // Cleanup
         quickCaptureController.unregisterHotKey()
+
+        // Clear shared instance
+        AppDelegate.shared = nil
 
         // Save all tasks to ensure notifications are persisted
         // This would be handled by the TaskStore in a real implementation
@@ -332,10 +365,40 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         openPanel.prompt = "Open StickyToDo Folder"
         openPanel.message = "Select a folder containing StickyToDo markdown files"
 
-        openPanel.begin { response in
+        openPanel.begin { [weak self] response in
+            guard let self = self else { return }
+
             if response == .OK, let url = openPanel.url {
                 print("Open folder: \(url.path)")
-                // TODO: Load tasks from folder
+
+                // Reinitialize data manager with new directory
+                Task {
+                    do {
+                        try await self.dataManager.initialize(rootDirectory: url)
+
+                        await MainActor.run {
+                            // Update the main window with new data
+                            self.mainWindowController?.refreshData()
+
+                            // Show success alert
+                            let alert = NSAlert()
+                            alert.messageText = "Folder Opened"
+                            alert.informativeText = "Successfully loaded \(self.dataManager.statistics.totalTasks) tasks and \(self.dataManager.statistics.totalBoards) boards from \(url.lastPathComponent)"
+                            alert.alertStyle = .informational
+                            alert.addButton(withTitle: "OK")
+                            alert.runModal()
+                        }
+                    } catch {
+                        await MainActor.run {
+                            let alert = NSAlert()
+                            alert.messageText = "Error Opening Folder"
+                            alert.informativeText = "Failed to load tasks from \(url.lastPathComponent): \(error.localizedDescription)"
+                            alert.alertStyle = .warning
+                            alert.addButton(withTitle: "OK")
+                            alert.runModal()
+                        }
+                    }
+                }
             }
         }
     }
@@ -367,6 +430,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func toggleInspector(_ sender: Any?) {
         print("Toggle inspector")
+        mainWindowController?.toggleInspector()
     }
 
     @objc private func zoomIn(_ sender: Any?) {
@@ -383,7 +447,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func save(_ sender: Any?) {
         print("Save")
-        // TODO: Trigger save operation
+
+        // Save all pending changes immediately
+        do {
+            try dataManager.saveBeforeQuit()
+
+            // Show brief success notification (optional)
+            let notification = NSUserNotification()
+            notification.title = "Saved"
+            notification.informativeText = "All changes have been saved"
+            notification.soundName = nil
+            NSUserNotificationCenter.default.deliver(notification)
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "Save Failed"
+            alert.informativeText = "Failed to save tasks: \(error.localizedDescription)"
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+        }
     }
 
     @objc private func importTasks(_ sender: Any?) {
@@ -393,11 +475,65 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         openPanel.allowsMultipleSelection = false
         openPanel.allowedContentTypes = [.json, .plainText]
         openPanel.prompt = "Import Tasks"
+        openPanel.message = "Select a file to import tasks from (JSON, CSV, TaskPaper, etc.)"
 
-        openPanel.begin { response in
+        openPanel.begin { [weak self] response in
+            guard let self = self else { return }
+
             if response == .OK, let url = openPanel.url {
                 print("Import from: \(url.path)")
-                // TODO: Import tasks
+
+                // Create import options with auto-detection
+                var options = ImportOptions(format: .json)
+                options.autoDetect = true
+                options.skipErrors = true
+
+                // Show progress window
+                Task {
+                    do {
+                        let result = try await self.importManager.importTasks(from: url, options: options)
+
+                        await MainActor.run {
+                            // Add imported tasks to store
+                            for task in result.tasks {
+                                self.dataManager.taskStore.add(task)
+                            }
+
+                            // Refresh the main window
+                            self.mainWindowController?.refreshData()
+
+                            // Show success alert with details
+                            let alert = NSAlert()
+                            alert.messageText = "Import Successful"
+                            var message = "Imported \(result.importedCount) task(s) from \(url.lastPathComponent)"
+
+                            if !result.warnings.isEmpty {
+                                message += "\n\nWarnings:\n" + result.warnings.joined(separator: "\n")
+                            }
+
+                            if !result.errors.isEmpty {
+                                message += "\n\nErrors (\(result.errors.count)):\n" + result.errors.prefix(3).map { $0.localizedDescription }.joined(separator: "\n")
+                                if result.errors.count > 3 {
+                                    message += "\n...and \(result.errors.count - 3) more"
+                                }
+                            }
+
+                            alert.informativeText = message
+                            alert.alertStyle = result.errors.isEmpty ? .informational : .warning
+                            alert.addButton(withTitle: "OK")
+                            alert.runModal()
+                        }
+                    } catch {
+                        await MainActor.run {
+                            let alert = NSAlert()
+                            alert.messageText = "Import Failed"
+                            alert.informativeText = "Failed to import tasks from \(url.lastPathComponent): \(error.localizedDescription)"
+                            alert.alertStyle = .critical
+                            alert.addButton(withTitle: "OK")
+                            alert.runModal()
+                        }
+                    }
+                }
             }
         }
     }
@@ -407,38 +543,169 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         savePanel.allowedContentTypes = [.json]
         savePanel.nameFieldStringValue = "tasks.json"
         savePanel.prompt = "Export Tasks"
+        savePanel.message = "Choose a location to save your tasks"
 
-        savePanel.begin { response in
+        savePanel.begin { [weak self] response in
+            guard let self = self else { return }
+
             if response == .OK, let url = savePanel.url {
                 print("Export to: \(url.path)")
-                // TODO: Export tasks
+
+                // Create export options
+                var options = ExportOptions(
+                    format: .json,
+                    filename: url.deletingPathExtension().lastPathComponent
+                )
+                options.includeCompleted = true
+                options.includeNotes = true
+
+                // Get all tasks from the store
+                let tasks = self.dataManager.taskStore.tasks
+
+                Task {
+                    do {
+                        let result = try await self.exportManager.export(
+                            tasks: tasks,
+                            to: url,
+                            options: options
+                        )
+
+                        await MainActor.run {
+                            // Show success alert
+                            let alert = NSAlert()
+                            alert.messageText = "Export Successful"
+                            var message = "Exported \(result.taskCount) task(s) to \(result.fileURL.lastPathComponent)"
+
+                            if result.fileSize > 0 {
+                                let formatter = ByteCountFormatter()
+                                formatter.countStyle = .file
+                                message += "\nFile size: \(formatter.string(fromByteCount: result.fileSize))"
+                            }
+
+                            if !result.warnings.isEmpty {
+                                message += "\n\nWarnings:\n" + result.warnings.joined(separator: "\n")
+                            }
+
+                            alert.informativeText = message
+                            alert.alertStyle = .informational
+                            alert.addButton(withTitle: "OK")
+                            alert.addButton(withTitle: "Reveal in Finder")
+
+                            let response = alert.runModal()
+                            if response == .alertSecondButtonReturn {
+                                NSWorkspace.shared.activateFileViewerSelecting([result.fileURL])
+                            }
+                        }
+                    } catch {
+                        await MainActor.run {
+                            let alert = NSAlert()
+                            alert.messageText = "Export Failed"
+                            alert.informativeText = "Failed to export tasks: \(error.localizedDescription)"
+                            alert.alertStyle = .critical
+                            alert.addButton(withTitle: "OK")
+                            alert.runModal()
+                        }
+                    }
+                }
             }
         }
     }
 
     @objc private func deleteTask(_ sender: Any?) {
         print("Delete task")
-        // TODO: Delete selected task
+
+        // Get the selected task from the main window
+        guard let selectedTask = mainWindowController?.getSelectedTask() else {
+            NSSound.beep()
+            return
+        }
+
+        // Show confirmation dialog
+        let alert = NSAlert()
+        alert.messageText = "Delete Task"
+        alert.informativeText = "Are you sure you want to delete '\(selectedTask.title)'? This action cannot be undone."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Delete")
+        alert.addButton(withTitle: "Cancel")
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            dataManager.deleteTask(selectedTask)
+            mainWindowController?.refreshData()
+        }
     }
 
     @objc private func completeTask(_ sender: Any?) {
         print("Complete task")
-        // TODO: Mark task as complete
+
+        // Get the selected task from the main window
+        guard let selectedTask = mainWindowController?.getSelectedTask() else {
+            NSSound.beep()
+            return
+        }
+
+        // Toggle completion status
+        var updatedTask = selectedTask
+        if updatedTask.status == .completed {
+            updatedTask.reopen()
+        } else {
+            updatedTask.complete()
+        }
+
+        dataManager.updateTask(updatedTask)
+        mainWindowController?.refreshData()
     }
 
     @objc private func duplicateTask(_ sender: Any?) {
         print("Duplicate task")
-        // TODO: Duplicate selected task
+
+        // Get the selected task from the main window
+        guard let selectedTask = mainWindowController?.getSelectedTask() else {
+            NSSound.beep()
+            return
+        }
+
+        // Create a duplicate of the task
+        let duplicateTask = selectedTask.duplicate()
+        dataManager.taskStore.add(duplicateTask)
+        mainWindowController?.refreshData()
     }
 
     @objc private func toggleSidebar(_ sender: Any?) {
         print("Toggle sidebar")
-        // TODO: Toggle sidebar visibility
+        mainWindowController?.toggleSidebar()
     }
 
     @objc private func refresh(_ sender: Any?) {
         print("Refresh")
-        // TODO: Refresh data
+
+        // Reload all data from disk
+        Task {
+            do {
+                try await dataManager.taskStore.loadAllAsync()
+                try await dataManager.boardStore.loadAllAsync()
+
+                await MainActor.run {
+                    mainWindowController?.refreshData()
+
+                    // Show brief success notification
+                    let notification = NSUserNotification()
+                    notification.title = "Refreshed"
+                    notification.informativeText = "Reloaded all tasks and boards from disk"
+                    notification.soundName = nil
+                    NSUserNotificationCenter.default.deliver(notification)
+                }
+            } catch {
+                await MainActor.run {
+                    let alert = NSAlert()
+                    alert.messageText = "Refresh Failed"
+                    alert.informativeText = "Failed to reload data: \(error.localizedDescription)"
+                    alert.alertStyle = .warning
+                    alert.addButton(withTitle: "OK")
+                    alert.runModal()
+                }
+            }
+        }
     }
 
     @objc private func goToInbox(_ sender: Any?) {
@@ -483,8 +750,46 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func showKeyboardShortcuts(_ sender: Any?) {
-        // TODO: Show keyboard shortcuts window
         print("Show keyboard shortcuts")
+
+        // Create a window displaying keyboard shortcuts
+        let alert = NSAlert()
+        alert.messageText = "Keyboard Shortcuts"
+        alert.informativeText = """
+        File:
+        ⌘N - New Task
+        ⌘⇧Space - Quick Capture
+        ⌘S - Save
+        ⌘⇧I - Import Tasks
+        ⌘⇧E - Export Tasks
+
+        Edit:
+        ⌘Z - Undo
+        ⌘⇧Z - Redo
+        ⌘Enter - Complete Task
+        ⌘D - Duplicate Task
+        ⌘F - Find
+
+        View:
+        ⌘L - List View
+        ⌘B - Board View
+        ⌘⇧A - Activity Log
+        ⌘⌥I - Toggle Inspector
+        ⌘⌥S - Toggle Sidebar
+        ⌘R - Refresh
+
+        Go:
+        ⌘1 - Inbox
+        ⌘2 - Today
+        ⌘3 - Upcoming
+        ⌘4 - Someday
+        ⌘5 - Completed
+        ⌘6 - Boards
+        ⌘⇧0 - All Tasks
+        """
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 
     @objc private func reportIssue(_ sender: Any?) {
@@ -510,7 +815,19 @@ extension AppDelegate: QuickCaptureDelegate {
     func quickCaptureDidCreateTask(_ task: Task) {
         // Forward to main window to save task
         print("Quick capture created task: \(task.title)")
-        // TODO: Save task through data layer
+
+        // Save task through data manager
+        dataManager.taskStore.add(task)
+
+        // Refresh the main window to show the new task
+        mainWindowController?.refreshData()
+
+        // Show brief success notification
+        let notification = NSUserNotification()
+        notification.title = "Task Created"
+        notification.informativeText = task.title
+        notification.soundName = NSUserNotificationDefaultSoundName
+        NSUserNotificationCenter.default.deliver(notification)
     }
 }
 

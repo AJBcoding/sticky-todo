@@ -93,11 +93,15 @@ struct BoardCanvasIntegratedView: View {
                 if let icon = currentBoard.icon {
                     Text(icon)
                         .font(.title2)
+                        .accessibilityHidden(true)
                 }
 
                 Text(currentBoard.displayTitle)
                     .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Board: \(currentBoard.displayTitle)")
 
             Spacer()
 
@@ -105,12 +109,14 @@ struct BoardCanvasIntegratedView: View {
             Text("\(boardTaskCount) task\(boardTaskCount == 1 ? "" : "s")")
                 .font(.caption)
                 .foregroundColor(.secondary)
+                .accessibilityLabel("\(boardTaskCount) task\(boardTaskCount == 1 ? "" : "s") on this board")
 
             // Selection info
             if !selectedTaskIds.isEmpty {
                 Text("(\(selectedTaskIds.count) selected)")
                     .font(.caption)
                     .foregroundColor(.accentColor)
+                    .accessibilityLabel("\(selectedTaskIds.count) task\(selectedTaskIds.count == 1 ? "" : "s") selected")
             }
 
             Divider()
@@ -130,6 +136,9 @@ struct BoardCanvasIntegratedView: View {
             .onChange(of: currentBoard.layout) { newLayout in
                 handleLayoutChanged(newLayout)
             }
+            .accessibilityLabel("Board layout")
+            .accessibilityHint("Choose between freeform, kanban, or grid layout for this board")
+            .accessibilityValue(currentBoard.layout.displayName)
 
             Divider()
                 .frame(height: 20)
@@ -139,6 +148,8 @@ struct BoardCanvasIntegratedView: View {
                 Label("Add Task", systemImage: "plus.circle.fill")
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityLabel("Add new task to board")
+            .accessibilityHint("Double-tap to create a new task on this board")
 
             // Board settings
             Button(action: { showBoardSettings = true }) {
@@ -146,6 +157,8 @@ struct BoardCanvasIntegratedView: View {
             }
             .help("Board Settings")
             .buttonStyle(.borderless)
+            .accessibilityLabel("Board settings")
+            .accessibilityHint("Double-tap to configure board settings")
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
@@ -162,6 +175,7 @@ struct BoardCanvasIntegratedView: View {
                 statItem("Completed", value: "\(completedTaskCount)")
                 statItem("Active", value: "\(activeTaskCount)")
             }
+            .accessibilityElement(children: .contain)
 
             Spacer()
 
@@ -170,22 +184,28 @@ struct BoardCanvasIntegratedView: View {
                 Image(systemName: layoutIcon)
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .accessibilityHidden(true)
 
                 Text(currentBoard.layout.displayName)
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Layout: \(currentBoard.layout.displayName)")
 
             // Board type info
             HStack(spacing: 8) {
                 Image(systemName: boardTypeIcon)
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .accessibilityHidden(true)
 
                 Text(currentBoard.type.displayName)
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Board type: \(currentBoard.type.displayName)")
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
@@ -201,6 +221,8 @@ struct BoardCanvasIntegratedView: View {
                 .font(.caption)
                 .fontWeight(.medium)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
     }
 
     // MARK: - Board Settings View
@@ -209,24 +231,33 @@ struct BoardCanvasIntegratedView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Board Settings")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
 
             Form {
                 TextField("Board Title", text: Binding(
                     get: { currentBoard.title ?? "" },
                     set: { currentBoard.title = $0.isEmpty ? nil : $0 }
                 ))
+                .accessibilityLabel("Board title")
+                .accessibilityHint("Enter a custom title for this board")
 
                 TextField("Icon (emoji)", text: Binding(
                     get: { currentBoard.icon ?? "" },
                     set: { currentBoard.icon = $0.isEmpty ? nil : $0 }
                 ))
+                .accessibilityLabel("Board icon")
+                .accessibilityHint("Enter an emoji to use as the board icon")
 
                 Toggle("Auto-hide when inactive", isOn: $currentBoard.autoHide)
+                    .accessibilityLabel("Auto-hide when inactive")
+                    .accessibilityHint("Automatically hide this board when not in use")
 
                 if currentBoard.autoHide {
                     Stepper("Hide after \(currentBoard.hideAfterDays) days",
                             value: $currentBoard.hideAfterDays,
                             in: 1...30)
+                        .accessibilityLabel("Hide after \(currentBoard.hideAfterDays) days")
+                        .accessibilityHint("Set the number of days before auto-hiding")
                 }
             }
 
@@ -235,10 +266,15 @@ struct BoardCanvasIntegratedView: View {
                 Button("Cancel") {
                     showBoardSettings = false
                 }
+                .accessibilityLabel("Cancel board settings")
+                .accessibilityHint("Discard changes and close settings")
+
                 Button("Save") {
                     saveBoardSettings()
                 }
                 .buttonStyle(.borderedProminent)
+                .accessibilityLabel("Save board settings")
+                .accessibilityHint("Save changes and close settings")
             }
         }
         .padding()
@@ -251,6 +287,7 @@ struct BoardCanvasIntegratedView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Create New Task")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
 
             Text("A new task will be created on the \(currentBoard.displayTitle) board")
                 .font(.caption)
@@ -261,10 +298,15 @@ struct BoardCanvasIntegratedView: View {
                 Button("Cancel") {
                     showTaskCreation = false
                 }
+                .accessibilityLabel("Cancel task creation")
+                .accessibilityHint("Close without creating a task")
+
                 Button("Create Task") {
                     createNewTask()
                 }
                 .buttonStyle(.borderedProminent)
+                .accessibilityLabel("Create task")
+                .accessibilityHint("Create a new task on this board")
             }
         }
         .padding()

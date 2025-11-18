@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A50000002 /* YAMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50000001 /* YAMLParser.swift */; };
 		A10000001 /* StickyToDoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000002 /* StickyToDoApp.swift */; };
 		A10000003 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000004 /* ContentView.swift */; };
 		A10000005 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000006 /* Assets.xcassets */; };
@@ -29,6 +30,9 @@
 		A40000002 /* StickyToDoCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = A40000011 /* StickyToDoCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		A40000003 /* StickyToDoCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A40000011 /* StickyToDoCore.framework */; };
 		A40000004 /* StickyToDoCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = A40000011 /* StickyToDoCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		A60000005 /* Yams in Frameworks */ = {isa = PBXBuildFile; productRef = A60000002 /* Yams */; };
+		A60000006 /* Yams in Frameworks */ = {isa = PBXBuildFile; productRef = A60000003 /* Yams */; };
+		A60000007 /* Yams in Frameworks */ = {isa = PBXBuildFile; productRef = A60000004 /* Yams */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -81,6 +85,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		A50000001 /* YAMLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YAMLParser.swift; sourceTree = "<group>"; };
 		A1000000C /* StickyToDo-SwiftUI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "StickyToDo-SwiftUI.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000002 /* StickyToDoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickyToDoApp.swift; sourceTree = "<group>"; };
 		A10000004 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -114,6 +119,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A40000001 /* StickyToDoCore.framework in Frameworks */,
+				A60000006 /* Yams in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -129,6 +135,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A40000003 /* StickyToDoCore.framework in Frameworks */,
+				A60000007 /* Yams in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -136,6 +143,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A60000005 /* Yams in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -282,6 +290,7 @@
 		A40000017 /* Data */ = {
 			isa = PBXGroup;
 			children = (
+				A50000001 /* YAMLParser.swift */,
 			);
 			path = Data;
 			sourceTree = "<group>";
@@ -321,6 +330,9 @@
 				A40000020 /* PBXTargetDependency */,
 			);
 			name = "StickyToDo-SwiftUI";
+			packageProductDependencies = (
+				A60000003 /* Yams */,
+			);
 			productName = "StickyToDo-SwiftUI";
 			productReference = A1000000C /* StickyToDo-SwiftUI.app */;
 			productType = "com.apple.product-type.application";
@@ -358,6 +370,9 @@
 				A40000021 /* PBXTargetDependency */,
 			);
 			name = "StickyToDo-AppKit";
+			packageProductDependencies = (
+				A60000004 /* Yams */,
+			);
 			productName = "StickyToDo-AppKit";
 			productReference = A30000015 /* StickyToDo-AppKit.app */;
 			productType = "com.apple.product-type.application";
@@ -376,6 +391,9 @@
 			dependencies = (
 			);
 			name = StickyToDoCore;
+			packageProductDependencies = (
+				A60000002 /* Yams */,
+			);
 			productName = StickyToDoCore;
 			productReference = A40000011 /* StickyToDoCore.framework */;
 			productType = "com.apple.product-type.framework";
@@ -414,6 +432,9 @@
 				Base,
 			);
 			mainGroup = A10000011;
+			packageReferences = (
+				A60000001 /* XCRemoteSwiftPackageReference "Yams" */,
+			);
 			productRefGroup = A10000014 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -490,6 +511,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A50000002 /* YAMLParser.swift in Sources */,
 				A20000001 /* Task.swift in Sources */,
 				A20000002 /* Position.swift in Sources */,
 				A20000003 /* Priority.swift in Sources */,
@@ -892,6 +914,35 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A60000001 /* XCRemoteSwiftPackageReference "Yams" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/jpsim/Yams.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A60000002 /* Yams */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A60000001 /* XCRemoteSwiftPackageReference "Yams" */;
+			productName = Yams;
+		};
+		A60000003 /* Yams */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A60000001 /* XCRemoteSwiftPackageReference "Yams" */;
+			productName = Yams;
+		};
+		A60000004 /* Yams */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A60000001 /* XCRemoteSwiftPackageReference "Yams" */;
+			productName = Yams;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A1000000A /* Project object */;
 }
