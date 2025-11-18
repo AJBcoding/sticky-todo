@@ -264,6 +264,7 @@ struct SkeletonView: View {
     let cornerRadius: CGFloat
 
     @State private var isAnimating = false
+    @State private var phase: CGFloat = 0
 
     init(width: CGFloat? = nil, height: CGFloat = 20, cornerRadius: CGFloat = 4) {
         self.width = width
@@ -272,23 +273,29 @@ struct SkeletonView: View {
     }
 
     var body: some View {
-        Rectangle()
+        RoundedRectangle(cornerRadius: cornerRadius)
             .fill(
                 LinearGradient(
-                    colors: [
-                        Color.gray.opacity(0.3),
-                        Color.gray.opacity(0.2),
-                        Color.gray.opacity(0.3)
-                    ],
-                    startPoint: isAnimating ? .leading : .trailing,
-                    endPoint: isAnimating ? .trailing : .leading
+                    gradient: Gradient(stops: [
+                        .init(color: Color.gray.opacity(0.25), location: 0),
+                        .init(color: Color.gray.opacity(0.15), location: phase - 0.2),
+                        .init(color: Color.gray.opacity(0.05), location: phase),
+                        .init(color: Color.gray.opacity(0.15), location: phase + 0.2),
+                        .init(color: Color.gray.opacity(0.25), location: 1)
+                    ]),
+                    startPoint: .leading,
+                    endPoint: .trailing
                 )
             )
             .frame(width: width, height: height)
-            .cornerRadius(cornerRadius)
+            .opacity(isAnimating ? 1 : 0)
+            .animation(.easeIn(duration: 0.3), value: isAnimating)
+            .accessibilityLabel("Loading")
+            .accessibilityHidden(true)
             .onAppear {
-                withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
-                    isAnimating.toggle()
+                isAnimating = true
+                withAnimation(.linear(duration: 1.8).repeatForever(autoreverses: false)) {
+                    phase = 1.2
                 }
             }
     }
@@ -296,6 +303,14 @@ struct SkeletonView: View {
 
 /// Skeleton list row
 struct SkeletonListRow: View {
+
+    let index: Int
+
+    init(index: Int = 0) {
+        self.index = index
+    }
+
+    @State private var appeared = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -309,6 +324,15 @@ struct SkeletonListRow: View {
             Spacer()
         }
         .padding(.vertical, 8)
+        .opacity(appeared ? 1 : 0)
+        .offset(y: appeared ? 0 : 10)
+        .accessibilityLabel("Loading item")
+        .accessibilityHidden(true)
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.3).delay(Double(index) * 0.05)) {
+                appeared = true
+            }
+        }
     }
 }
 
@@ -345,9 +369,11 @@ struct SkeletonListRow: View {
 
 #Preview("Skeleton Views") {
     VStack(spacing: 12) {
-        SkeletonListRow()
-        SkeletonListRow()
-        SkeletonListRow()
+        SkeletonListRow(index: 0)
+        SkeletonListRow(index: 1)
+        SkeletonListRow(index: 2)
+        SkeletonListRow(index: 3)
+        SkeletonListRow(index: 4)
     }
     .padding()
 }

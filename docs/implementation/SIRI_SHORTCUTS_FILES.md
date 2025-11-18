@@ -196,6 +196,6 @@ sticky-todo/
 
 ## Related Documentation
 
-- [User Guide](docs/SIRI_SHORTCUTS_GUIDE.md)
+- [User Guide](../user/SIRI_SHORTCUTS_GUIDE.md)
 - [Implementation Report](SIRI_SHORTCUTS_IMPLEMENTATION.md)
 - [Main README](README.md)

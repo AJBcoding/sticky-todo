@@ -783,6 +783,36 @@ final class TaskStore: ObservableObject {
         }
     }
 
+    /// Archives multiple tasks at once (marks as completed)
+    ///
+    /// - Parameter tasks: The tasks to archive
+    func archiveBatch(_ tasks: [Task]) {
+        queue.async { [weak self] in
+            guard let self = self else { return }
+
+            DispatchQueue.main.async {
+                for task in tasks {
+                    if let index = self.tasks.firstIndex(where: { $0.id == task.id }) {
+                        var archivedTask = task
+                        archivedTask.status = .completed
+                        archivedTask.modified = Date()
+
+                        // Cancel notifications
+                        self.notificationManager.cancelNotifications(for: archivedTask)
+                        archivedTask.notificationIds.removeAll()
+
+                        self.tasks[index] = archivedTask
+                        self.scheduleSave(for: archivedTask)
+                    }
+                }
+
+                self.updateDerivedData()
+                self.updateBadgeCount()
+                self.logger?("Batch archived \(tasks.count) tasks")
+            }
+        }
+    }
+
     // MARK: - Task Hierarchy
 
     /// Returns all subtasks for a given task

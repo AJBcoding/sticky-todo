@@ -1042,7 +1042,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 4. **Process**: View inbox (⌘1), move to Next Actions (⌘2)
 5. **Create Board**: Tag tasks with #Project, view in canvas
 
-Done! Read [User Guide](docs/USER_GUIDE.md) for advanced features.
+Done! Read [User Guide](../user/USER_GUIDE.md) for advanced features.
 ```
 
 ---

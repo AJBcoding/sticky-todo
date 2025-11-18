@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import StickyToDoCore
 
 /// Main application content view
 ///
@@ -17,6 +18,7 @@ import SwiftUI
 /// - Toolbar with controls
 /// - Searchable interface
 /// - View mode switching (List/Board)
+/// - Full dark mode support with semantic colors
 struct ContentView: View {
 
     // MARK: - Environment
@@ -32,6 +34,9 @@ struct ContentView: View {
 
     /// Configuration manager
     @EnvironmentObject var configManager: ConfigurationManager
+
+    /// Current color theme
+    @Environment(\.colorTheme) private var theme
 
     // MARK: - State
 
@@ -178,15 +183,17 @@ struct ContentView: View {
         VStack(spacing: 16) {
             Image(systemName: "checkmark.circle")
                 .font(.system(size: 60))
-                .foregroundColor(.secondary)
+                .foregroundColor(theme.secondaryText)
 
             Text("Welcome to StickyToDo")
                 .font(.title)
+                .foregroundColor(theme.primaryText)
 
             Text("Select a perspective or board from the sidebar")
-                .foregroundColor(.secondary)
+                .foregroundColor(theme.secondaryText)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(theme.primaryBackground)
     }
 
     // MARK: - Toolbar

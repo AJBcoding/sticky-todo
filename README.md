@@ -201,10 +201,34 @@ Automatically extracts:
 
 ## Documentation
 
-- **[User Guide](docs/USER_GUIDE.md)** - Complete usage documentation
-- **[Keyboard Shortcuts](docs/KEYBOARD_SHORTCUTS.md)** - All shortcuts reference
-- **[File Format](docs/FILE_FORMAT.md)** - Technical specification
-- **[Development Guide](docs/DEVELOPMENT.md)** - Contributing and architecture
+### For Users
+- **[User Documentation](docs/user/)** - Complete user guides and references
+  - [User Guide](docs/user/USER_GUIDE.md) - Complete usage documentation
+  - [Quick Reference](docs/user/QUICK_REFERENCE.md) - Quick reference guide
+  - [Keyboard Shortcuts](docs/user/KEYBOARD_SHORTCUTS.md) - All shortcuts reference
+  - [Feature Guides](docs/user/) - Siri Shortcuts, Search, Recurring Tasks
+
+### For Developers
+- **[Developer Documentation](docs/developer/)** - Development setup and guidelines
+  - [Development Guide](docs/developer/DEVELOPMENT.md) - Contributing and architecture
+  - [Build Setup](docs/developer/BUILD_SETUP.md) - Building the project
+  - [Xcode Setup](docs/developer/XCODE_SETUP.md) - Xcode configuration
+
+### Technical & Planning
+- **[Technical Documentation](docs/technical/)** - Specifications and architecture
+  - [File Format](docs/technical/FILE_FORMAT.md) - Task file format specification
+  - [Search Architecture](docs/technical/SEARCH_ARCHITECTURE.txt) - Search system design
+  - [Integration Guides](docs/technical/) - Integration and testing documentation
+- **[Plans & Design](docs/plans/)** - Design documents and planning
+- **[Features](docs/features/)** - Feature-specific documentation
+- **[Examples](docs/examples/)** - Example files and demonstrations
+
+### Project Status & Reports
+- **[Implementation Reports](docs/implementation/)** - Detailed feature implementation reports
+- **[Status Reports](docs/status/)** - Project status and progress tracking
+- **[Assessment Reports](docs/assessments/)** - Code reviews and quality assessments
+- **[Pull Requests](docs/pull-requests/)** - Pull request documentation
+- **[Handoff Documentation](docs/handoff/)** - Project handoff and knowledge transfer
 
 ## Building from Source
 
@@ -367,7 +391,7 @@ xcodebuild test -project StickyToDo.xcodeproj -scheme StickyToDo
 
 ## Contributing
 
-Contributions are welcome! See [DEVELOPMENT.md](docs/DEVELOPMENT.md) for:
+Contributions are welcome! See [DEVELOPMENT.md](docs/developer/DEVELOPMENT.md) for:
 
 - Architecture overview
 - Code style guidelines
@@ -405,8 +429,8 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 For questions about design decisions or implementation details, refer to:
 - [Design Document](docs/plans/2025-11-17-sticky-todo-design.md)
-- [Project Handoff](HANDOFF.md)
-- [Development Guide](docs/DEVELOPMENT.md)
+- [Project Handoff](docs/handoff/HANDOFF.md)
+- [Development Guide](docs/developer/DEVELOPMENT.md)
 
 ---
 

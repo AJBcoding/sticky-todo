@@ -712,7 +712,7 @@ None - this is a new feature addition with no breaking changes to existing funct
 
 ### Project Documentation
 - [Main README](README.md)
-- [User Guide](docs/SIRI_SHORTCUTS_GUIDE.md)
+- [User Guide](../user/SIRI_SHORTCUTS_GUIDE.md)
 - [Implementation Status](IMPLEMENTATION_STATUS.md)
 
 ---

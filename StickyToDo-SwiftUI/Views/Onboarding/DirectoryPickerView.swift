@@ -32,24 +32,44 @@ struct DirectoryPickerView: View {
                     )
                 )
                 .shadow(color: .blue.opacity(0.3), radius: 20, x: 0, y: 10)
+                .symbolEffect(.pulse, options: .speed(0.5).repeating, value: viewModel.isValidating)
+                .symbolEffect(.bounce, options: .nonRepeating, value: viewModel.validationResult?.isValid)
+                .scaleEffect(viewModel.validationResult?.isValid == true ? 1.05 : 1.0)
+                .animation(.spring(response: 0.5, dampingFraction: 0.7), value: viewModel.validationResult?.isValid)
+                .accessibilityHidden(true)
 
             // Title
             Text("Choose Storage Location")
-                .font(.system(size: 32, weight: .bold))
+                .font(.system(size: 36, weight: .bold))
+                .tracking(0.3)
+                .accessibilityAddTraits(.isHeader)
 
             // Description
-            Text("Select where StickyToDo will store your tasks and data. We recommend using the default location.")
-                .font(.title3)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 500)
+            VStack(spacing: 8) {
+                Text("Where should we store your tasks?")
+                    .font(.title3)
+                    .fontWeight(.medium)
+                    .multilineTextAlignment(.center)
+
+                Text("All your data is stored locally as plain Markdown files. The default location works great for most users.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 520)
+            }
 
             // Directory picker
             VStack(spacing: 16) {
                 // Current selection
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Selected Location")
-                        .font(.headline)
+                    HStack {
+                        Image(systemName: "folder.fill")
+                            .foregroundColor(.blue)
+                            .font(.headline)
+                        Text("Selected Location")
+                            .font(.headline)
+                    }
+                    .accessibilityElement(children: .combine)
 
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
@@ -60,13 +80,7 @@ struct DirectoryPickerView: View {
                                 .truncationMode(.middle)
 
                             if let validation = viewModel.validationResult {
-                                HStack(spacing: 6) {
-                                    Image(systemName: validation.isValid ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                                        .foregroundColor(validation.isValid ? .green : .orange)
-                                    Text(validation.message)
-                                        .font(.caption)
-                                        .foregroundColor(validation.isValid ? .green : .orange)
-                                }
+                                ValidationStatusRow(validation: validation)
                             }
                         }
 
@@ -76,43 +90,33 @@ struct DirectoryPickerView: View {
                             viewModel.showDirectoryPicker()
                         }
                         .buttonStyle(.bordered)
+                        .accessibilityLabel("Change storage location")
+                        .accessibilityHint("Choose a different folder")
                     }
-                    .padding(12)
-                    .background(Color(NSColor.controlBackgroundColor))
-                    .cornerRadius(8)
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(NSColor.controlBackgroundColor))
+                            .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                    )
                 }
 
                 // Validation details
                 if let validation = viewModel.validationResult, !validation.isValid {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach(validation.issues, id: \.self) { issue in
-                            HStack(alignment: .top, spacing: 8) {
-                                Image(systemName: "exclamationmark.circle")
-                                    .foregroundColor(.orange)
-                                Text(issue)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                    .padding(12)
-                    .background(Color.orange.opacity(0.1))
-                    .cornerRadius(8)
+                    ValidationIssuesCard(issues: validation.issues)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .top).combined(with: .opacity),
+                            removal: .move(edge: .top).combined(with: .opacity)
+                        ))
                 }
 
                 // Storage info
                 if let validation = viewModel.validationResult, validation.isValid {
-                    HStack {
-                        Image(systemName: "internaldrive")
-                            .foregroundColor(.secondary)
-                        Text("Available space: \(validation.availableSpaceDescription)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Spacer()
-                    }
-                    .padding(12)
-                    .background(Color.green.opacity(0.1))
-                    .cornerRadius(8)
+                    StorageInfoCard(availableSpace: validation.availableSpaceDescription)
+                        .transition(.asymmetric(
+                            insertion: .scale(scale: 0.95).combined(with: .opacity),
+                            removal: .scale(scale: 0.95).combined(with: .opacity)
+                        ))
                 }
             }
             .padding(.horizontal, 60)
@@ -296,6 +300,152 @@ struct DirectoryValidationResult {
         formatter.allowedUnits = [.useGB, .useMB]
         formatter.countStyle = .file
         return formatter.string(fromByteCount: space)
+    }
+}
+
+// MARK: - Supporting Views
+
+struct ValidationStatusRow: View {
+    let validation: DirectoryValidationResult
+
+    @State private var appeared = false
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: validation.isValid ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                .foregroundColor(validation.isValid ? .green : .orange)
+                .font(.caption)
+                .symbolEffect(.bounce, options: .nonRepeating, value: appeared)
+                .accessibilityHidden(true)
+
+            Text(validation.message)
+                .font(.caption)
+                .foregroundColor(validation.isValid ? .green : .orange)
+                .fontWeight(.medium)
+        }
+        .opacity(appeared ? 1 : 0)
+        .offset(x: appeared ? 0 : -10)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(validation.message)
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.1)) {
+                appeared = true
+            }
+        }
+        .onChange(of: validation.isValid) { _, _ in
+            appeared = false
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.1)) {
+                appeared = true
+            }
+        }
+    }
+}
+
+struct ValidationIssuesCard: View {
+    let issues: [String]
+
+    @State private var appeared = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.orange)
+                    .font(.title3)
+                Text("Validation Issues")
+                    .font(.headline)
+                    .foregroundColor(.orange)
+            }
+
+            ForEach(Array(issues.enumerated()), id: \.offset) { index, issue in
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "arrow.right.circle")
+                        .foregroundColor(.orange)
+                        .font(.caption)
+                    Text(issue)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .opacity(appeared ? 1 : 0)
+                .offset(x: appeared ? 0 : -10)
+                .animation(.spring(response: 0.5, dampingFraction: 0.75).delay(Double(index) * 0.05), value: appeared)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.orange.opacity(0.1))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+                )
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Validation issues: \(issues.joined(separator: ", "))")
+        .onAppear {
+            withAnimation {
+                appeared = true
+            }
+        }
+    }
+}
+
+struct StorageInfoCard: View {
+    let availableSpace: String
+
+    @State private var appeared = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "internaldrive")
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [.green, .mint],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .font(.title2)
+                .symbolEffect(.bounce, options: .nonRepeating, value: appeared)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Storage Available")
+                    .font(.headline)
+                    .foregroundColor(.green)
+
+                Text(availableSpace)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundColor(.green)
+                .font(.title3)
+                .symbolEffect(.pulse, options: .repeat(2), value: appeared)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.green.opacity(0.1))
+                .shadow(color: .green.opacity(0.1), radius: 6, x: 0, y: 3)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.green.opacity(0.3), lineWidth: 1)
+                )
+        )
+        .scaleEffect(appeared ? 1.0 : 0.95)
+        .opacity(appeared ? 1 : 0)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Storage available: \(availableSpace)")
+        .onAppear {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.2)) {
+                appeared = true
+            }
+        }
     }
 }
 
