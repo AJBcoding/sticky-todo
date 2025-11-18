@@ -65,18 +65,26 @@ struct ContentView: View {
                 NavigationLink(value: NavigationItem.inbox) {
                     Label("Inbox", systemImage: "tray")
                 }
+                .accessibilityLabel("Navigate to Inbox")
+                .accessibilityHint("View all unprocessed tasks in your inbox")
 
                 NavigationLink(value: NavigationItem.nextActions) {
                     Label("Next Actions", systemImage: "arrow.right.circle")
                 }
+                .accessibilityLabel("Navigate to Next Actions")
+                .accessibilityHint("View your actionable next action tasks")
 
                 NavigationLink(value: NavigationItem.today) {
                     Label("Today", systemImage: "calendar")
                 }
+                .accessibilityLabel("Navigate to Today")
+                .accessibilityHint("View tasks due today")
 
                 NavigationLink(value: NavigationItem.flagged) {
                     Label("Flagged", systemImage: "flag.fill")
                 }
+                .accessibilityLabel("Navigate to Flagged")
+                .accessibilityHint("View all flagged tasks")
             }
 
             // Project Boards
@@ -85,6 +93,8 @@ struct ContentView: View {
                     NavigationLink(value: NavigationItem.board(board.id)) {
                         Label(board.displayTitle, systemImage: "folder")
                     }
+                    .accessibilityLabel("Navigate to project: \(board.displayTitle)")
+                    .accessibilityHint("View tasks in the \(board.displayTitle) project")
                 }
             }
 
@@ -94,6 +104,8 @@ struct ContentView: View {
                     NavigationLink(value: NavigationItem.board(board.id)) {
                         Label(board.displayTitle, systemImage: "mappin.circle")
                     }
+                    .accessibilityLabel("Navigate to context: \(board.displayTitle)")
+                    .accessibilityHint("View tasks in the \(board.displayTitle) context")
                 }
             }
 
@@ -112,6 +124,8 @@ struct ContentView: View {
                                 }
                             }
                         }
+                        .accessibilityLabel("Navigate to custom board: \(board.displayTitle)")
+                        .accessibilityHint("View tasks in the \(board.displayTitle) board")
                     }
                 }
             }
@@ -123,6 +137,8 @@ struct ContentView: View {
                 Button(action: toggleSidebar) {
                     Image(systemName: "sidebar.left")
                 }
+                .accessibilityLabel("Toggle sidebar")
+                .accessibilityHint("Show or hide the navigation sidebar")
             }
         }
     }
@@ -168,9 +184,12 @@ struct ContentView: View {
                 .imageScale(.large)
                 .foregroundStyle(.tint)
                 .font(.system(size: 60))
+                .accessibilityLabel("Welcome icon")
+                .accessibilityHidden(true)
 
             Text("Welcome to StickyToDo")
                 .font(.title)
+                .accessibilityAddTraits(.isHeader)
 
             Text("Select a list or board from the sidebar to get started")
                 .foregroundStyle(.secondary)
@@ -183,12 +202,14 @@ struct ContentView: View {
             VStack(spacing: 8) {
                 Text("Quick Stats")
                     .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
 
                 HStack(spacing: 24) {
                     statView(label: "Total Tasks", value: "\(taskStore.taskCount)")
                     statView(label: "Active", value: "\(taskStore.activeTaskCount)")
                     statView(label: "Completed", value: "\(taskStore.completedTaskCount)")
                 }
+                .accessibilityElement(children: .contain)
             }
             .padding()
             .background(
@@ -209,6 +230,8 @@ struct ContentView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
     }
 
     // MARK: - Helper Methods

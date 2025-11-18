@@ -32,6 +32,9 @@ struct TaskListItemView: View {
                     .imageScale(.large)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(task.status == .completed ? "Mark task as incomplete" : "Mark task as complete")
+            .accessibilityHint(task.status == .completed ? "Double-tap to reopen this task" : "Double-tap to mark this task as completed")
+            .accessibilityAddTraits(.isButton)
 
             // Task content
             VStack(alignment: .leading, spacing: 4) {
@@ -40,6 +43,8 @@ struct TaskListItemView: View {
                     .font(.body)
                     .strikethrough(task.status == .completed)
                     .foregroundColor(task.status == .completed ? .secondary : .primary)
+                    .accessibilityLabel("Task: \(task.title)")
+                    .accessibilityAddTraits(task.status == .completed ? .isStaticText : .isHeader)
 
                 // Metadata
                 if hasMetadata {
@@ -48,32 +53,38 @@ struct TaskListItemView: View {
                             Label(project, systemImage: "folder")
                                 .font(.caption)
                                 .foregroundColor(.blue)
+                                .accessibilityLabel("Project: \(project)")
                         }
 
                         if let context = task.context {
                             Label(context, systemImage: "mappin.circle")
                                 .font(.caption)
                                 .foregroundColor(.orange)
+                                .accessibilityLabel("Context: \(context)")
                         }
 
                         if task.flagged {
                             Image(systemName: "flag.fill")
                                 .font(.caption)
                                 .foregroundColor(.yellow)
+                                .accessibilityLabel("Flagged task")
                         }
 
                         if let due = task.due {
                             Label(formatDate(due), systemImage: "calendar")
                                 .font(.caption)
                                 .foregroundColor(task.isOverdue ? .red : .secondary)
+                                .accessibilityLabel(task.isOverdue ? "Overdue: \(formatDate(due))" : "Due date: \(formatDate(due))")
                         }
 
                         if task.priority == .high {
                             Image(systemName: "exclamationmark.circle.fill")
                                 .font(.caption)
                                 .foregroundColor(.red)
+                                .accessibilityLabel("High priority")
                         }
                     }
+                    .accessibilityElement(children: .contain)
                 }
             }
 
@@ -84,6 +95,8 @@ struct TaskListItemView: View {
                 Image(systemName: "line.3.horizontal")
                     .foregroundColor(.secondary)
                     .font(.caption)
+                    .accessibilityLabel("Drag handle")
+                    .accessibilityHint("Use to reorder this task")
             }
         }
         .padding(.vertical, 8)
@@ -104,6 +117,41 @@ struct TaskListItemView: View {
             isHovering = hovering
         }
         .taskDraggable(task)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(buildAccessibilityLabel())
+        .accessibilityValue(task.status == .completed ? "Completed" : "Active")
+    }
+
+    // MARK: - Accessibility Helper
+
+    private func buildAccessibilityLabel() -> String {
+        var components: [String] = [task.title]
+
+        if let project = task.project {
+            components.append("in project \(project)")
+        }
+
+        if let context = task.context {
+            components.append("in context \(context)")
+        }
+
+        if task.flagged {
+            components.append("flagged")
+        }
+
+        if let due = task.due {
+            if task.isOverdue {
+                components.append("overdue \(formatDate(due))")
+            } else {
+                components.append("due \(formatDate(due))")
+            }
+        }
+
+        if task.priority == .high {
+            components.append("high priority")
+        }
+
+        return components.joined(separator: ", ")
     }
 
     // MARK: - Computed Properties

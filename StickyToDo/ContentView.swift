@@ -210,6 +210,11 @@ struct ContentView: View {
             .help("Add New Task (⌘N)")
         }
 
+        // Performance status indicator
+        ToolbarItem(placement: .status) {
+            PerformanceStatusView(taskStore: taskStore)
+        }
+
         ToolbarItem(placement: .automatic) {
             Button(action: showSettings) {
                 Image(systemName: "gear")

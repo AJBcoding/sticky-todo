@@ -121,6 +121,7 @@ struct TaskListView: View {
         HStack {
             Text(title)
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
 
             Spacer()
 
@@ -128,12 +129,16 @@ struct TaskListView: View {
             TextField("Search tasks...", text: $searchText)
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 200)
+                .accessibilityLabel("Search tasks")
+                .accessibilityHint("Type to filter tasks by title or content")
 
             // Add task button
             Button(action: addNewTask) {
                 Label("Add Task", systemImage: "plus.circle.fill")
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityLabel("Add new task")
+            .accessibilityHint("Double-tap to create a new task in this list")
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
@@ -158,6 +163,9 @@ struct TaskListView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(Color(NSColor.controlBackgroundColor))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title) section, \(count) task\(count == 1 ? "" : "s")")
+        .accessibilityAddTraits(.isHeader)
     }
 
     // MARK: - Empty State
@@ -167,9 +175,11 @@ struct TaskListView: View {
             Image(systemName: "checkmark.circle")
                 .font(.system(size: 48))
                 .foregroundColor(.secondary)
+                .accessibilityHidden(true)
 
             Text("No tasks found")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
 
             Text("Add a task to get started")
                 .font(.caption)
@@ -179,8 +189,11 @@ struct TaskListView: View {
                 addNewTask()
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityLabel("Add first task")
+            .accessibilityHint("Double-tap to create your first task")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
     }
 
     // MARK: - Event Handlers

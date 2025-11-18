@@ -403,6 +403,30 @@ extension MainWindowController: NSToolbarDelegate {
             sidebarDidSelectPerspective(perspective)
         }
     }
+
+    /// Returns the currently selected task
+    func getSelectedTask() -> Task? {
+        return selectedTask
+    }
+
+    /// Refreshes all data from stores
+    func refreshData() {
+        self.refreshData()
+    }
+
+    /// Toggles the sidebar visibility
+    func toggleSidebar() {
+        if let sidebarItem = splitViewController.splitViewItems.first {
+            sidebarItem.animator().isCollapsed.toggle()
+        }
+    }
+
+    /// Toggles the inspector visibility
+    func toggleInspector() {
+        if let inspectorItem = splitViewController.splitViewItems.last {
+            inspectorItem.animator().isCollapsed.toggle()
+        }
+    }
 }
 
 // MARK: - Array Extension

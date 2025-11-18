@@ -91,12 +91,15 @@ struct ErrorView: View {
                 .font(.system(size: 64))
                 .foregroundColor(errorColor)
                 .symbolRenderingMode(.hierarchical)
+                .accessibilityLabel("Error icon")
+                .accessibilityHidden(true)
 
             // Error message
             VStack(spacing: 8) {
                 Text(errorTitle)
                     .font(.title2)
                     .fontWeight(.semibold)
+                    .accessibilityAddTraits(.isHeader)
 
                 if let description = errorDescription {
                     Text(description)
@@ -105,6 +108,8 @@ struct ErrorView: View {
                         .multilineTextAlignment(.center)
                 }
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(errorTitle). \(errorDescription ?? "")")
 
             // Recovery suggestion
             if let suggestion = recoverySuggestion {
@@ -116,6 +121,7 @@ struct ErrorView: View {
                     .padding(.vertical, 12)
                     .background(Color(NSColor.controlBackgroundColor))
                     .cornerRadius(8)
+                    .accessibilityLabel("Recovery suggestion: \(suggestion)")
             }
 
             // Error details (expandable)
@@ -128,6 +134,8 @@ struct ErrorView: View {
                         .padding()
                 }
                 .padding(.horizontal)
+                .accessibilityLabel("Technical details")
+                .accessibilityHint("Expand to view detailed error information")
             }
 
             // Actions
@@ -139,11 +147,15 @@ struct ErrorView: View {
                         Label("Retry", systemImage: "arrow.clockwise")
                     }
                     .buttonStyle(.borderedProminent)
+                    .accessibilityLabel("Retry operation")
+                    .accessibilityHint("Double-tap to retry the failed operation")
                 }
 
                 if let onDismiss = onDismiss {
                     Button("Dismiss", action: onDismiss)
                         .buttonStyle(.bordered)
+                        .accessibilityLabel("Dismiss error")
+                        .accessibilityHint("Double-tap to close this error message")
                 }
             }
         }
@@ -224,15 +236,19 @@ struct ErrorBanner: View {
         HStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundColor(.orange)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Error")
                     .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
 
                 Text(error.localizedDescription)
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Error: \(error.localizedDescription)")
 
             Spacer()
 
@@ -243,6 +259,8 @@ struct ErrorBanner: View {
                     .foregroundColor(.secondary)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Dismiss error")
+            .accessibilityHint("Double-tap to dismiss this error message")
         }
         .padding()
         .background(Color.orange.opacity(0.1))
@@ -281,23 +299,28 @@ struct EmptyStateView: View {
                 .font(.system(size: 64))
                 .foregroundColor(.secondary)
                 .symbolRenderingMode(.hierarchical)
+                .accessibilityHidden(true)
 
             VStack(spacing: 8) {
                 Text(title)
                     .font(.title2)
                     .fontWeight(.semibold)
+                    .accessibilityAddTraits(.isHeader)
 
                 Text(message)
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(title). \(message)")
 
             if let actionTitle = actionTitle, let action = action {
                 Button(action: action) {
                     Text(actionTitle)
                 }
                 .buttonStyle(.borderedProminent)
+                .accessibilityHint("Double-tap to \(actionTitle.lowercased())")
             }
         }
         .padding(40)
