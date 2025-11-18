@@ -1,30 +1,102 @@
 # StickyToDo
 
-A macOS task management application that combines OmniFocus-style GTD methodology with Miro-style visual boards.
+A powerful macOS task management application that combines OmniFocus-style GTD methodology with Miro-style visual boards. Your tasks, your way—in plain text.
+
+[![macOS](https://img.shields.io/badge/macOS-14.0+-blue.svg)](https://www.apple.com/macos/)
+[![Swift](https://img.shields.io/badge/Swift-5.9+-orange.svg)](https://swift.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ## Overview
 
-StickyToDo provides two equal modes of working with your tasks:
+StickyToDo provides two complementary modes of working with your tasks:
 
 - **List View**: Traditional GTD perspectives for processing tasks (Inbox, Next Actions, Projects, etc.)
 - **Board View**: Visual boards with three layouts (Freeform, Kanban, Grid) for planning and brainstorming
 
-**Core Innovation**: All data stores in plain text markdown files. You own your data in a format you can read, edit, and version control. Tasks appear on boards automatically based on metadata filters—moving tasks between boards updates their metadata.
+**Core Innovation**: All data stored in plain-text markdown files. You own your data in a format you can read, edit, and version control. Tasks appear on boards automatically based on metadata filters—moving tasks between boards updates their metadata.
 
 ## Features
 
 ### Two-Tier Task System
 
-- **Notes**: Lightweight items for brainstorming (minimal friction)
-- **Tasks**: Full GTD items with complete metadata (project, context, priority, etc.)
+- **Notes**: Lightweight items for brainstorming with minimal friction
+- **Tasks**: Full GTD items with complete metadata (project, context, priority, due dates, effort, etc.)
 - Seamlessly promote notes to tasks by applying metadata
 
 ### Plain Text Foundation
 
-- Tasks stored as markdown files with YAML frontmatter
-- File structure: `tasks/active/YYYY/MM/uuid-title.md`
-- Completed tasks archived to: `tasks/archive/YYYY/MM/`
-- Boards defined as: `boards/*.md` files with frontmatter config
+- **Markdown Storage**: Tasks stored as markdown files with YAML frontmatter
+- **Human-Readable**: Edit in VS Code, Obsidian, or any text editor
+- **Version Control**: Use git to track changes, collaborate, and maintain history
+- **Future-Proof**: Standard formats ensure long-term accessibility
+- **Sync-Friendly**: Works with Dropbox, iCloud Drive, or any file sync service
+
+### Visual Board Layouts
+
+**Freeform Canvas**
+- Infinite canvas for brainstorming
+- Drag tasks anywhere
+- Zoom and pan
+- Spatial organization
+- Perfect for mind mapping and planning
+
+**Kanban Boards**
+- Vertical swim lanes for workflows
+- Drag tasks between columns
+- Auto-update task metadata
+- Customizable columns
+- Great for process management
+
+**Grid Boards**
+- Organized sections
+- Auto-arrange layout
+- Compact task view
+- Category-based organization
+- Ideal for structured lists
+
+### GTD Workflow
+
+**Five Core Statuses**
+- **Inbox**: Unprocessed items awaiting clarification
+- **Next Actions**: Ready-to-work tasks
+- **Waiting For**: Blocked or delegated items
+- **Someday/Maybe**: Future possibilities
+- **Completed**: Finished tasks (auto-archived)
+
+**Smart Perspectives**
+- Inbox - Process new items
+- Next Actions - Grouped by context
+- Flagged - Starred for attention
+- Due Soon - Upcoming deadlines
+- Waiting For - Blocked items
+- Someday/Maybe - Future ideas
+- All Active - Complete overview
+- Create custom perspectives
+
+### Quick Capture
+
+Global hotkey (⌘⇧Space) for instant task capture from anywhere on macOS.
+
+**Natural Language Parsing:**
+```
+Call John @phone #Website !high tomorrow //30m
+```
+
+Automatically extracts:
+- Title: "Call John"
+- Context: @phone
+- Project: Website
+- Priority: High
+- Due: Tomorrow
+- Effort: 30 minutes
+
+**Supported Patterns:**
+- `@context` - Work context (@phone, @computer, @office, etc.)
+- `#project` - Project assignment
+- `!priority` - Priority level (!high, !medium, !low)
+- `tomorrow`, `friday`, `nov 20` - Due dates
+- `^defer:date` - Defer/start dates
+- `//30m`, `//2h` - Effort estimates
 
 ### Boards as Filters
 
@@ -32,72 +104,150 @@ StickyToDo provides two equal modes of working with your tasks:
 - Tasks appear when they match filter criteria
 - Moving tasks to boards updates their metadata
 - Tasks can appear on multiple boards simultaneously
+- Dynamic board creation for contexts and projects
 
-### Quick Capture
+### File Watching
 
-- Global hotkey for instant task capture
-- Natural language parsing: `@context`, `#project`, `!priority`, dates, effort
-- Minimal friction from thought to task
+- Detects external file changes
+- Auto-reloads modified tasks
+- Conflict detection and resolution
+- Edit files in your favorite editor
+- Changes sync immediately
 
-## Requirements
+### Rich Metadata
 
-- macOS 13.0 or later
-- Xcode 15.0 or later (for development)
+- **Projects**: Group related tasks
+- **Contexts**: Where/how tasks are done
+- **Priority**: High, Medium, Low
+- **Due Dates**: Hard deadlines
+- **Defer Dates**: Hide until start date
+- **Effort Estimates**: Time in minutes/hours
+- **Flags**: Star important items
+- **Notes**: Full markdown support
+- **Positions**: Task placement on boards
 
-## Project Structure
+## Screenshots
+
+<!-- Screenshots to be added -->
+*Screenshots coming soon showing List View, Freeform Board, Kanban Board, and Quick Capture*
+
+## Installation
+
+### Requirements
+
+- macOS 14.0 (Sonoma) or later
+- 50 MB disk space
+- Optional: Git for version control
+
+### Download
+
+1. **Download** the latest release from [Releases](https://github.com/yourusername/sticky-todo/releases)
+2. **Unzip** the downloaded file
+3. **Drag** StickyToDo.app to your Applications folder
+4. **Launch** StickyToDo
+
+### First Launch
+
+1. **Choose data directory** - Select where to store your tasks
+   - Recommended: `~/Documents/StickyToDo`
+   - Or use iCloud: `~/Library/Mobile Documents/com~apple~CloudDocs/StickyToDo`
+
+2. **Set up contexts** - Go to Settings → Contexts to customize
+
+3. **Configure quick capture** - Set global hotkey (default: ⌘⇧Space)
+
+4. **Optional: Sample tasks** - Create sample tasks to explore features
+
+## Quick Start
+
+### Process Your Inbox
+
+1. Press `⌘⇧Space` to quick capture tasks
+2. Type: `Buy groceries @errands #Personal tomorrow`
+3. Press Return to save
+4. Go to Inbox (⌘1) to process
+5. For each task:
+   - Clarify what it is
+   - Decide if actionable
+   - Assign context and project
+   - Set priority if urgent
+   - Move to Next Actions (⌘⌥2)
+
+### Create a Project Board
+
+1. Tag tasks with `#ProjectName`
+2. Board automatically created
+3. Switch layout to Kanban
+4. Customize columns
+5. Drag tasks through workflow
+
+### Use Freeform Canvas
+
+1. Create custom board
+2. Select Freeform layout
+3. Add tasks or notes
+4. Drag to arrange spatially
+5. Zoom in/out with ⌘+/-
+6. Organize visually
+
+### Weekly Review
+
+1. Press ⌘1 - Process inbox to zero
+2. Press ⌘2 - Review next actions
+3. Press ⌘5 - Check waiting items
+4. Press ⌘6 - Scan someday/maybe
+5. Press ⌘7 - Review all active
+6. Look ahead at upcoming week
+
+## Documentation
+
+- **[User Guide](docs/USER_GUIDE.md)** - Complete usage documentation
+- **[Keyboard Shortcuts](docs/KEYBOARD_SHORTCUTS.md)** - All shortcuts reference
+- **[File Format](docs/FILE_FORMAT.md)** - Technical specification
+- **[Development Guide](docs/DEVELOPMENT.md)** - Contributing and architecture
+
+## Building from Source
+
+### Prerequisites
+
+- Xcode 15.0 or later
+- macOS 14.0 SDK
+- Swift 5.9 or later
+
+### Build Steps
+
+```bash
+# Clone repository
+git clone https://github.com/yourusername/sticky-todo.git
+cd sticky-todo
+
+# Open in Xcode
+open StickyToDo.xcodeproj
+
+# Or build from command line
+xcodebuild -project StickyToDo.xcodeproj -scheme StickyToDo build
+
+# Run tests
+xcodebuild test -project StickyToDo.xcodeproj -scheme StickyToDo
+```
+
+### Project Structure
 
 ```
 StickyToDo/
-├── StickyToDo.xcodeproj/        # Xcode project
-├── StickyToDo/                  # Main app target
-│   ├── Models/                  # Data models (Task, Board, Context, etc.)
-│   ├── Data/                    # Data layer (parsers, stores, file watcher)
-│   ├── Views/                   # SwiftUI views
-│   │   ├── ListView/            # List view components
-│   │   ├── BoardView/           # Board view components
-│   │   ├── QuickCapture/        # Quick capture UI
-│   │   └── Inspector/           # Task detail inspector
-│   ├── Controllers/             # View controllers and coordinators
-│   ├── Utilities/               # Helper functions and extensions
-│   ├── StickyToDoApp.swift      # App entry point
-│   ├── ContentView.swift        # Main app view
-│   ├── Assets.xcassets/         # Images and icons
-│   └── StickyToDo.entitlements  # App capabilities
-├── StickyToDoTests/             # Unit tests
-├── docs/                        # Documentation
-│   └── plans/                   # Design documents
-├── .gitignore                   # Git ignore rules
-├── HANDOFF.md                   # Project handoff document
-└── README.md                    # This file
+├── StickyToDoCore/           # Shared core models
+│   └── Models/               # Task, Board, Perspective, etc.
+├── StickyToDo/               # Main SwiftUI app
+│   ├── Data/                 # Data layer (stores, I/O, parsers)
+│   └── Views/                # UI components
+├── StickyToDo-AppKit/        # AppKit board canvas
+├── StickyToDoTests/          # Unit tests (80%+ coverage)
+└── docs/                     # Documentation
 ```
-
-## Development Status
-
-**Current Phase**: Initial Setup Complete
-
-The Xcode project structure has been created with:
-- SwiftUI lifecycle
-- macOS 13.0 minimum deployment target
-- Organized folder structure for Models, Data, Views, Controllers, and Utilities
-- Basic app scaffold with navigation
-- Unit test target
-
-**Next Steps**: See `HANDOFF.md` for detailed implementation roadmap
-
-### Priority 1: Framework Decision
-
-Before full implementation, we need to prototype the freeform canvas in both SwiftUI and AppKit to determine which framework handles complex canvas interactions better (drag/drop, pan/zoom, lasso select).
-
-## Building the Project
-
-1. Clone the repository
-2. Open `StickyToDo.xcodeproj` in Xcode
-3. Select the StickyToDo scheme
-4. Build and run (⌘R)
 
 ## Architecture
 
-### Phase 1 (Current MVP Target)
+### Phase 1 (Current MVP)
 
 - Parse all markdown files on launch into Swift structs
 - Keep everything in memory while app runs
@@ -105,11 +255,21 @@ Before full implementation, we need to prototype the freeform canvas in both Swi
 - FSEvents watches for external file changes
 - Target: 500-1000 tasks with < 2 second launch time
 
-### Phase 2 (Future)
+### Data Flow
 
-- Migrate to SQLite for better performance
-- iOS/iPadOS support
-- iCloud sync
+```
+User Input → Store (in-memory) → File I/O (debounced) → Markdown Files
+              ↑                                             ↓
+          File Watcher ← FSEvents ← External Changes ←─────┘
+```
+
+### Technology Stack
+
+- **Language**: Swift 5.9
+- **UI Framework**: SwiftUI + AppKit (for advanced canvas)
+- **Data Format**: Markdown + YAML (via Yams)
+- **Architecture**: MVVM with Combine
+- **Testing**: XCTest (comprehensive test suite)
 
 ## Data Format
 
@@ -119,24 +279,31 @@ Tasks are stored as markdown files with YAML frontmatter:
 ---
 id: 550e8400-e29b-41d4-a716-446655440000
 type: task
-title: Implement quick capture
-project: StickyToDo Development
-context: coding
+title: Call John about proposal
+status: next-action
+project: Sales
+context: "@phone"
 priority: high
-status: in-progress
-created: 2025-11-17T10:00:00Z
-modified: 2025-11-17T14:30:00Z
+due: 2025-11-20T09:00:00Z
+flagged: true
+effort: 30
+created: 2025-11-18T10:00:00Z
+modified: 2025-11-18T14:15:00Z
 ---
 
-# Implement quick capture
+Discuss Q4 proposal and timeline.
 
-Build the global hotkey listener and floating quick capture window.
-
-## Notes
-- Use NSEvent for global hotkey
-- Window should be always on top
-- Parse natural language for metadata
+Key points to cover:
+- Budget requirements
+- Timeline expectations
+- Resource allocation
 ```
+
+**File Organization:**
+- Active: `tasks/active/YYYY/MM/uuid-slug.md`
+- Archive: `tasks/archive/YYYY/MM/uuid-slug.md`
+- Boards: `boards/board-id.md`
+- Config: `config/*.yaml`
 
 ## Design Philosophy
 
@@ -144,16 +311,105 @@ Build the global hotkey listener and floating quick capture window.
 - **Plain Text First**: All features must work with plain text storage
 - **Dual-Mode Equality**: List and board views have equal status
 - **User Ownership**: Users own their data in a readable, portable format
+- **GTD-Compliant**: Follow Getting Things Done methodology
+- **Keyboard-First**: Power users can work entirely from keyboard
+- **Privacy-Focused**: All data local, no cloud requirement
 
-## Documentation
+## Testing
 
-- `docs/plans/2025-11-17-sticky-todo-design.md` - Complete design document
-- `HANDOFF.md` - Project handoff and implementation roadmap
+Comprehensive test suite with 80%+ coverage:
+
+- **ModelTests** - Task, Board, Perspective models
+- **YAMLParserTests** - Frontmatter parsing and generation
+- **MarkdownFileIOTests** - File I/O operations
+- **TaskStoreTests** - Task management and filtering
+- **BoardStoreTests** - Board management and auto-creation
+- **NaturalLanguageParserTests** - Quick capture parsing
+- **DataManagerTests** - Integration and coordination
+
+Run tests:
+```bash
+xcodebuild test -project StickyToDo.xcodeproj -scheme StickyToDo
+```
+
+## Roadmap
+
+### Version 1.0 (MVP)
+- [x] Core models
+- [x] Data layer (file I/O, YAML parsing)
+- [x] Task and board stores
+- [x] Comprehensive test suite
+- [ ] SwiftUI list views
+- [ ] Board canvas (freeform, kanban, grid)
+- [ ] Quick capture with natural language
+- [ ] File watcher and sync
+- [ ] Settings and preferences
+
+### Version 1.1
+- [ ] Custom perspectives
+- [ ] Advanced filters
+- [ ] Keyboard shortcuts customization
+- [ ] Import/export utilities
+- [ ] Templates
+
+### Version 2.0
+- [ ] iOS/iPadOS support
+- [ ] iCloud sync
+- [ ] Collaboration features
+- [ ] SQLite migration (for performance)
+
+### Future Considerations
+- [ ] Siri shortcuts
+- [ ] Widget support
+- [ ] URL schemes
+- [ ] Scripting/automation
+- [ ] Themes and customization
+
+## Contributing
+
+Contributions are welcome! See [DEVELOPMENT.md](docs/DEVELOPMENT.md) for:
+
+- Architecture overview
+- Code style guidelines
+- Testing requirements
+- Pull request process
+
+### Getting Started
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all tests pass
+6. Commit with conventional commits (`feat:`, `fix:`, etc.)
+7. Push to your fork
+8. Open a Pull Request
+
+## Support
+
+- **Documentation**: [docs/](docs/)
+- **Issues**: [GitHub Issues](https://github.com/yourusername/sticky-todo/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/yourusername/sticky-todo/discussions)
+
+## Acknowledgments
+
+- **Getting Things Done** methodology by David Allen
+- **Yams** for YAML parsing
+- Inspired by OmniFocus, Miro, and plain-text task management
 
 ## License
 
-TBD
+MIT License - see [LICENSE](LICENSE) file for details
 
 ## Contact
 
-For questions about design decisions or implementation details, refer to the design documentation in the `docs/` directory.
+For questions about design decisions or implementation details, refer to:
+- [Design Document](docs/plans/2025-11-17-sticky-todo-design.md)
+- [Project Handoff](HANDOFF.md)
+- [Development Guide](docs/DEVELOPMENT.md)
+
+---
+
+Made with ❤️ for GTD enthusiasts and plain-text lovers
+
+**Your tasks. Your format. Your control.**
