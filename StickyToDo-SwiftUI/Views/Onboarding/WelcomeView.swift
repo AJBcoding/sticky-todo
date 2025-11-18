@@ -127,44 +127,168 @@ struct WelcomeView: View {
     }
 
     private var featuresPage: some View {
-        VStack(spacing: 30) {
-            Spacer()
-
-            Text("Powerful Features")
+        VStack(spacing: 20) {
+            Text("21 Advanced Features")
                 .font(.system(size: 32, weight: .bold))
+                .padding(.top, 20)
 
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 20) {
-                FeatureCard(
-                    icon: "square.stack.3d.up",
-                    title: "Two Views",
-                    description: "Switch between list and board views",
-                    color: .blue
-                )
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+                    FeatureCard(
+                        icon: "plus.circle.fill",
+                        title: "Quick Capture",
+                        description: "Global hotkey (⌘⇧Space) for instant task creation",
+                        color: .blue
+                    )
 
-                FeatureCard(
-                    icon: "text.viewfinder",
-                    title: "Quick Capture",
-                    description: "Global hotkey for instant task creation",
-                    color: .green
-                )
+                    FeatureCard(
+                        icon: "tray.and.arrow.down",
+                        title: "Inbox Processing",
+                        description: "GTD-style task clarification and organization",
+                        color: .orange
+                    )
 
-                FeatureCard(
-                    icon: "doc.text",
-                    title: "Markdown Storage",
-                    description: "All data stored as plain text files",
-                    color: .orange
-                )
+                    FeatureCard(
+                        icon: "square.grid.2x2",
+                        title: "Board Canvas",
+                        description: "Freeform, Kanban, Grid, and List layouts",
+                        color: .purple
+                    )
 
-                FeatureCard(
-                    icon: "sparkles",
-                    title: "Smart Perspectives",
-                    description: "Inbox, Today, Upcoming, and more",
-                    color: .purple
-                )
+                    FeatureCard(
+                        icon: "sparkles",
+                        title: "Smart Perspectives",
+                        description: "Inbox, Today, Upcoming, Flagged, and custom views",
+                        color: .pink
+                    )
+
+                    FeatureCard(
+                        icon: "doc.text",
+                        title: "Markdown Storage",
+                        description: "Plain text files you can edit anywhere",
+                        color: .green
+                    )
+
+                    FeatureCard(
+                        icon: "waveform.circle",
+                        title: "Siri Shortcuts",
+                        description: "Voice commands for hands-free task management",
+                        color: .indigo
+                    )
+
+                    FeatureCard(
+                        icon: "arrow.clockwise",
+                        title: "Recurring Tasks",
+                        description: "Daily, weekly, monthly patterns",
+                        color: .teal
+                    )
+
+                    FeatureCard(
+                        icon: "list.bullet.indent",
+                        title: "Subtasks",
+                        description: "Break down complex tasks into steps",
+                        color: .cyan
+                    )
+
+                    FeatureCard(
+                        icon: "tag.fill",
+                        title: "Tags & Labels",
+                        description: "Flexible categorization beyond projects",
+                        color: .yellow
+                    )
+
+                    FeatureCard(
+                        icon: "paperclip",
+                        title: "Attachments",
+                        description: "Link files and documents to tasks",
+                        color: .orange
+                    )
+
+                    FeatureCard(
+                        icon: "timer",
+                        title: "Time Tracking",
+                        description: "Built-in timers for focused work",
+                        color: .red
+                    )
+
+                    FeatureCard(
+                        icon: "calendar.badge.plus",
+                        title: "Calendar Sync",
+                        description: "Two-way sync with macOS Calendar",
+                        color: .blue
+                    )
+
+                    FeatureCard(
+                        icon: "bell.badge",
+                        title: "Notifications",
+                        description: "Due date reminders and weekly review",
+                        color: .orange
+                    )
+
+                    FeatureCard(
+                        icon: "magnifyingglass",
+                        title: "Spotlight Search",
+                        description: "Find tasks from anywhere with ⌘Space",
+                        color: .green
+                    )
+
+                    FeatureCard(
+                        icon: "slider.horizontal.3",
+                        title: "Advanced Filters",
+                        description: "Powerful queries and custom perspectives",
+                        color: .purple
+                    )
+
+                    FeatureCard(
+                        icon: "square.and.arrow.up",
+                        title: "Export & Backup",
+                        description: "Archive to JSON, CSV, or Markdown",
+                        color: .gray
+                    )
+
+                    FeatureCard(
+                        icon: "paintbrush.fill",
+                        title: "Customization",
+                        description: "Themes, colors, and layout options",
+                        color: .pink
+                    )
+
+                    FeatureCard(
+                        icon: "keyboard",
+                        title: "Keyboard Shortcuts",
+                        description: "Navigate without touching the mouse",
+                        color: .teal
+                    )
+
+                    FeatureCard(
+                        icon: "chart.bar.fill",
+                        title: "Statistics",
+                        description: "Track productivity and completion trends",
+                        color: .indigo
+                    )
+
+                    FeatureCard(
+                        icon: "arrow.triangle.2.circlepath",
+                        title: "Weekly Review",
+                        description: "GTD-style review workflow",
+                        color: .cyan
+                    )
+
+                    FeatureCard(
+                        icon: "doc.on.doc",
+                        title: "Templates",
+                        description: "Reusable task templates for common workflows",
+                        color: .blue
+                    )
+                }
+                .padding(.horizontal, 20)
             }
-            .padding(.horizontal, 40)
+            .frame(maxHeight: 300)
 
-            Spacer()
+            Text("And much more...")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .padding(.bottom, 10)
         }
         .padding()
     }

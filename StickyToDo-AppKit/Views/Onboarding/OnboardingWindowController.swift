@@ -304,34 +304,70 @@ class FeaturesPageViewController: NSViewController {
 
     private func setupUI() {
         // Title
-        let titleLabel = NSTextField(labelWithString: "Powerful Features")
-        titleLabel.font = .systemFont(ofSize: 32, weight: .bold)
+        let titleLabel = NSTextField(labelWithString: "21 Advanced Features")
+        titleLabel.font = .systemFont(ofSize: 28, weight: .bold)
         titleLabel.alignment = .center
-        titleLabel.frame = NSRect(x: 150, y: 400, width: 400, height: 40)
+        titleLabel.frame = NSRect(x: 150, y: 450, width: 400, height: 35)
         view.addSubview(titleLabel)
+
+        // Scroll view for features
+        let scrollView = NSScrollView(frame: NSRect(x: 50, y: 50, width: 600, height: 380))
+        scrollView.hasVerticalScroller = true
+        scrollView.autohidesScrollers = true
+        scrollView.borderType = .noBorder
+        view.addSubview(scrollView)
+
+        // Container for features
+        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 580, height: 1000))
+        scrollView.documentView = containerView
 
         // Features grid
         let features = [
-            ("square.stack.3d.up", "Two Views", "Switch between list and board views"),
-            ("text.viewfinder", "Quick Capture", "Global hotkey for instant task creation"),
-            ("doc.text", "Markdown Storage", "All data stored as plain text files"),
-            ("sparkles", "Smart Perspectives", "Inbox, Today, Upcoming, and more")
+            ("plus.circle.fill", "Quick Capture", "⌘⇧Space for instant task creation"),
+            ("tray.and.arrow.down", "Inbox Processing", "GTD-style organization"),
+            ("square.grid.2x2", "Board Canvas", "Freeform, Kanban, Grid layouts"),
+            ("sparkles", "Smart Perspectives", "Inbox, Today, Upcoming, custom"),
+            ("doc.text", "Markdown Storage", "Plain text files you own"),
+            ("waveform.circle", "Siri Shortcuts", "Voice-controlled tasks"),
+            ("arrow.clockwise", "Recurring Tasks", "Daily, weekly, monthly"),
+            ("list.bullet.indent", "Subtasks", "Break down complex work"),
+            ("tag.fill", "Tags & Labels", "Flexible categorization"),
+            ("paperclip", "Attachments", "Link files to tasks"),
+            ("timer", "Time Tracking", "Built-in focus timers"),
+            ("calendar.badge.plus", "Calendar Sync", "Two-way integration"),
+            ("bell.badge", "Notifications", "Smart reminders"),
+            ("magnifyingglass", "Spotlight", "⌘Space search"),
+            ("slider.horizontal.3", "Advanced Filters", "Custom perspectives"),
+            ("square.and.arrow.up", "Export", "JSON, CSV, Markdown"),
+            ("paintbrush.fill", "Customization", "Themes and colors"),
+            ("keyboard", "Shortcuts", "Mouse-free navigation"),
+            ("chart.bar.fill", "Statistics", "Productivity tracking"),
+            ("arrow.triangle.2.circlepath", "Weekly Review", "GTD workflow"),
+            ("doc.on.doc", "Templates", "Reusable workflows")
         ]
 
-        var xPosition: CGFloat = 75
-        var yPosition: CGFloat = 250
+        var xPosition: CGFloat = 10
+        var yPosition: CGFloat = 900
         for (index, feature) in features.enumerated() {
             let featureView = createFeatureCard(icon: feature.0, title: feature.1, description: feature.2)
-            featureView.frame = NSRect(x: xPosition, y: yPosition, width: 250, height: 120)
-            view.addSubview(featureView)
+            featureView.frame = NSRect(x: xPosition, y: yPosition, width: 280, height: 90)
+            containerView.addSubview(featureView)
 
             if index % 2 == 1 {
-                xPosition = 75
-                yPosition -= 140
+                xPosition = 10
+                yPosition -= 100
             } else {
-                xPosition = 375
+                xPosition = 300
             }
         }
+
+        // Info label
+        let infoLabel = NSTextField(labelWithString: "And much more...")
+        infoLabel.font = .systemFont(ofSize: 11)
+        infoLabel.textColor = .secondaryLabelColor
+        infoLabel.alignment = .center
+        infoLabel.frame = NSRect(x: 200, y: 20, width: 300, height: 20)
+        view.addSubview(infoLabel)
     }
 
     private func createFeatureCard(icon: String, title: String, description: String) -> NSView {
