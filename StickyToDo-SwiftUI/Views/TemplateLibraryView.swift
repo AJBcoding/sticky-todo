@@ -10,7 +10,7 @@ import SwiftUI
 /// Template library view for managing task templates
 struct TemplateLibraryView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var templates: [TaskTemplate] = TaskTemplate.defaultTemplates
+    @ObservedObject var templateStore: TemplateStore
     @State private var selectedTemplate: TaskTemplate?
     @State private var showingNewTemplateSheet = false
     @State private var showingEditSheet = false
@@ -18,6 +18,10 @@ struct TemplateLibraryView: View {
     @State private var selectedCategory: String?
 
     var onCreate: ((Task) -> Void)?
+
+    private var templates: [TaskTemplate] {
+        templateStore.templates
+    }
 
     var body: some View {
         NavigationView {
@@ -54,15 +58,15 @@ struct TemplateLibraryView: View {
             }
             .sheet(isPresented: $showingNewTemplateSheet) {
                 NewTemplateSheet(onSave: { template in
-                    templates.append(template)
+                    templateStore.create(template)
+                    showingNewTemplateSheet = false
                 })
             }
             .sheet(isPresented: $showingEditSheet) {
                 if let template = selectedTemplate {
                     EditTemplateSheet(template: template, onSave: { updatedTemplate in
-                        if let index = templates.firstIndex(where: { $0.id == template.id }) {
-                            templates[index] = updatedTemplate
-                        }
+                        templateStore.update(updatedTemplate)
+                        showingEditSheet = false
                     })
                 }
             }
@@ -173,8 +177,7 @@ struct TemplateLibraryView: View {
     }
 
     private var categories: [String] {
-        let allCategories = templates.compactMap { $0.category }
-        return Array(Set(allCategories)).sorted()
+        templateStore.categories
     }
 
     private func templatesInCategory(_ category: String) -> [TaskTemplate] {
@@ -206,20 +209,14 @@ struct TemplateLibraryView: View {
     }
 
     private func useTemplate(_ template: TaskTemplate) {
-        var updatedTemplate = template
-        updatedTemplate.recordUse()
-
-        if let index = templates.firstIndex(where: { $0.id == template.id }) {
-            templates[index] = updatedTemplate
-        }
-
+        templateStore.recordUse(of: template)
         let task = template.createTask()
         onCreate?(task)
         dismiss()
     }
 
     private func deleteTemplate(_ template: TaskTemplate) {
-        templates.removeAll { $0.id == template.id }
+        templateStore.delete(template)
     }
 }
 
@@ -646,6 +643,15 @@ struct EditTemplateSheet: View {
 
 struct TemplateLibraryView_Previews: PreviewProvider {
     static var previews: some View {
-        TemplateLibraryView()
+        TemplateLibraryView(
+            templateStore: {
+                let store = TemplateStore(rootDirectory: FileManager.default.temporaryDirectory)
+                try? store.loadAll()
+                return store
+            }(),
+            onCreate: { task in
+                print("Created task: \(task.title)")
+            }
+        )
     }
 }

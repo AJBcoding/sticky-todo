@@ -242,6 +242,16 @@ struct CalendarSyncView: View {
         }
         .onAppear {
             selectedCalendar = calendarManager.defaultCalendar
+
+            // Request calendar permissions if not already authorized
+            if !calendarManager.hasAuthorization && calendarManager.authorizationStatus == .notDetermined {
+                calendarManager.requestAuthorization { result in
+                    if case .failure(let error) = result {
+                        errorMessage = error.localizedDescription
+                        showingError = true
+                    }
+                }
+            }
         }
     }
 

@@ -46,6 +46,7 @@ struct TaskListView: View {
 
     @State private var editingTaskId: UUID?
     @State private var hoveredTaskId: UUID?
+    @State private var searchResults: [SearchResult] = []
 
     // MARK: - Computed Properties
 
@@ -55,7 +56,11 @@ struct TaskListView: View {
 
         // Apply search filter if query is not empty
         if !searchQuery.isEmpty {
-            filtered = filtered.filter { $0.matchesSearch(searchQuery) }
+            // Use SearchManager for better relevance ranking and highlighting
+            searchResults = SearchManager.search(tasks: filtered, queryString: searchQuery)
+            return searchResults.map { $0.task }
+        } else {
+            searchResults = []
         }
 
         return filtered
@@ -92,7 +97,7 @@ struct TaskListView: View {
 
     private var listHeader: some View {
         HStack {
-            Text(perspective.displayTitle)
+            Text(!searchQuery.isEmpty ? "Search Results" : perspective.displayTitle)
                 .font(.title2)
                 .fontWeight(.bold)
 
@@ -106,6 +111,13 @@ struct TaskListView: View {
                 Text("(\(selectedTaskIds.count) selected)")
                     .font(.caption)
                     .foregroundColor(.accentColor)
+            }
+
+            if !searchQuery.isEmpty {
+                Text("for \"\(searchQuery)\"")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
             }
         }
         .padding()
