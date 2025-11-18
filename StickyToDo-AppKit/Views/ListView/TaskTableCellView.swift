@@ -13,6 +13,9 @@ class TaskTableCellView: NSTableCellView {
 
     // MARK: - UI Components
 
+    /// Color indicator bar (vertical bar on left side)
+    private let colorIndicator = NSView()
+
     /// Checkbox for task completion
     private let checkbox = NSButton(checkboxWithTitle: "", target: nil, action: nil)
 
@@ -84,6 +87,11 @@ class TaskTableCellView: NSTableCellView {
     // MARK: - Setup
 
     private func setupUI() {
+        // Configure color indicator
+        colorIndicator.wantsLayer = true
+        colorIndicator.layer?.cornerRadius = 1.5
+        addSubview(colorIndicator)
+
         // Configure checkbox
         checkbox.target = self
         checkbox.action = #selector(checkboxToggled(_:))
@@ -160,6 +168,18 @@ class TaskTableCellView: NSTableCellView {
         let bounds = self.bounds
         let padding: CGFloat = 8
         var xOffset: CGFloat = padding
+
+        // Color indicator (vertical bar on left side)
+        if !colorIndicator.isHidden {
+            let indicatorHeight: CGFloat = bounds.height * 0.6
+            colorIndicator.frame = NSRect(
+                x: padding,
+                y: (bounds.height - indicatorHeight) / 2,
+                width: 3,
+                height: indicatorHeight
+            )
+            xOffset += 3 + 6 // indicator width + spacing
+        }
 
         // Add indentation
         let indentWidth = CGFloat(indentationLevel) * 20
@@ -305,6 +325,14 @@ class TaskTableCellView: NSTableCellView {
             }
         } else {
             subtaskProgressLabel.isHidden = true
+        }
+
+        // Color indicator
+        if let colorHex = task.color, let color = NSColor(hexString: colorHex) {
+            colorIndicator.layer?.backgroundColor = color.cgColor
+            colorIndicator.isHidden = false
+        } else {
+            colorIndicator.isHidden = true
         }
 
         // Checkbox state

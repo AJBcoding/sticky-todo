@@ -62,10 +62,31 @@ struct TaskRowView: View {
     /// Callback when "Add Subtask" is tapped
     var onAddSubtask: (() -> Void)?
 
+    /// Callback when timer button is tapped
+    var onToggleTimer: (() -> Void)?
+
+    /// Callback when "Add to Calendar" is tapped
+    var onAddToCalendar: (() -> Void)?
+
+    /// Callback when "Add Reminder" is tapped
+    var onAddReminder: (() -> Void)?
+
+    /// Optional search highlights for this task
+    var searchHighlights: [SearchHighlight]?
+
     // MARK: - Body
 
     var body: some View {
         HStack(spacing: 12) {
+            // Color indicator bar (vertical bar on left side)
+            if let colorHex = task.color {
+                ColorIndicator(color: colorHex, style: .bar)
+            } else {
+                // Spacer to maintain alignment when no color
+                Spacer()
+                    .frame(width: 3)
+            }
+
             // Indentation spacer
             if indentationLevel > 0 {
                 Spacer()
@@ -111,16 +132,33 @@ struct TaskRowView: View {
                         editedTitle = task.title
                     }
                 } else {
-                    Text(task.title)
-                        .font(.body)
+                    // Display title with optional highlighting
+                    if let highlights = searchHighlights?.filter({ $0.fieldName == "title" }), !highlights.isEmpty {
+                        HighlightedText(
+                            text: task.title,
+                            highlights: highlights,
+                            font: .body,
+                            foregroundColor: task.status == .completed ? .secondary : .primary
+                        )
                         .strikethrough(task.status == .completed)
-                        .foregroundColor(task.status == .completed ? .secondary : .primary)
                         .lineLimit(2)
                         .onTapGesture {
                             if !isEditing {
                                 onTap()
                             }
                         }
+                    } else {
+                        Text(task.title)
+                            .font(.body)
+                            .strikethrough(task.status == .completed)
+                            .foregroundColor(task.status == .completed ? .secondary : .primary)
+                            .lineLimit(2)
+                            .onTapGesture {
+                                if !isEditing {
+                                    onTap()
+                                }
+                            }
+                    }
                 }
 
                 // Metadata badges
@@ -185,10 +223,54 @@ struct TaskRowView: View {
                             .font(.caption)
                             .foregroundColor(.yellow)
                     }
+
+                    // Time spent badge (if any time has been tracked)
+                    if let timeDesc = task.timeSpentDescription {
+                        MetadataBadge(
+                            text: timeDesc,
+                            color: .cyan,
+                            icon: "hourglass"
+                        )
+                    }
+
+                    // Calendar sync indicator
+                    if task.isSyncedToCalendar {
+                        Image(systemName: "calendar.badge.checkmark")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                            .help("Synced to calendar")
+                    }
                 }
             }
 
             Spacer()
+
+            // Timer button (always visible when hovering or timer is running)
+            if task.isTimerRunning || isHovered, let toggleTimer = onToggleTimer {
+                Button(action: {
+                    toggleTimer()
+                }) {
+                    if task.isTimerRunning {
+                        // Show pause icon and current duration
+                        HStack(spacing: 4) {
+                            if let duration = task.currentTimerDescription {
+                                Text(duration)
+                                    .font(.caption)
+                                    .foregroundColor(.orange)
+                            }
+                            Image(systemName: "pause.circle.fill")
+                                .foregroundColor(.orange)
+                        }
+                    } else {
+                        Image(systemName: "play.circle")
+                            .foregroundColor(.green)
+                    }
+                }
+                .buttonStyle(.plain)
+                .help(task.isTimerRunning ? "Stop timer" : "Start timer")
+            }
+
+            // Original spacer removed, now timer button or spacer
 
             // Hover actions
             if isHovered {
@@ -253,6 +335,38 @@ struct TaskRowView: View {
             task.flagged.toggle()
         }
 
+        // Timer option
+        if let toggleTimer = onToggleTimer {
+            Button(task.isTimerRunning ? "Stop Timer" : "Start Timer",
+                   systemImage: task.isTimerRunning ? "pause.circle" : "play.circle") {
+                toggleTimer()
+            }
+
+            Divider()
+        }
+
+        // Calendar option
+        if let addToCalendar = onAddToCalendar {
+            if task.isSyncedToCalendar {
+                Button("View in Calendar", systemImage: "calendar") {
+                    addToCalendar()
+                }
+            } else {
+                Button("Add to Calendar", systemImage: "calendar.badge.plus") {
+                    addToCalendar()
+                }
+            }
+        }
+
+        // Reminder option
+        if let addReminder = onAddReminder {
+            Button("Add Reminder", systemImage: task.notificationIds.isEmpty ? "bell.badge.plus" : "bell.badge") {
+                addReminder()
+            }
+
+            Divider()
+        }
+
         Menu("Change Status") {
             Button("Inbox") { task.status = .inbox }
             Button("Next Action") { task.status = .nextAction }
@@ -264,6 +378,20 @@ struct TaskRowView: View {
             Button("High") { task.priority = .high }
             Button("Medium") { task.priority = .medium }
             Button("Low") { task.priority = .low }
+        }
+
+        Menu("Set Color") {
+            // Quick color options
+            Button("Red") { task.color = ColorPalette.red.hex }
+            Button("Orange") { task.color = ColorPalette.orange.hex }
+            Button("Yellow") { task.color = ColorPalette.yellow.hex }
+            Button("Green") { task.color = ColorPalette.green.hex }
+            Button("Blue") { task.color = ColorPalette.blue.hex }
+            Button("Purple") { task.color = ColorPalette.purple.hex }
+
+            Divider()
+
+            Button("No Color") { task.color = nil }
         }
 
         Divider()
@@ -345,7 +473,9 @@ struct MetadataBadge: View {
         onToggleComplete: {},
         onDelete: {},
         onToggleExpansion: nil,
-        onAddSubtask: {}
+        onAddSubtask: {},
+        onToggleTimer: {},
+        searchHighlights: nil
     )
     .padding()
 }
@@ -366,7 +496,8 @@ struct MetadataBadge: View {
         onToggleComplete: {},
         onDelete: {},
         onToggleExpansion: {},
-        onAddSubtask: {}
+        onAddSubtask: {},
+        searchHighlights: nil
     )
     .padding()
 }
@@ -387,7 +518,9 @@ struct MetadataBadge: View {
         onToggleComplete: {},
         onDelete: {},
         onToggleExpansion: nil,
-        onAddSubtask: {}
+        onAddSubtask: {},
+        onToggleTimer: {},
+        searchHighlights: nil
     )
     .padding()
 }
@@ -407,7 +540,9 @@ struct MetadataBadge: View {
         onToggleComplete: {},
         onDelete: {},
         onToggleExpansion: nil,
-        onAddSubtask: {}
+        onAddSubtask: {},
+        onToggleTimer: {},
+        searchHighlights: nil
     )
     .padding()
 }

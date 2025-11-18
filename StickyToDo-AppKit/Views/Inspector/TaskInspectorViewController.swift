@@ -66,6 +66,9 @@ class TaskInspectorViewController: NSViewController {
     private let effortLabel = NSTextField(labelWithString: "Effort (minutes):")
     private let effortField = NSTextField()
 
+    private let colorLabel = NSTextField(labelWithString: "Color:")
+    private let colorPickerView = CompactColorPickerView()
+
     private let flaggedLabel = NSTextField(labelWithString: "Flagged:")
     private let flaggedCheckbox = NSButton(checkboxWithTitle: "", target: nil, action: nil)
 
@@ -200,6 +203,12 @@ class TaskInspectorViewController: NSViewController {
         // Effort
         effortField.placeholderString = "e.g., 30"
         addLabeledControl(label: effortLabel, control: effortField, controlHeight: 24)
+
+        // Color picker
+        colorPickerView.onColorSelected = { [weak self] color in
+            self?.colorChanged(color)
+        }
+        addLabeledControl(label: colorLabel, control: colorPickerView, controlHeight: 44)
 
         // Flagged
         let flaggedContainer = NSView(frame: NSRect(x: 0, y: 0, width: controlWidth, height: 24))
@@ -413,6 +422,9 @@ class TaskInspectorViewController: NSViewController {
             effortField.stringValue = ""
         }
 
+        // Color
+        colorPickerView.selectedColor = task.color
+
         // Flagged
         flaggedCheckbox.state = task.flagged ? .on : .off
 
@@ -537,6 +549,14 @@ class TaskInspectorViewController: NSViewController {
     @objc private func clearDeferDate(_ sender: Any?) {
         guard var task = currentTask else { return }
         task.defer = nil
+        task.modified = Date()
+        delegate?.inspectorDidUpdateTask(task)
+        currentTask = task
+    }
+
+    private func colorChanged(_ color: String?) {
+        guard var task = currentTask else { return }
+        task.color = color
         task.modified = Date()
         delegate?.inspectorDidUpdateTask(task)
         currentTask = task

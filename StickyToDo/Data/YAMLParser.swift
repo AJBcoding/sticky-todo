@@ -333,4 +333,40 @@ extension YAMLParser {
     static func generateBoard(_ board: Board, body: String) throws -> String {
         return try generateFrontmatter(board, body: body)
     }
+
+    /// Parses an array of Rules from YAML (without markdown frontmatter)
+    static func parseRules(_ yamlString: String) -> [Rule] {
+        do {
+            let decoder = YAMLDecoder()
+            let rules = try decoder.decode([Rule].self, from: yamlString)
+            logger?("Successfully parsed \(rules.count) rules")
+            return rules
+        } catch {
+            logger?("Failed to parse rules: \(error)")
+            return []
+        }
+    }
+
+    /// Generates YAML for an array of Rules (without markdown)
+    static func generateRules(_ rules: [Rule]) throws -> String {
+        do {
+            let encoder = YAMLEncoder()
+            let yaml = try encoder.encode(rules)
+            logger?("Successfully generated YAML for \(rules.count) rules")
+            return yaml
+        } catch {
+            logger?("Failed to generate rules YAML: \(error)")
+            throw YAMLParseError.encodingError(error)
+        }
+    }
+
+    /// Parses a TimeEntry from markdown with frontmatter
+    static func parseTimeEntry(_ markdown: String) -> (entry: TimeEntry?, body: String) {
+        return parseFrontmatter(markdown)
+    }
+
+    /// Generates markdown for a TimeEntry
+    static func generateTimeEntry(_ entry: TimeEntry, body: String) throws -> String {
+        return try generateFrontmatter(entry, body: body)
+    }
 }

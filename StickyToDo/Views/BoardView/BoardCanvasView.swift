@@ -474,6 +474,12 @@ struct TaskNoteView: View {
     }
 
     private var noteColor: Color {
+        // Use task color if available
+        if let colorHex = task.color {
+            return Color(hexString: colorHex).opacity(0.3)
+        }
+
+        // Otherwise, use status-based colors
         switch task.status {
         case .completed:
             return Color.green.opacity(0.2)

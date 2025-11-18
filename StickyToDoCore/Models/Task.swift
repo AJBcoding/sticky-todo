@@ -52,6 +52,17 @@ struct Task: Identifiable, Codable, Equatable {
     /// Estimated effort in minutes
     var effort: Int?
 
+    // MARK: - Time Tracking
+
+    /// Whether a timer is currently running for this task
+    var isTimerRunning: Bool
+
+    /// When the current timer started (nil if no timer is running)
+    var currentTimerStart: Date?
+
+    /// Total time spent on this task in seconds (accumulated from all time entries)
+    var totalTimeSpent: TimeInterval
+
     // MARK: - Organization
 
     /// Custom tags applied to this task
@@ -59,6 +70,9 @@ struct Task: Identifiable, Codable, Equatable {
 
     /// Attachments associated with this task
     var attachments: [Attachment]
+
+    /// Color for visual indication (hex string format, e.g., "#FF5733")
+    var color: String?
 
     // MARK: - Board Positioning
 
@@ -84,6 +98,16 @@ struct Task: Identifiable, Codable, Equatable {
     /// For recurring task instances: the occurrence date this instance represents
     var occurrenceDate: Date?
 
+    // MARK: - Calendar Integration
+
+    /// EventKit calendar event identifier (if synced with calendar)
+    var calendarEventId: String?
+
+    // MARK: - Notifications
+
+    /// Array of scheduled notification identifiers for this task
+    var notificationIds: [String]
+
     // MARK: - Timestamps
 
     /// When this task was created
@@ -108,14 +132,20 @@ struct Task: Identifiable, Codable, Equatable {
     ///   - flagged: Flagged state (defaults to false)
     ///   - priority: Priority level (defaults to .medium)
     ///   - effort: Estimated effort in minutes
+    ///   - isTimerRunning: Whether a timer is currently running (defaults to false)
+    ///   - currentTimerStart: When the current timer started (defaults to nil)
+    ///   - totalTimeSpent: Total time spent in seconds (defaults to 0)
     ///   - tags: Custom tags (defaults to empty)
     ///   - attachments: Task attachments (defaults to empty)
+    ///   - color: Color for visual indication (defaults to nil)
     ///   - positions: Initial board positions (defaults to empty)
     ///   - parentId: Reference to parent task (defaults to nil)
     ///   - subtaskIds: Array of child task IDs (defaults to empty)
     ///   - recurrence: Recurrence pattern for recurring tasks
     ///   - originalTaskId: ID of the template task (for recurring instances)
     ///   - occurrenceDate: Date this occurrence represents
+    ///   - calendarEventId: EventKit calendar event identifier
+    ///   - notificationIds: Array of scheduled notification identifiers (defaults to empty)
     ///   - created: Creation timestamp (defaults to now)
     ///   - modified: Modification timestamp (defaults to now)
     init(
@@ -131,14 +161,20 @@ struct Task: Identifiable, Codable, Equatable {
         flagged: Bool = false,
         priority: Priority = .medium,
         effort: Int? = nil,
+        isTimerRunning: Bool = false,
+        currentTimerStart: Date? = nil,
+        totalTimeSpent: TimeInterval = 0,
         tags: [Tag] = [],
         attachments: [Attachment] = [],
+        color: String? = nil,
         positions: [String: Position] = [:],
         parentId: UUID? = nil,
         subtaskIds: [UUID] = [],
         recurrence: Recurrence? = nil,
         originalTaskId: UUID? = nil,
         occurrenceDate: Date? = nil,
+        calendarEventId: String? = nil,
+        notificationIds: [String] = [],
         created: Date = Date(),
         modified: Date = Date()
     ) {
@@ -154,14 +190,20 @@ struct Task: Identifiable, Codable, Equatable {
         self.flagged = flagged
         self.priority = priority
         self.effort = effort
+        self.isTimerRunning = isTimerRunning
+        self.currentTimerStart = currentTimerStart
+        self.totalTimeSpent = totalTimeSpent
         self.tags = tags
         self.attachments = attachments
+        self.color = color
         self.positions = positions
         self.parentId = parentId
         self.subtaskIds = subtaskIds
         self.recurrence = recurrence
         self.originalTaskId = originalTaskId
         self.occurrenceDate = occurrenceDate
+        self.calendarEventId = calendarEventId
+        self.notificationIds = notificationIds
         self.created = created
         self.modified = modified
     }
@@ -299,6 +341,52 @@ extension Task {
 
         let baseDate = occurrenceDate ?? due ?? Date()
         return RecurrenceEngine.calculateNextOccurrence(from: baseDate, recurrence: recurrence)
+    }
+
+    /// Returns a human-readable description of total time spent
+    var timeSpentDescription: String? {
+        guard totalTimeSpent > 0 else { return nil }
+
+        let seconds = Int(totalTimeSpent)
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+
+        if hours > 0 {
+            return String(format: "%dh %dm", hours, minutes)
+        } else if minutes > 0 {
+            return String(format: "%dm", minutes)
+        } else {
+            return String(format: "%ds", seconds)
+        }
+    }
+
+    /// Returns the current timer duration if timer is running
+    var currentTimerDuration: TimeInterval? {
+        guard isTimerRunning, let start = currentTimerStart else { return nil }
+        return Date().timeIntervalSince(start)
+    }
+
+    /// Returns a human-readable description of current timer duration
+    var currentTimerDescription: String? {
+        guard let duration = currentTimerDuration else { return nil }
+
+        let seconds = Int(duration)
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+        let secs = seconds % 60
+
+        if hours > 0 {
+            return String(format: "%dh %dm %ds", hours, minutes, secs)
+        } else if minutes > 0 {
+            return String(format: "%dm %ds", minutes, secs)
+        } else {
+            return String(format: "%ds", secs)
+        }
+    }
+
+    /// Returns true if this task is synced to a calendar
+    var isSyncedToCalendar: Bool {
+        return calendarEventId != nil
     }
 }
 

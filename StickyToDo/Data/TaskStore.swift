@@ -48,6 +48,15 @@ final class TaskStore: ObservableObject {
     /// File I/O handler for reading/writing markdown files
     private let fileIO: MarkdownFileIO
 
+    /// Rules engine for automation
+    private var rulesEngine: RulesEngine
+
+    /// Activity log manager for change tracking
+    private var activityLogManager: ActivityLogManager?
+
+    /// Notification manager for scheduling notifications
+    private let notificationManager = NotificationManager.shared
+
     /// Serial queue for thread-safe access to tasks
     private let queue = DispatchQueue(label: "com.stickytodo.taskstore", qos: .userInitiated)
 
@@ -70,12 +79,74 @@ final class TaskStore: ObservableObject {
     /// - Parameter fileIO: The file I/O handler for persistence
     init(fileIO: MarkdownFileIO) {
         self.fileIO = fileIO
+        self.rulesEngine = RulesEngine()
     }
 
     /// Configure logging for task store operations
     /// - Parameter logger: A closure that receives log messages
     func setLogger(_ logger: @escaping (String) -> Void) {
         self.logger = logger
+        self.rulesEngine.setLogger(logger)
+        self.activityLogManager?.setLogger(logger)
+    }
+
+    /// Sets the activity log manager for change tracking
+    /// - Parameter manager: The activity log manager to use
+    func setActivityLogManager(_ manager: ActivityLogManager) {
+        self.activityLogManager = manager
+        self.activityLogManager?.setLogger(logger ?? { _ in })
+    }
+
+    // MARK: - Rules Management
+
+    /// Loads automation rules from file system
+    func loadRules() throws {
+        let rules = try fileIO.loadAllRules()
+        rulesEngine = RulesEngine(rules: rules)
+        rulesEngine.setLogger(logger ?? { _ in })
+        rulesEngine.buildProjectContextMappings(from: tasks)
+        logger?("Loaded \(rules.count) automation rules")
+    }
+
+    /// Saves automation rules to file system
+    func saveRules() throws {
+        try fileIO.writeAllRules(rulesEngine.rules)
+        logger?("Saved \(rulesEngine.rules.count) automation rules")
+    }
+
+    /// Returns all automation rules
+    var automationRules: [Rule] {
+        return rulesEngine.rules
+    }
+
+    /// Adds a new automation rule
+    func addRule(_ rule: Rule) {
+        rulesEngine.addRule(rule)
+        try? saveRules()
+    }
+
+    /// Updates an existing automation rule
+    func updateRule(_ rule: Rule) {
+        rulesEngine.updateRule(rule)
+        try? saveRules()
+    }
+
+    /// Removes an automation rule
+    func removeRule(_ rule: Rule) {
+        rulesEngine.removeRule(rule)
+        try? saveRules()
+    }
+
+    /// Toggles a rule's enabled state
+    func toggleRule(_ rule: Rule) {
+        rulesEngine.toggleRule(rule)
+        try? saveRules()
+    }
+
+    /// Loads built-in rule templates
+    func loadBuiltInRuleTemplates() {
+        rulesEngine.loadBuiltInTemplates()
+        try? saveRules()
     }
 
     // MARK: - Loading
@@ -128,12 +199,20 @@ final class TaskStore: ObservableObject {
             DispatchQueue.main.async {
                 // Check if task already exists
                 if !self.tasks.contains(where: { $0.id == task.id }) {
-                    self.tasks.append(task)
+                    // Apply automation rules for task creation
+                    let context = TaskChangeContext.taskCreated(task)
+                    let modifiedTask = self.rulesEngine.evaluateRules(for: context, task: task)
+
+                    self.tasks.append(modifiedTask)
                     self.updateDerivedData()
-                    self.logger?("Added task: \(task.title)")
+                    self.logger?("Added task: \(modifiedTask.title)")
+
+                    // Log the creation
+                    let log = ActivityLog.taskCreated(task: modifiedTask)
+                    self.activityLogManager?.addLog(log)
 
                     // Schedule debounced save
-                    self.scheduleSave(for: task)
+                    self.scheduleSave(for: modifiedTask)
                 }
             }
         }
@@ -148,8 +227,13 @@ final class TaskStore: ObservableObject {
 
             DispatchQueue.main.async {
                 if let index = self.tasks.firstIndex(where: { $0.id == task.id }) {
+                    let oldTask = self.tasks[index]
                     var updatedTask = task
                     updatedTask.modified = Date()
+
+                    // Generate activity logs for changes
+                    self.logTaskChanges(from: oldTask, to: updatedTask)
+
                     self.tasks[index] = updatedTask
                     self.updateDerivedData()
                     self.logger?("Updated task: \(task.title)")
@@ -173,6 +257,10 @@ final class TaskStore: ObservableObject {
                     self.tasks.remove(at: index)
                     self.updateDerivedData()
                     self.logger?("Deleted task: \(task.title)")
+
+                    // Log the deletion
+                    let log = ActivityLog.taskDeleted(task: task)
+                    self.activityLogManager?.addLog(log)
 
                     // Cancel any pending save
                     self.cancelSave(for: task.id)
@@ -878,5 +966,470 @@ extension TaskStore {
         updatedTask.recurrence = nil
         update(updatedTask)
         logger?("Stopped recurrence for task: \(template.title)")
+    }
+}
+
+// MARK: - Automation Rules Integration
+
+extension TaskStore {
+    /// Evaluates automation rules for a task change
+    /// - Parameters:
+    ///   - context: The change context
+    ///   - task: The task to evaluate
+    /// - Returns: The modified task after applying rules
+    func evaluateAutomationRules(for context: TaskChangeContext, task: Task) -> Task {
+        return rulesEngine.evaluateRules(for: context, task: task)
+    }
+
+    /// Updates a task and evaluates automation rules for the change
+    /// - Parameters:
+    ///   - task: The task to update
+    ///   - context: The change context describing what changed
+    func updateWithRules(_ task: Task, context: TaskChangeContext) {
+        queue.async { [weak self] in
+            guard let self = self else { return }
+
+            DispatchQueue.main.async {
+                if let index = self.tasks.firstIndex(where: { $0.id == task.id }) {
+                    // Apply automation rules
+                    var modifiedTask = self.rulesEngine.evaluateRules(for: context, task: task)
+                    modifiedTask.modified = Date()
+
+                    self.tasks[index] = modifiedTask
+                    self.updateDerivedData()
+                    self.logger?("Updated task with rules: \(task.title)")
+
+                    // Schedule debounced save
+                    self.scheduleSave(for: modifiedTask)
+                }
+            }
+        }
+    }
+
+    /// Checks all tasks for approaching due dates and triggers rules
+    func checkDueDateAutomation() {
+        let activeTasks = tasks.filter { $0.status != .completed }
+        let modifiedTasks = rulesEngine.checkDueDateRules(for: activeTasks)
+
+        // Update any tasks that were modified by rules
+        for modifiedTask in modifiedTasks {
+            if let index = tasks.firstIndex(where: { $0.id == modifiedTask.id }) {
+                if tasks[index] != modifiedTask {
+                    tasks[index] = modifiedTask
+                    scheduleSave(for: modifiedTask)
+                }
+            }
+        }
+    }
+
+    /// Returns statistics about rule usage
+    func getRuleStatistics() -> RuleStatistics {
+        return rulesEngine.getRuleStatistics()
+    }
+}
+
+// MARK: - Activity Logging
+
+extension TaskStore {
+    /// Logs changes between two task versions
+    /// - Parameters:
+    ///   - oldTask: The previous task state
+    ///   - newTask: The new task state
+    private func logTaskChanges(from oldTask: Task, to newTask: Task) {
+        guard let logManager = activityLogManager else { return }
+
+        var logs: [ActivityLog] = []
+
+        // Title changed
+        if oldTask.title != newTask.title {
+            logs.append(.titleChanged(task: newTask, from: oldTask.title, to: newTask.title))
+        }
+
+        // Status changed
+        if oldTask.status != newTask.status {
+            logs.append(.statusChanged(task: newTask, from: oldTask.status, to: newTask.status))
+
+            // Special cases for completion
+            if newTask.status == .completed && oldTask.status != .completed {
+                logs.append(.completed(task: newTask))
+            } else if oldTask.status == .completed && newTask.status != .completed {
+                logs.append(.uncompleted(task: newTask))
+            }
+        }
+
+        // Priority changed
+        if oldTask.priority != newTask.priority {
+            logs.append(.priorityChanged(task: newTask, from: oldTask.priority, to: newTask.priority))
+        }
+
+        // Project changed
+        if oldTask.project != newTask.project {
+            logs.append(.projectSet(task: newTask, from: oldTask.project, to: newTask.project))
+        }
+
+        // Context changed
+        if oldTask.context != newTask.context {
+            logs.append(.contextSet(task: newTask, from: oldTask.context, to: newTask.context))
+        }
+
+        // Due date changed
+        if oldTask.due != newTask.due {
+            logs.append(.dueDateChanged(task: newTask, from: oldTask.due, to: newTask.due))
+        }
+
+        // Defer date changed
+        if oldTask.defer != newTask.defer {
+            logs.append(.deferDateChanged(task: newTask, from: oldTask.defer, to: newTask.defer))
+        }
+
+        // Flagged changed
+        if oldTask.flagged != newTask.flagged {
+            if newTask.flagged {
+                logs.append(.flagged(task: newTask))
+            } else {
+                logs.append(.unflagged(task: newTask))
+            }
+        }
+
+        // Effort changed
+        if oldTask.effort != newTask.effort {
+            logs.append(.effortChanged(task: newTask, from: oldTask.effort, to: newTask.effort))
+        }
+
+        // Type changed
+        if oldTask.type != newTask.type {
+            logs.append(.typeChanged(task: newTask, from: oldTask.type, to: newTask.type))
+        }
+
+        // Notes changed
+        if oldTask.notes != newTask.notes {
+            logs.append(.notesChanged(task: newTask))
+        }
+
+        // Timer started
+        if !oldTask.isTimerRunning && newTask.isTimerRunning {
+            logs.append(.timerStarted(task: newTask))
+        }
+
+        // Timer stopped
+        if oldTask.isTimerRunning && !newTask.isTimerRunning {
+            if let start = oldTask.currentTimerStart {
+                let duration = Date().timeIntervalSince(start)
+                logs.append(.timerStopped(task: newTask, duration: duration))
+            }
+        }
+
+        // Tags added
+        let oldTagIds = Set(oldTask.tags.map { $0.id })
+        let newTagIds = Set(newTask.tags.map { $0.id })
+        let addedTagIds = newTagIds.subtracting(oldTagIds)
+        for tagId in addedTagIds {
+            if let tag = newTask.tags.first(where: { $0.id == tagId }) {
+                logs.append(.tagAdded(task: newTask, tag: tag))
+            }
+        }
+
+        // Tags removed
+        let removedTagIds = oldTagIds.subtracting(newTagIds)
+        for tagId in removedTagIds {
+            if let tag = oldTask.tags.first(where: { $0.id == tagId }) {
+                logs.append(.tagRemoved(task: newTask, tag: tag))
+            }
+        }
+
+        // Attachments added
+        let oldAttachmentIds = Set(oldTask.attachments.map { $0.id })
+        let newAttachmentIds = Set(newTask.attachments.map { $0.id })
+        let addedAttachmentIds = newAttachmentIds.subtracting(oldAttachmentIds)
+        for attachmentId in addedAttachmentIds {
+            if let attachment = newTask.attachments.first(where: { $0.id == attachmentId }) {
+                logs.append(.attachmentAdded(task: newTask, attachment: attachment))
+            }
+        }
+
+        // Attachments removed
+        let removedAttachmentIds = oldAttachmentIds.subtracting(newAttachmentIds)
+        for attachmentId in removedAttachmentIds {
+            if let attachment = oldTask.attachments.first(where: { $0.id == attachmentId }) {
+                logs.append(.attachmentRemoved(task: newTask, attachment: attachment))
+            }
+        }
+
+        // Add all logs at once
+        if !logs.isEmpty {
+            logManager.addLogs(logs)
+        }
+    }
+}
+
+// MARK: - Notification Management
+
+extension TaskStore {
+    /// Schedules notifications for a task based on its due and defer dates
+    /// - Parameter task: The task to schedule notifications for
+    private func scheduleNotifications(for task: inout Task) async {
+        // Cancel any existing notifications first
+        notificationManager.cancelNotifications(for: task)
+
+        var notificationIds: [String] = []
+
+        // Schedule due date notifications
+        if task.due != nil {
+            let dueIds = await notificationManager.scheduleDueNotifications(for: task)
+            notificationIds.append(contentsOf: dueIds)
+        }
+
+        // Schedule defer date notification
+        if let deferId = await notificationManager.scheduleDeferNotification(for: task) {
+            notificationIds.append(deferId)
+        }
+
+        // Schedule recurring task notification if applicable
+        if task.isRecurringInstance {
+            let recurringIds = await notificationManager.scheduleRecurringTaskNotification(for: task)
+            notificationIds.append(contentsOf: recurringIds)
+        }
+
+        // Update task with notification IDs
+        task.notificationIds = notificationIds
+
+        logger?("Scheduled \(notificationIds.count) notifications for task: \(task.title)")
+    }
+
+    /// Starts a timer for a task and schedules completion notification
+    /// - Parameters:
+    ///   - task: The task to start the timer for
+    ///   - duration: Timer duration in seconds
+    func startTimer(for task: Task, duration: TimeInterval) {
+        queue.async { [weak self] in
+            guard let self = self else { return }
+
+            DispatchQueue.main.async {
+                if let index = self.tasks.firstIndex(where: { $0.id == task.id }) {
+                    var updatedTask = self.tasks[index]
+                    updatedTask.isTimerRunning = true
+                    updatedTask.currentTimerStart = Date()
+                    updatedTask.modified = Date()
+
+                    // Schedule timer notification
+                    Task {
+                        if let timerId = await self.notificationManager.scheduleTimerNotification(for: updatedTask, duration: duration) {
+                            updatedTask.notificationIds.append(timerId)
+                        }
+                    }
+
+                    self.tasks[index] = updatedTask
+                    self.scheduleSave(for: updatedTask)
+                    self.logger?("Started timer for task: \(task.title)")
+                }
+            }
+        }
+    }
+
+    /// Stops the timer for a task
+    /// - Parameter task: The task to stop the timer for
+    func stopTimer(for task: Task) {
+        queue.async { [weak self] in
+            guard let self = self else { return }
+
+            DispatchQueue.main.async {
+                if let index = self.tasks.firstIndex(where: { $0.id == task.id }),
+                   let startTime = self.tasks[index].currentTimerStart {
+
+                    var updatedTask = self.tasks[index]
+
+                    // Calculate elapsed time
+                    let elapsed = Date().timeIntervalSince(startTime)
+                    updatedTask.totalTimeSpent += elapsed
+                    updatedTask.isTimerRunning = false
+                    updatedTask.currentTimerStart = nil
+                    updatedTask.modified = Date()
+
+                    // Cancel timer notification
+                    self.notificationManager.cancelNotifications(for: updatedTask)
+                    updatedTask.notificationIds.removeAll()
+
+                    self.tasks[index] = updatedTask
+                    self.scheduleSave(for: updatedTask)
+                    self.logger?("Stopped timer for task: \(task.title) (elapsed: \(elapsed)s)")
+                }
+            }
+        }
+    }
+
+    /// Updates the badge count based on overdue tasks
+    func updateBadgeCount() {
+        let overdueCount = overdueTasks().count
+        notificationManager.updateBadgeCount(overdueCount)
+    }
+
+    /// Completes a task and cancels its notifications
+    /// - Parameter task: The task to complete
+    func completeTask(_ task: Task) {
+        queue.async { [weak self] in
+            guard let self = self else { return }
+
+            DispatchQueue.main.async {
+                if let index = self.tasks.firstIndex(where: { $0.id == task.id }) {
+                    var completedTask = self.tasks[index]
+                    completedTask.status = .completed
+                    completedTask.modified = Date()
+
+                    // Cancel all notifications for this task
+                    self.notificationManager.cancelNotifications(for: completedTask)
+                    completedTask.notificationIds.removeAll()
+
+                    // Log activity if manager is available
+                    if let logManager = self.activityLogManager {
+                        logManager.addLog(.completed(task: completedTask))
+                    }
+
+                    self.tasks[index] = completedTask
+                    self.updateDerivedData()
+                    self.scheduleSave(for: completedTask)
+                    self.updateBadgeCount()
+
+                    self.logger?("Completed task: \(task.title)")
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Intent Donation for Siri Suggestions
+
+#if canImport(AppIntents)
+import AppIntents
+#endif
+
+@available(iOS 16.0, macOS 13.0, *)
+extension TaskStore {
+    /// Donates an add task intent when a user creates a task
+    /// - Parameter task: The task that was created
+    func donateAddTaskIntent(for task: Task) {
+        #if canImport(AppIntents)
+        let intent = AddTaskIntent()
+        intent.title = task.title
+        intent.notes = task.notes.isEmpty ? nil : task.notes
+        intent.project = task.project
+        intent.context = task.context
+        intent.priority = PriorityOption(rawValue: task.priority.rawValue) ?? .medium
+        intent.dueDate = task.due
+        intent.flagged = task.flagged
+
+        // Donation happens automatically when intent is created
+        logger?("Donated AddTask intent for: \(task.title)")
+        #endif
+    }
+
+    /// Donates a complete task intent when a user completes a task
+    /// - Parameter task: The task that was completed
+    func donateCompleteTaskIntent(for task: Task) {
+        #if canImport(AppIntents)
+        let intent = CompleteTaskIntent()
+        intent.task = TaskEntity.from(task: task)
+        intent.taskTitle = task.title
+
+        logger?("Donated CompleteTask intent for: \(task.title)")
+        #endif
+    }
+
+    /// Donates a flag task intent when a user flags/unflags a task
+    /// - Parameter task: The task that was flagged
+    func donateFlagTaskIntent(for task: Task) {
+        #if canImport(AppIntents)
+        let intent = FlagTaskIntent()
+        intent.task = TaskEntity.from(task: task)
+        intent.taskTitle = task.title
+        intent.flagged = task.flagged
+
+        logger?("Donated FlagTask intent for: \(task.title)")
+        #endif
+    }
+
+    /// Donates a start timer intent when a user starts a timer
+    /// - Parameter task: The task with running timer
+    func donateStartTimerIntent(for task: Task) {
+        #if canImport(AppIntents)
+        let intent = StartTimerIntent()
+        intent.task = TaskEntity.from(task: task)
+        intent.taskTitle = task.title
+
+        logger?("Donated StartTimer intent for: \(task.title)")
+        #endif
+    }
+
+    /// Donates a stop timer intent when a user stops a timer
+    func donateStopTimerIntent() {
+        #if canImport(AppIntents)
+        let intent = StopTimerIntent()
+
+        logger?("Donated StopTimer intent")
+        #endif
+    }
+
+    /// Donates add to project intent when task is added to a project
+    /// - Parameter task: The task added to a project
+    func donateAddToProjectIntent(for task: Task) {
+        #if canImport(AppIntents)
+        guard let project = task.project else { return }
+
+        let intent = AddTaskToProjectIntent()
+        intent.title = task.title
+        intent.project = project
+        intent.notes = task.notes.isEmpty ? nil : task.notes
+        intent.context = task.context
+
+        logger?("Donated AddToProject intent for: \(task.title) in \(project)")
+        #endif
+    }
+
+    /// Donates show inbox intent when user views inbox
+    func donateShowInboxIntent() {
+        #if canImport(AppIntents)
+        let intent = ShowInboxIntent()
+
+        logger?("Donated ShowInbox intent")
+        #endif
+    }
+
+    /// Donates show next actions intent when user views next actions
+    /// - Parameter context: Optional context filter
+    func donateShowNextActionsIntent(context: String? = nil) {
+        #if canImport(AppIntents)
+        let intent = ShowNextActionsIntent()
+        intent.contextFilter = context
+
+        logger?("Donated ShowNextActions intent")
+        #endif
+    }
+
+    /// Donates show today intent when user views today's tasks
+    func donateShowTodayIntent() {
+        #if canImport(AppIntents)
+        let intent = ShowTodayTasksIntent()
+
+        logger?("Donated ShowToday intent")
+        #endif
+    }
+
+    /// Donates show flagged intent when user views flagged tasks
+    /// - Parameter project: Optional project filter
+    func donateShowFlaggedIntent(project: String? = nil) {
+        #if canImport(AppIntents)
+        let intent = ShowFlaggedTasksIntent()
+        intent.projectFilter = project
+
+        logger?("Donated ShowFlagged intent")
+        #endif
+    }
+
+    /// Donates weekly review intent when user opens weekly review
+    func donateWeeklyReviewIntent() {
+        #if canImport(AppIntents)
+        let intent = ShowWeeklyReviewIntent()
+
+        logger?("Donated WeeklyReview intent")
+        #endif
     }
 }

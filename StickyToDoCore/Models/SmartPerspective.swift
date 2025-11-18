@@ -255,6 +255,14 @@ extension SmartPerspective {
                 case (.some(let lDate), .some(let rDate)):
                     return ascending ? lDate < rDate : lDate > rDate
                 }
+            case .defer:
+                switch (lhs.defer, rhs.defer) {
+                case (.none, .none): return false
+                case (.some, .none): return ascending
+                case (.none, .some): return !ascending
+                case (.some(let lDate), .some(let rDate)):
+                    return ascending ? lDate < rDate : lDate > rDate
+                }
             case .priority:
                 return ascending ?
                     lhs.priority.sortOrder < rhs.priority.sortOrder :

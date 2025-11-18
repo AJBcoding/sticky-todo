@@ -80,6 +80,9 @@ struct TaskInspectorView: View {
                 // Effort estimate
                 effortSection(task: task)
 
+                // Color picker
+                colorSection(task: task)
+
                 // Recurrence
                 recurrenceSection(task: task)
 
@@ -321,6 +324,18 @@ struct TaskInspectorView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Color Section
+
+    private func colorSection(task: Task) -> some View {
+        ColorPickerView(
+            selectedColor: binding(for: \.color),
+            allowNoColor: true,
+            onColorSelected: { _ in
+                onTaskModified()
+            }
+        )
     }
 
     // MARK: - Recurrence Section
