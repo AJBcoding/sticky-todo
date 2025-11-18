@@ -4,6 +4,7 @@
 //
 //  Integrates the AppKit canvas prototype with real task data.
 //  Manages board switching, task creation/updates, and position tracking.
+//  Supports multiple layout modes: Freeform, Kanban, and Grid.
 //
 
 import Cocoa
@@ -23,11 +24,17 @@ class BoardCanvasViewController: NSViewController {
 
     weak var delegate: BoardCanvasDelegate?
 
-    /// Scroll view containing the canvas
-    private var scrollView: NSScrollView!
+    /// Container for the current layout view
+    private var containerView: NSView!
 
-    /// Main canvas view (from prototype)
-    private var canvasView: CanvasView!
+    /// Current layout view (freeform, kanban, or grid)
+    private var currentLayoutView: NSView?
+
+    // Layout-specific views
+    private var scrollView: NSScrollView?
+    private var canvasView: CanvasView?
+    private var kanbanView: KanbanLayoutView?
+    private var gridView: GridLayoutView?
 
     /// Current board being displayed
     private(set) var currentBoard: Board? {
@@ -42,7 +49,7 @@ class BoardCanvasViewController: NSViewController {
     /// Tasks currently displayed on the board
     private var displayedTasks: [Task] = []
 
-    /// Map of task IDs to their sticky note views
+    /// Map of task IDs to their sticky note views (for freeform layout)
     private var taskNoteMap: [UUID: StickyNoteView] = [:]
 
     /// Currently selected task
@@ -53,13 +60,14 @@ class BoardCanvasViewController: NSViewController {
     }
 
     /// Toolbar items
-    private var zoomLabel: NSTextField!
+    private var zoomLabel: NSTextField?
+    private var layoutPicker: NSSegmentedControl?
 
     // MARK: - Lifecycle
 
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
-        setupCanvas()
+        setupContainerView()
         setupToolbar()
     }
 
@@ -69,35 +77,170 @@ class BoardCanvasViewController: NSViewController {
 
     // MARK: - Setup
 
-    private func setupCanvas() {
-        // Create scroll view
-        scrollView = NSScrollView(frame: view.bounds)
-        scrollView.autoresizingMask = [.width, .height]
-        scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = true
-        scrollView.backgroundColor = .white
-        scrollView.drawsBackground = true
-        scrollView.usesPredominantAxisScrolling = false
-        scrollView.horizontalScrollElasticity = .none
-        scrollView.verticalScrollElasticity = .none
-
-        // Create canvas (large virtual space)
-        canvasView = CanvasView(frame: NSRect(x: 0, y: 0, width: 5000, height: 5000))
-        canvasView.delegate = self
-
-        scrollView.documentView = canvasView
-        view.addSubview(scrollView)
-
-        // Center initial view
-        let centerPoint = NSPoint(
-            x: (canvasView.frame.width - scrollView.contentSize.width) / 2,
-            y: (canvasView.frame.height - scrollView.contentSize.height) / 2
-        )
-        canvasView.scroll(centerPoint)
+    private func setupContainerView() {
+        containerView = NSView(frame: view.bounds)
+        containerView.autoresizingMask = [.width, .height]
+        containerView.wantsLayer = true
+        view.addSubview(containerView)
     }
 
     private func setupToolbar() {
-        // Toolbar setup will be handled by MainWindowController
+        // Toolbar items will be created and added by the window controller
+        // This includes layout picker, zoom controls, and add button
+    }
+
+    /// Creates the layout picker control for the toolbar
+    func createLayoutPicker() -> NSSegmentedControl {
+        let picker = NSSegmentedControl(labels: ["Freeform", "Kanban", "Grid"], trackingMode: .selectOne)
+        picker.target = self
+        picker.action = #selector(layoutPickerChanged(_:))
+        picker.segmentStyle = .texturedRounded
+        picker.setWidth(100, forSegment: 0)
+        picker.setWidth(100, forSegment: 1)
+        picker.setWidth(100, forSegment: 2)
+
+        // Set initial selection based on current board layout
+        if let board = currentBoard {
+            switch board.layout {
+            case .freeform:
+                picker.selectedSegment = 0
+            case .kanban:
+                picker.selectedSegment = 1
+            case .grid:
+                picker.selectedSegment = 2
+            }
+        }
+
+        self.layoutPicker = picker
+        return picker
+    }
+
+    /// Creates the zoom label for the toolbar
+    func createZoomLabel() -> NSTextField {
+        let label = NSTextField(labelWithString: "100%")
+        label.font = .systemFont(ofSize: 11)
+        label.textColor = .secondaryLabelColor
+        self.zoomLabel = label
+        return label
+    }
+
+    // MARK: - Layout Management
+
+    private func setupLayoutView(for layout: Layout) {
+        // Remove current layout view
+        currentLayoutView?.removeFromSuperview()
+        currentLayoutView = nil
+
+        // Clear layout-specific views
+        scrollView = nil
+        canvasView = nil
+        kanbanView = nil
+        gridView = nil
+
+        guard let board = currentBoard else { return }
+
+        switch layout {
+        case .freeform:
+            setupFreeformLayout()
+        case .kanban:
+            setupKanbanLayout(board: board)
+        case .grid:
+            setupGridLayout(board: board)
+        }
+    }
+
+    private func setupFreeformLayout() {
+        // Create scroll view
+        let scroll = NSScrollView(frame: containerView.bounds)
+        scroll.autoresizingMask = [.width, .height]
+        scroll.hasVerticalScroller = true
+        scroll.hasHorizontalScroller = true
+        scroll.backgroundColor = .white
+        scroll.drawsBackground = true
+        scroll.usesPredominantAxisScrolling = false
+        scroll.horizontalScrollElasticity = .none
+        scroll.verticalScrollElasticity = .none
+
+        // Create canvas (large virtual space)
+        let canvas = CanvasView(frame: NSRect(x: 0, y: 0, width: 5000, height: 5000))
+        canvas.delegate = self
+
+        scroll.documentView = canvas
+        containerView.addSubview(scroll)
+
+        // Center initial view
+        let centerPoint = NSPoint(
+            x: (canvas.frame.width - scroll.contentSize.width) / 2,
+            y: (canvas.frame.height - scroll.contentSize.height) / 2
+        )
+        canvas.scroll(centerPoint)
+
+        scrollView = scroll
+        canvasView = canvas
+        currentLayoutView = scroll
+
+        // Show zoom controls
+        zoomLabel?.isHidden = false
+
+        // Update with current tasks
+        updateFreeformCanvas()
+    }
+
+    private func setupKanbanLayout(board: Board) {
+        let kanban = KanbanLayoutView(board: board)
+        kanban.frame = containerView.bounds
+        kanban.autoresizingMask = [.width, .height]
+        kanban.delegate = self
+        kanban.setTasks(displayedTasks)
+
+        containerView.addSubview(kanban)
+
+        kanbanView = kanban
+        currentLayoutView = kanban
+
+        // Hide zoom controls (not applicable for kanban)
+        zoomLabel?.isHidden = true
+    }
+
+    private func setupGridLayout(board: Board) {
+        let grid = GridLayoutView(board: board)
+        grid.frame = containerView.bounds
+        grid.autoresizingMask = [.width, .height]
+        grid.delegate = self
+        grid.setTasks(displayedTasks)
+
+        containerView.addSubview(grid)
+
+        gridView = grid
+        currentLayoutView = grid
+
+        // Hide zoom controls (not applicable for grid)
+        zoomLabel?.isHidden = true
+    }
+
+    // MARK: - Actions
+
+    @objc private func layoutPickerChanged(_ sender: NSSegmentedControl) {
+        guard var board = currentBoard else { return }
+
+        let newLayout: Layout
+        switch sender.selectedSegment {
+        case 0:
+            newLayout = .freeform
+        case 1:
+            newLayout = .kanban
+        case 2:
+            newLayout = .grid
+        default:
+            return
+        }
+
+        // Update board layout
+        board.layout = newLayout
+        currentBoard = board
+
+        // Save updated board configuration
+        // (This would typically be handled by the data manager)
     }
 
     // MARK: - Public Methods
@@ -116,7 +259,7 @@ class BoardCanvasViewController: NSViewController {
     /// Refreshes the board display
     func refreshBoard() {
         guard let board = currentBoard else {
-            clearCanvas()
+            clearAll()
             return
         }
 
@@ -125,8 +268,47 @@ class BoardCanvasViewController: NSViewController {
             task.matches(board.filter) && task.isVisible
         }
 
-        // Update canvas
-        updateCanvas()
+        // Setup appropriate layout view if needed
+        if currentLayoutView == nil || needsLayoutSwitch(to: board.layout) {
+            setupLayoutView(for: board.layout)
+        }
+
+        // Update the appropriate view
+        switch board.layout {
+        case .freeform:
+            updateFreeformCanvas()
+        case .kanban:
+            kanbanView?.setTasks(displayedTasks)
+        case .grid:
+            gridView?.setTasks(displayedTasks)
+        }
+
+        // Update layout picker
+        updateLayoutPicker(for: board.layout)
+    }
+
+    private func needsLayoutSwitch(to layout: Layout) -> Bool {
+        switch layout {
+        case .freeform:
+            return canvasView == nil
+        case .kanban:
+            return kanbanView == nil
+        case .grid:
+            return gridView == nil
+        }
+    }
+
+    private func updateLayoutPicker(for layout: Layout) {
+        guard let picker = layoutPicker else { return }
+
+        switch layout {
+        case .freeform:
+            picker.selectedSegment = 0
+        case .kanban:
+            picker.selectedSegment = 1
+        case .grid:
+            picker.selectedSegment = 2
+        }
     }
 
     /// Creates a new task at the given position
@@ -178,14 +360,15 @@ class BoardCanvasViewController: NSViewController {
         }
     }
 
-    // MARK: - Canvas Management
+    // MARK: - Canvas Management (Freeform Layout)
 
-    private func updateCanvas() {
-        // Remove all existing notes
-        canvasView.removeAllNotes()
-        taskNoteMap.removeAll()
-
+    private func updateFreeformCanvas() {
+        guard let canvas = canvasView else { return }
         guard let board = currentBoard else { return }
+
+        // Remove all existing notes
+        canvas.removeAllNotes()
+        taskNoteMap.removeAll()
 
         // Add notes for each task
         for task in displayedTasks {
@@ -207,15 +390,18 @@ class BoardCanvasViewController: NSViewController {
             )
 
             // Add to canvas
-            canvasView.addNote(noteView)
+            canvas.addNote(noteView)
             taskNoteMap[task.id] = noteView
         }
     }
 
-    private func clearCanvas() {
-        canvasView.removeAllNotes()
+    private func clearAll() {
+        canvasView?.removeAllNotes()
         taskNoteMap.removeAll()
         displayedTasks.removeAll()
+
+        kanbanView?.setTasks([])
+        gridView?.setTasks([])
     }
 
     private func findEmptySpot() -> Position {
@@ -320,32 +506,37 @@ class BoardCanvasViewController: NSViewController {
     }
 
     @objc func zoomIn(_ sender: Any?) {
-        canvasView.zoomLevel = min(canvasView.zoomLevel * 1.2, canvasView.maxZoom)
+        guard let canvas = canvasView else { return }
+        canvas.zoomLevel = min(canvas.zoomLevel * 1.2, canvas.maxZoom)
         updateZoomLabel()
     }
 
     @objc func zoomOut(_ sender: Any?) {
-        canvasView.zoomLevel = max(canvasView.zoomLevel / 1.2, canvasView.minZoom)
+        guard let canvas = canvasView else { return }
+        canvas.zoomLevel = max(canvas.zoomLevel / 1.2, canvas.minZoom)
         updateZoomLabel()
     }
 
     @objc func zoomActual(_ sender: Any?) {
-        canvasView.zoomLevel = 1.0
+        guard let canvas = canvasView else { return }
+        canvas.zoomLevel = 1.0
         updateZoomLabel()
     }
 
     @objc func zoomToFit(_ sender: Any?) {
-        canvasView.zoomToFit(animated: true)
+        guard let canvas = canvasView else { return }
+        canvas.zoomToFit(animated: true)
         updateZoomLabel()
     }
 
     private func updateZoomLabel() {
-        let zoomPercentage = Int(canvasView.zoomLevel * 100)
+        guard let canvas = canvasView else { return }
+        let zoomPercentage = Int(canvas.zoomLevel * 100)
         zoomLabel?.stringValue = "\(zoomPercentage)%"
     }
 }
 
-// MARK: - CanvasViewDelegate
+// MARK: - CanvasViewDelegate (Freeform Layout)
 
 extension BoardCanvasViewController: CanvasViewDelegate {
     func canvasView(_ canvasView: CanvasView, didAddNote noteView: StickyNoteView) {
@@ -387,6 +578,87 @@ extension BoardCanvasViewController: CanvasViewDelegate {
 
     func canvasView(_ canvasView: CanvasView, didChangeZoom zoom: CGFloat) {
         updateZoomLabel()
+    }
+}
+
+// MARK: - KanbanLayoutDelegate
+
+extension BoardCanvasViewController: KanbanLayoutDelegate {
+    func kanbanLayout(_ layout: KanbanLayoutView, didMoveTask task: Task, toColumn column: String) {
+        guard let board = currentBoard,
+              let taskIndex = allTasks.firstIndex(where: { $0.id == task.id }) else { return }
+
+        var updatedTask = allTasks[taskIndex]
+
+        // Apply metadata updates
+        let metadata = LayoutEngine.metadataUpdates(forTask: updatedTask, inColumn: column, onBoard: board)
+        applyMetadata(metadata, to: &updatedTask)
+
+        delegate?.boardCanvasDidUpdateTask(updatedTask)
+    }
+
+    func kanbanLayout(_ layout: KanbanLayoutView, didUpdateTask task: Task) {
+        delegate?.boardCanvasDidUpdateTask(task)
+    }
+
+    func kanbanLayout(_ layout: KanbanLayoutView, didSelectTask task: Task?) {
+        selectedTask = task
+    }
+
+    func kanbanLayout(_ layout: KanbanLayoutView, didCreateTaskInColumn column: String) {
+        guard let board = currentBoard else { return }
+
+        var task = Task(
+            type: .task,
+            title: "New Task",
+            status: .inbox
+        )
+
+        // Apply column metadata
+        let metadata = LayoutEngine.metadataUpdates(forTask: task, inColumn: column, onBoard: board)
+        applyMetadata(metadata, to: &task)
+
+        delegate?.boardCanvasDidCreateTask(task)
+    }
+}
+
+// MARK: - GridLayoutDelegate
+
+extension BoardCanvasViewController: GridLayoutDelegate {
+    func gridLayout(_ layout: GridLayoutView, didSelectTask task: Task?) {
+        selectedTask = task
+    }
+
+    func gridLayout(_ layout: GridLayoutView, didUpdateTask task: Task) {
+        delegate?.boardCanvasDidUpdateTask(task)
+    }
+
+    func gridLayout(_ layout: GridLayoutView, didMoveTask task: Task, toSection section: String) {
+        guard let taskIndex = allTasks.firstIndex(where: { $0.id == task.id }) else { return }
+
+        var updatedTask = allTasks[taskIndex]
+
+        // Apply metadata updates
+        let sections = LayoutEngine.sectionsForBoard(currentBoard!)
+        let metadata = LayoutEngine.metadataUpdates(forTask: updatedTask, inSection: section, sections: sections)
+        applyMetadata(metadata, to: &updatedTask)
+
+        delegate?.boardCanvasDidUpdateTask(updatedTask)
+    }
+
+    func gridLayout(_ layout: GridLayoutView, didCreateTaskInSection section: String) {
+        var task = Task(
+            type: .task,
+            title: "New Task",
+            status: .inbox
+        )
+
+        // Apply section metadata
+        let sections = LayoutEngine.sectionsForBoard(currentBoard!)
+        let metadata = LayoutEngine.metadataUpdates(forTask: task, inSection: section, sections: sections)
+        applyMetadata(metadata, to: &task)
+
+        delegate?.boardCanvasDidCreateTask(task)
     }
 }
 

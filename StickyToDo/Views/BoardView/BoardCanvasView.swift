@@ -3,20 +3,22 @@
 //  StickyToDo
 //
 //  SwiftUI board canvas integrating with task data.
+//  Supports multiple layout modes: Freeform, Kanban, and Grid.
 //
 
 import SwiftUI
 
-/// Board canvas view showing tasks as sticky notes on an infinite canvas
+/// Board canvas view showing tasks in different layouts
 ///
-/// Integrates the SwiftUI canvas prototype with the actual task data model.
+/// Integrates the SwiftUI layout views with the actual task data model.
 /// Handles task updates, board switching, and metadata changes on drag.
+/// Supports Freeform (infinite canvas), Kanban (columns), and Grid (sections) layouts.
 struct BoardCanvasView: View {
 
     // MARK: - Properties
 
     /// The current board being displayed
-    let board: Board
+    @Binding var board: Board
 
     /// All tasks to display on the board
     @Binding var tasks: [Task]
@@ -32,6 +34,9 @@ struct BoardCanvasView: View {
 
     /// Callback when a new task should be created
     var onCreateTask: (Position) -> Void
+
+    /// Callback when board layout is changed
+    var onLayoutChanged: ((Layout) -> Void)?
 
     // MARK: - State
 
@@ -50,17 +55,12 @@ struct BoardCanvasView: View {
     // MARK: - Body
 
     var body: some View {
-        ZStack {
-            // Canvas background with grid
-            canvasBackground
+        VStack(spacing: 0) {
+            // Layout picker toolbar
+            layoutPickerToolbar
 
-            // Task notes
-            canvasContent
-
-            // Lasso selection overlay (if active)
-            if let selection = viewModel.lassoSelection {
-                lassoSelectionOverlay(selection)
-            }
+            // Content based on layout mode
+            layoutContent
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(NSColor.windowBackgroundColor))
@@ -73,6 +73,98 @@ struct BoardCanvasView: View {
         .onChange(of: tasks) { _ in
             loadTasksIntoViewModel()
         }
+    }
+
+    // MARK: - Layout Picker Toolbar
+
+    private var layoutPickerToolbar: some View {
+        HStack {
+            Text(board.displayTitle)
+                .font(.headline)
+                .foregroundColor(.primary)
+
+            Spacer()
+
+            // Layout picker
+            Picker("Layout", selection: $board.layout) {
+                Text("Freeform").tag(Layout.freeform)
+                Text("Kanban").tag(Layout.kanban)
+                Text("Grid").tag(Layout.grid)
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 300)
+            .onChange(of: board.layout) { newLayout in
+                onLayoutChanged?(newLayout)
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(Color(NSColor.controlBackgroundColor))
+    }
+
+    // MARK: - Layout Content
+
+    @ViewBuilder
+    private var layoutContent: some View {
+        switch board.layout {
+        case .freeform:
+            freeformLayout
+        case .kanban:
+            kanbanLayout
+        case .grid:
+            gridLayout
+        }
+    }
+
+    // MARK: - Freeform Layout
+
+    private var freeformLayout: some View {
+        ZStack {
+            // Canvas background with grid
+            canvasBackground
+
+            // Task notes
+            canvasContent
+
+            // Lasso selection overlay (if active)
+            if let selection = viewModel.lassoSelection {
+                lassoSelectionOverlay(selection)
+            }
+        }
+    }
+
+    // MARK: - Kanban Layout
+
+    private var kanbanLayout: some View {
+        KanbanLayoutView(
+            board: board,
+            tasks: $tasks,
+            selectedTaskIds: $selectedTaskIds,
+            onTaskSelected: onTaskSelected,
+            onTaskUpdated: onTaskUpdated,
+            onCreateTask: { column in
+                // Create task in specific column
+                // For now, just call the general create task handler
+                onCreateTask(Position(x: 0, y: 0))
+            }
+        )
+    }
+
+    // MARK: - Grid Layout
+
+    private var gridLayout: some View {
+        GridLayoutView(
+            board: board,
+            tasks: $tasks,
+            selectedTaskIds: $selectedTaskIds,
+            onTaskSelected: onTaskSelected,
+            onTaskUpdated: onTaskUpdated,
+            onCreateTask: { section in
+                // Create task in specific section
+                // For now, just call the general create task handler
+                onCreateTask(Position(x: 0, y: 0))
+            }
+        )
     }
 
     // MARK: - Canvas Background
@@ -403,9 +495,9 @@ struct LassoSelection {
 
 // MARK: - Preview
 
-#Preview("Board Canvas") {
+#Preview("Board Canvas - Freeform") {
     BoardCanvasView(
-        board: .inbox,
+        board: .constant(Board.inbox),
         tasks: .constant([
             Task(
                 title: "Call John",
@@ -424,6 +516,71 @@ struct LassoSelection {
                 title: "Write report",
                 status: .completed,
                 positions: ["inbox": Position(x: 300, y: 350)]
+            ),
+        ]),
+        selectedTaskIds: .constant([]),
+        onTaskSelected: { _ in },
+        onTaskUpdated: { _ in },
+        onCreateTask: { _ in }
+    )
+}
+
+#Preview("Board Canvas - Kanban") {
+    BoardCanvasView(
+        board: .constant(Board(
+            id: "next-actions",
+            type: .status,
+            layout: .kanban,
+            filter: Filter(status: .nextAction),
+            columns: ["To Do", "In Progress", "Done"]
+        )),
+        tasks: .constant([
+            Task(
+                title: "Call John",
+                status: .inbox,
+                context: "@phone",
+                priority: .high
+            ),
+            Task(
+                title: "Review mockups",
+                status: .nextAction,
+                project: "Website"
+            ),
+            Task(
+                title: "Write report",
+                status: .completed
+            ),
+        ]),
+        selectedTaskIds: .constant([]),
+        onTaskSelected: { _ in },
+        onTaskUpdated: { _ in },
+        onCreateTask: { _ in }
+    )
+}
+
+#Preview("Board Canvas - Grid") {
+    BoardCanvasView(
+        board: .constant(Board(
+            id: "flagged",
+            type: .custom,
+            layout: .grid,
+            filter: Filter(flagged: true)
+        )),
+        tasks: .constant([
+            Task(
+                title: "Critical bug fix",
+                status: .nextAction,
+                priority: .high
+            ),
+            Task(
+                title: "Update docs",
+                status: .nextAction,
+                priority: .medium
+            ),
+            Task(
+                title: "Clean up",
+                status: .nextAction,
+                priority: .low
             ),
         ]),
         selectedTaskIds: .constant([]),

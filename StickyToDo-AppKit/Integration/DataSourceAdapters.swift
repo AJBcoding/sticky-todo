@@ -18,7 +18,7 @@ import Combine
 /// - Provides task data to NSTableView
 /// - Handles filtering, sorting, and grouping
 /// - Updates view automatically when data changes
-class TaskListDataSource: NSObject, NSTableViewDataSource {
+class TaskListDataSource: NSObject, NSTableViewDataSource, NSTableViewDelegate {
 
     // MARK: - Properties
 
@@ -108,6 +108,11 @@ class TaskListDataSource: NSObject, NSTableViewDataSource {
     // MARK: - Task Access
 
     func task(at row: Int) -> Task? {
+        if !isGroupingEnabled {
+            guard row >= 0 && row < displayedTasks.count else { return nil }
+            return displayedTasks[row]
+        }
+
         var currentRow = 0
 
         for group in groupedTasks {
@@ -127,6 +132,8 @@ class TaskListDataSource: NSObject, NSTableViewDataSource {
     }
 
     func groupName(at row: Int) -> String? {
+        guard isGroupingEnabled else { return nil }
+
         var currentRow = 0
 
         for group in groupedTasks {
@@ -146,7 +153,7 @@ class TaskListDataSource: NSObject, NSTableViewDataSource {
     // MARK: - NSTableViewDataSource
 
     func numberOfRows(in tableView: NSTableView) -> Int {
-        guard isGroupingEnabled else {
+        if !isGroupingEnabled {
             return displayedTasks.count
         }
 
@@ -165,6 +172,157 @@ class TaskListDataSource: NSObject, NSTableViewDataSource {
     func tableView(_ tableView: NSTableView, objectValueFor tableColumn: NSTableColumn?, row: Int) -> Any? {
         // Using view-based table view, so return nil
         return nil
+    }
+
+    // MARK: - NSTableViewDelegate
+
+    func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
+        let columnId = tableColumn?.identifier.rawValue ?? ""
+
+        // Check if this is a group header row
+        if let groupName = groupName(at: row) {
+            return makeGroupHeaderView(groupName: groupName, tableColumn: tableColumn, tableView: tableView)
+        }
+
+        // Regular task row
+        guard let task = task(at: row) else { return nil }
+
+        return makeTaskCellView(task: task, columnId: columnId, tableColumn: tableColumn, tableView: tableView)
+    }
+
+    private func makeGroupHeaderView(groupName: String, tableColumn: NSTableColumn?, tableView: NSTableView) -> NSView? {
+        guard tableColumn?.identifier.rawValue == "title" else {
+            return NSView() // Empty view for other columns
+        }
+
+        let view = NSTableCellView()
+        let textField = NSTextField(labelWithString: groupName.uppercased())
+        textField.font = .boldSystemFont(ofSize: 11)
+        textField.textColor = .secondaryLabelColor
+        textField.frame = NSRect(x: 24, y: 4, width: 300, height: 16)
+        textField.autoresizingMask = [.width]
+        view.addSubview(textField)
+
+        // Disclosure triangle
+        let isExpanded = expandedGroups.contains(groupName)
+        let triangle = NSTextField(labelWithString: isExpanded ? "▼" : "▶")
+        triangle.font = .systemFont(ofSize: 10)
+        triangle.textColor = .tertiaryLabelColor
+        triangle.frame = NSRect(x: 8, y: 4, width: 16, height: 16)
+        view.addSubview(triangle)
+
+        return view
+    }
+
+    private func makeTaskCellView(task: Task, columnId: String, tableColumn: NSTableColumn?, tableView: NSTableView) -> NSView? {
+        var cellView = tableView.makeView(withIdentifier: tableColumn!.identifier, owner: self) as? NSTableCellView
+
+        if cellView == nil {
+            cellView = NSTableCellView()
+            cellView?.identifier = tableColumn?.identifier
+        }
+
+        guard let cell = cellView else { return nil }
+
+        // Remove existing subviews
+        cell.subviews.forEach { $0.removeFromSuperview() }
+
+        switch columnId {
+        case "checkbox":
+            let checkbox = NSButton(checkboxWithTitle: "", target: self, action: #selector(checkboxToggled(_:)))
+            checkbox.state = task.status == .completed ? .on : .off
+            checkbox.frame = NSRect(x: 8, y: 6, width: 20, height: 18)
+            checkbox.representedObject = task
+            cell.addSubview(checkbox)
+
+        case "title":
+            let textField = NSTextField(labelWithString: task.title)
+            textField.isBordered = false
+            textField.backgroundColor = .clear
+            textField.font = .systemFont(ofSize: 13)
+            textField.textColor = task.status == .completed ? .secondaryLabelColor : .labelColor
+            textField.lineBreakMode = .byTruncatingTail
+            textField.frame = NSRect(x: 4, y: 6, width: 300, height: 18)
+            textField.autoresizingMask = [.width]
+            cell.addSubview(textField)
+            cell.textField = textField
+
+        case "project":
+            if let project = task.project {
+                let textField = NSTextField(labelWithString: project)
+                textField.isBordered = false
+                textField.backgroundColor = .clear
+                textField.font = .systemFont(ofSize: 12)
+                textField.textColor = .secondaryLabelColor
+                textField.frame = NSRect(x: 4, y: 6, width: 100, height: 18)
+                textField.autoresizingMask = [.width]
+                cell.addSubview(textField)
+            }
+
+        case "context":
+            if let context = task.context {
+                let textField = NSTextField(labelWithString: context)
+                textField.isBordered = false
+                textField.backgroundColor = .clear
+                textField.font = .systemFont(ofSize: 12)
+                textField.textColor = .secondaryLabelColor
+                textField.frame = NSRect(x: 4, y: 6, width: 80, height: 18)
+                textField.autoresizingMask = [.width]
+                cell.addSubview(textField)
+            }
+
+        case "due":
+            if let dueDesc = task.dueDescription {
+                let textField = NSTextField(labelWithString: dueDesc)
+                textField.isBordered = false
+                textField.backgroundColor = .clear
+                textField.font = .systemFont(ofSize: 12)
+                textField.textColor = task.isOverdue ? .systemRed : (task.isDueToday ? .systemOrange : .secondaryLabelColor)
+                textField.frame = NSRect(x: 4, y: 6, width: 90, height: 18)
+                textField.autoresizingMask = [.width]
+                cell.addSubview(textField)
+            }
+
+        case "priority":
+            let textField = NSTextField(labelWithString: task.priority.displayName)
+            textField.isBordered = false
+            textField.backgroundColor = .clear
+            textField.font = .systemFont(ofSize: 12)
+            textField.textColor = .secondaryLabelColor
+            textField.frame = NSRect(x: 4, y: 6, width: 60, height: 18)
+            textField.autoresizingMask = [.width]
+            cell.addSubview(textField)
+
+        case "effort":
+            if let effortDesc = task.effortDescription {
+                let textField = NSTextField(labelWithString: effortDesc)
+                textField.isBordered = false
+                textField.backgroundColor = .clear
+                textField.font = .systemFont(ofSize: 12)
+                textField.textColor = .tertiaryLabelColor
+                textField.frame = NSRect(x: 4, y: 6, width: 50, height: 18)
+                textField.autoresizingMask = [.width]
+                cell.addSubview(textField)
+            }
+
+        default:
+            break
+        }
+
+        return cell
+    }
+
+    func tableView(_ tableView: NSTableView, heightOfRow row: Int) -> CGFloat {
+        return groupName(at: row) != nil ? 24 : 28
+    }
+
+    func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool {
+        // Only select task rows, not group headers
+        return groupName(at: row) == nil
+    }
+
+    @objc private func checkboxToggled(_ sender: NSButton) {
+        // Handled by table view controller's delegate method
     }
 
     // MARK: - Drag and Drop Support
@@ -196,12 +354,15 @@ class TaskListDataSource: NSObject, NSTableViewDataSource {
 /// - Provides hierarchical data to NSOutlineView
 /// - Handles sections (Smart, Contexts, Projects, Custom)
 /// - Updates badge counts
-class PerspectiveSidebarDataSource: NSObject, NSOutlineViewDataSource {
+class PerspectiveSidebarDataSource: NSObject, NSOutlineViewDataSource, NSOutlineViewDelegate {
 
     // MARK: - Properties
 
     /// Reference to the board store
     private let boardStore: BoardStore
+
+    /// Reference to the task store for badge counts
+    private let taskStore: TaskStore
 
     /// Sidebar structure
     private var sidebarStructure: [(section: String, items: [SidebarItem])] = []
@@ -228,8 +389,9 @@ class PerspectiveSidebarDataSource: NSObject, NSOutlineViewDataSource {
 
     // MARK: - Initialization
 
-    init(boardStore: BoardStore) {
+    init(boardStore: BoardStore, taskStore: TaskStore) {
         self.boardStore = boardStore
+        self.taskStore = taskStore
         super.init()
 
         setupObservers()
@@ -243,6 +405,13 @@ class PerspectiveSidebarDataSource: NSObject, NSOutlineViewDataSource {
         boardStore.$boards
             .sink { [weak self] _ in
                 self?.buildSidebarStructure()
+            }
+            .store(in: &cancellables)
+
+        // Observe task changes to update badge counts
+        taskStore.$tasks
+            .sink { [weak self] _ in
+                self?.updateBadgeCounts()
             }
             .store(in: &cancellables)
     }
@@ -295,7 +464,26 @@ class PerspectiveSidebarDataSource: NSObject, NSOutlineViewDataSource {
         }
 
         sidebarStructure = structure
+        updateBadgeCounts()
         onDataChanged?()
+    }
+
+    private func updateBadgeCounts() {
+        var counts: [String: Int] = [:]
+
+        // Count tasks for each perspective
+        for perspective in perspectives {
+            let tasks = perspective.apply(to: taskStore.tasks)
+            counts[perspective.id] = tasks.count
+        }
+
+        // Count tasks for each board
+        for board in boardStore.boards {
+            let tasks = taskStore.tasks(for: board)
+            counts[board.id] = tasks.count
+        }
+
+        badgeCounts = counts
     }
 
     // MARK: - Item Access
@@ -351,6 +539,87 @@ class PerspectiveSidebarDataSource: NSObject, NSOutlineViewDataSource {
     func outlineView(_ outlineView: NSOutlineView, objectValueFor tableColumn: NSTableColumn?, byItem item: Any?) -> Any? {
         // Using view-based outline view
         return nil
+    }
+
+    // MARK: - NSOutlineViewDelegate
+
+    func outlineView(_ outlineView: NSOutlineView, viewFor tableColumn: NSTableColumn?, item: Any) -> NSView? {
+        if let sectionIndex = item as? Int {
+            // Section header
+            let view = NSTableCellView()
+            let textField = NSTextField(labelWithString: sidebarStructure[sectionIndex].section)
+            textField.isBordered = false
+            textField.backgroundColor = .clear
+            textField.font = .boldSystemFont(ofSize: 11)
+            textField.textColor = .tertiaryLabelColor
+            textField.frame = NSRect(x: 8, y: 4, width: 200, height: 16)
+            view.addSubview(textField)
+            return view
+        } else if let indexPath = item as? IndexPath {
+            // Regular item (perspective or board)
+            let sidebarItem = sidebarStructure[indexPath.section].items[indexPath.item]
+            return makeSidebarItemView(for: sidebarItem, outlineView: outlineView)
+        }
+        return nil
+    }
+
+    private func makeSidebarItemView(for item: SidebarItem, outlineView: NSOutlineView) -> NSView? {
+        let view = NSTableCellView()
+
+        // Icon
+        if let icon = item.icon {
+            let iconLabel = NSTextField(labelWithString: icon)
+            iconLabel.isBordered = false
+            iconLabel.backgroundColor = .clear
+            iconLabel.font = .systemFont(ofSize: 14)
+            iconLabel.alignment = .center
+            iconLabel.frame = NSRect(x: 8, y: 6, width: 16, height: 16)
+            view.addSubview(iconLabel)
+        }
+
+        // Title
+        let titleLabel = NSTextField(labelWithString: item.title)
+        titleLabel.isBordered = false
+        titleLabel.backgroundColor = .clear
+        titleLabel.font = .systemFont(ofSize: 13)
+        titleLabel.lineBreakMode = .byTruncatingTail
+        titleLabel.frame = NSRect(x: item.icon != nil ? 30 : 8, y: 6, width: 120, height: 16)
+        view.addSubview(titleLabel)
+        view.textField = titleLabel
+
+        // Badge
+        if let count = badgeCount(for: item), count > 0 {
+            let badgeLabel = NSTextField(labelWithString: "\(count)")
+            badgeLabel.isBordered = false
+            badgeLabel.backgroundColor = NSColor.secondaryLabelColor.withAlphaComponent(0.2)
+            badgeLabel.textColor = .secondaryLabelColor
+            badgeLabel.font = .systemFont(ofSize: 11, weight: .medium)
+            badgeLabel.alignment = .center
+            badgeLabel.wantsLayer = true
+            badgeLabel.layer?.cornerRadius = 9
+            badgeLabel.frame = NSRect(x: 164, y: 5, width: 28, height: 18)
+            view.addSubview(badgeLabel)
+        }
+
+        return view
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, heightOfRowByItem item: Any) -> CGFloat {
+        if item is Int {
+            return 24 // Section header
+        } else {
+            return 28 // Regular item
+        }
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, shouldSelectItem item: Any) -> Bool {
+        // Only select items, not sections
+        return item is IndexPath
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, isGroupItem item: Any) -> Bool {
+        // Sections are group items
+        return item is Int
     }
 }
 
@@ -423,16 +692,20 @@ class BoardCanvasDataSource: NSObject {
 
     func updateTaskPosition(_ task: Task, position: Position) {
         var updatedTask = task
-        updatedTask.position = position
-        taskStore.update(updatedTask)
+        if let board = currentBoard {
+            updatedTask.setPosition(position, for: board.id)
+            taskStore.update(updatedTask)
+        }
     }
 
     func createTaskAt(position: Position, title: String) -> Task {
-        var task = Task(title: title)
-        task.position = position
+        var task = Task(type: .note, title: title)
 
-        // Apply board's context/project
+        // Set position for current board
         if let board = currentBoard {
+            task.setPosition(position, for: board.id)
+
+            // Apply board's context/project
             switch board.type {
             case .context:
                 if let contextName = board.filter.context {

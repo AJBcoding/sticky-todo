@@ -7,6 +7,8 @@
 //
 
 import Cocoa
+import UniformTypeIdentifiers
+import StickyToDoCore
 
 @main
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -117,11 +119,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu(title: "File")
 
         menu.addItem(NSMenuItem(title: "New Task", action: #selector(newTask(_:)), keyEquivalent: "n"))
-        menu.addItem(NSMenuItem(title: "Quick Capture", action: #selector(showQuickCapture(_:)), keyEquivalent: "n") {
+        menu.addItem(NSMenuItem(title: "Quick Capture", action: #selector(showQuickCapture(_:)), keyEquivalent: " ") {
             $0.keyEquivalentModifierMask = [.command, .shift]
         })
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Open...", action: #selector(openDocument(_:)), keyEquivalent: "o"))
+        menu.addItem(NSMenuItem(title: "Open Folder...", action: #selector(openDocument(_:)), keyEquivalent: "o"))
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Import Tasks...", action: #selector(importTasks(_:)), keyEquivalent: "i") {
+            $0.keyEquivalentModifierMask = [.command, .shift]
+        })
+        menu.addItem(NSMenuItem(title: "Export Tasks...", action: #selector(exportTasks(_:)), keyEquivalent: "e") {
+            $0.keyEquivalentModifierMask = [.command, .shift]
+        })
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Save", action: #selector(save(_:)), keyEquivalent: "s"))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w"))
 
@@ -137,8 +148,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem(title: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x"))
         menu.addItem(NSMenuItem(title: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c"))
         menu.addItem(NSMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v"))
-        menu.addItem(NSMenuItem(title: "Delete", action: #selector(NSText.delete(_:)), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Delete", action: #selector(deleteTask(_:)), keyEquivalent: "\u{7F}"))
         menu.addItem(NSMenuItem(title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Complete Task", action: #selector(completeTask(_:)), keyEquivalent: "\r") {
+            $0.keyEquivalentModifierMask = [.command]
+        })
+        menu.addItem(NSMenuItem(title: "Duplicate Task", action: #selector(duplicateTask(_:)), keyEquivalent: "d"))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Find...", action: #selector(performFind(_:)), keyEquivalent: "f"))
         menu.addItem(NSMenuItem(title: "Find Next", action: #selector(performFindNext(_:)), keyEquivalent: "g"))
@@ -150,16 +166,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func createViewMenu() -> NSMenu {
         let menu = NSMenu(title: "View")
 
-        menu.addItem(NSMenuItem(title: "Show List View", action: #selector(showListView(_:)), keyEquivalent: "l"))
-        menu.addItem(NSMenuItem(title: "Show Board View", action: #selector(showBoardView(_:)), keyEquivalent: "b"))
+        menu.addItem(NSMenuItem(title: "List View", action: #selector(showListView(_:)), keyEquivalent: "l"))
+        menu.addItem(NSMenuItem(title: "Board View", action: #selector(showBoardView(_:)), keyEquivalent: "b"))
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Show Inspector", action: #selector(toggleInspector(_:)), keyEquivalent: "i") {
+        menu.addItem(NSMenuItem(title: "Toggle Inspector", action: #selector(toggleInspector(_:)), keyEquivalent: "i") {
+            $0.keyEquivalentModifierMask = [.command, .option]
+        })
+        menu.addItem(NSMenuItem(title: "Toggle Sidebar", action: #selector(toggleSidebar(_:)), keyEquivalent: "s") {
             $0.keyEquivalentModifierMask = [.command, .option]
         })
         menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Search", action: #selector(performFind(_:)), keyEquivalent: "f"))
+        menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Zoom In", action: #selector(zoomIn(_:)), keyEquivalent: "+"))
         menu.addItem(NSMenuItem(title: "Zoom Out", action: #selector(zoomOut(_:)), keyEquivalent: "-"))
-        menu.addItem(NSMenuItem(title: "Actual Size", action: #selector(zoomActual(_:)), keyEquivalent: "0"))
+        menu.addItem(NSMenuItem(title: "Reset Zoom", action: #selector(zoomActual(_:)), keyEquivalent: "0"))
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Refresh", action: #selector(refresh(_:)), keyEquivalent: "r"))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Enter Full Screen", action: #selector(NSWindow.toggleFullScreen(_:)), keyEquivalent: "f") {
             $0.keyEquivalentModifierMask = [.command, .control]
@@ -172,9 +195,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu(title: "Go")
 
         menu.addItem(NSMenuItem(title: "Inbox", action: #selector(goToInbox(_:)), keyEquivalent: "1"))
-        menu.addItem(NSMenuItem(title: "Next Actions", action: #selector(goToNextActions(_:)), keyEquivalent: "2"))
-        menu.addItem(NSMenuItem(title: "Flagged", action: #selector(goToFlagged(_:)), keyEquivalent: "3"))
-        menu.addItem(NSMenuItem(title: "Due Soon", action: #selector(goToDueSoon(_:)), keyEquivalent: "4"))
+        menu.addItem(NSMenuItem(title: "Today", action: #selector(goToToday(_:)), keyEquivalent: "2"))
+        menu.addItem(NSMenuItem(title: "Upcoming", action: #selector(goToUpcoming(_:)), keyEquivalent: "3"))
+        menu.addItem(NSMenuItem(title: "Someday", action: #selector(goToSomeday(_:)), keyEquivalent: "4"))
+        menu.addItem(NSMenuItem(title: "Completed", action: #selector(goToCompleted(_:)), keyEquivalent: "5"))
+        menu.addItem(NSMenuItem(title: "Boards", action: #selector(goToBoards(_:)), keyEquivalent: "6"))
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "All Tasks", action: #selector(goToAllTasks(_:)), keyEquivalent: "0") {
+            $0.keyEquivalentModifierMask = [.command, .shift]
+        })
 
         return menu
     }
@@ -195,6 +224,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu(title: "Help")
 
         menu.addItem(NSMenuItem(title: "StickyToDo Help", action: #selector(showHelp(_:)), keyEquivalent: "?"))
+        menu.addItem(NSMenuItem(title: "Keyboard Shortcuts", action: #selector(showKeyboardShortcuts(_:)), keyEquivalent: "/"))
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Report an Issue...", action: #selector(reportIssue(_:)), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "View on GitHub...", action: #selector(viewOnGitHub(_:)), keyEquivalent: ""))
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Performance Monitor...", action: #selector(showPerformanceMonitor(_:)), keyEquivalent: ""))
 
         return menu
     }
@@ -273,26 +308,126 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("Zoom actual")
     }
 
+    @objc private func save(_ sender: Any?) {
+        print("Save")
+        // TODO: Trigger save operation
+    }
+
+    @objc private func importTasks(_ sender: Any?) {
+        let openPanel = NSOpenPanel()
+        openPanel.canChooseFiles = true
+        openPanel.canChooseDirectories = false
+        openPanel.allowsMultipleSelection = false
+        openPanel.allowedContentTypes = [.json, .plainText]
+        openPanel.prompt = "Import Tasks"
+
+        openPanel.begin { response in
+            if response == .OK, let url = openPanel.url {
+                print("Import from: \(url.path)")
+                // TODO: Import tasks
+            }
+        }
+    }
+
+    @objc private func exportTasks(_ sender: Any?) {
+        let savePanel = NSSavePanel()
+        savePanel.allowedContentTypes = [.json]
+        savePanel.nameFieldStringValue = "tasks.json"
+        savePanel.prompt = "Export Tasks"
+
+        savePanel.begin { response in
+            if response == .OK, let url = savePanel.url {
+                print("Export to: \(url.path)")
+                // TODO: Export tasks
+            }
+        }
+    }
+
+    @objc private func deleteTask(_ sender: Any?) {
+        print("Delete task")
+        // TODO: Delete selected task
+    }
+
+    @objc private func completeTask(_ sender: Any?) {
+        print("Complete task")
+        // TODO: Mark task as complete
+    }
+
+    @objc private func duplicateTask(_ sender: Any?) {
+        print("Duplicate task")
+        // TODO: Duplicate selected task
+    }
+
+    @objc private func toggleSidebar(_ sender: Any?) {
+        print("Toggle sidebar")
+        // TODO: Toggle sidebar visibility
+    }
+
+    @objc private func refresh(_ sender: Any?) {
+        print("Refresh")
+        // TODO: Refresh data
+    }
+
     @objc private func goToInbox(_ sender: Any?) {
         print("Go to Inbox")
+        mainWindowController?.switchToPerspective("inbox")
     }
 
-    @objc private func goToNextActions(_ sender: Any?) {
-        print("Go to Next Actions")
+    @objc private func goToToday(_ sender: Any?) {
+        print("Go to Today")
+        mainWindowController?.switchToPerspective("today")
     }
 
-    @objc private func goToFlagged(_ sender: Any?) {
-        print("Go to Flagged")
+    @objc private func goToUpcoming(_ sender: Any?) {
+        print("Go to Upcoming")
+        mainWindowController?.switchToPerspective("upcoming")
     }
 
-    @objc private func goToDueSoon(_ sender: Any?) {
-        print("Go to Due Soon")
+    @objc private func goToSomeday(_ sender: Any?) {
+        print("Go to Someday")
+        mainWindowController?.switchToPerspective("someday")
+    }
+
+    @objc private func goToCompleted(_ sender: Any?) {
+        print("Go to Completed")
+        mainWindowController?.switchToPerspective("completed")
+    }
+
+    @objc private func goToBoards(_ sender: Any?) {
+        print("Go to Boards")
+        mainWindowController?.switchToPerspective("boards")
+    }
+
+    @objc private func goToAllTasks(_ sender: Any?) {
+        print("Go to All Tasks")
+        mainWindowController?.switchToPerspective("all")
     }
 
     @objc private func showHelp(_ sender: Any?) {
         if let url = URL(string: "https://github.com/yourusername/stickytodo") {
             NSWorkspace.shared.open(url)
         }
+    }
+
+    @objc private func showKeyboardShortcuts(_ sender: Any?) {
+        // TODO: Show keyboard shortcuts window
+        print("Show keyboard shortcuts")
+    }
+
+    @objc private func reportIssue(_ sender: Any?) {
+        if let url = URL(string: "https://github.com/yourusername/stickytodo/issues") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    @objc private func viewOnGitHub(_ sender: Any?) {
+        if let url = URL(string: "https://github.com/yourusername/stickytodo") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    @objc private func showPerformanceMonitor(_ sender: Any?) {
+        PerformanceMonitor.shared.printReport()
     }
 }
 

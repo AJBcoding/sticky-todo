@@ -19,19 +19,31 @@ import SwiftUI
 /// - View mode switching (List/Board)
 struct ContentView: View {
 
+    // MARK: - Environment
+
+    /// Task store managing all tasks
+    @EnvironmentObject var taskStore: TaskStore
+
+    /// Board store managing all boards
+    @EnvironmentObject var boardStore: BoardStore
+
+    /// Data manager for operations
+    @EnvironmentObject var dataManager: DataManager
+
+    /// Configuration manager
+    @EnvironmentObject var configManager: ConfigurationManager
+
     // MARK: - State
 
-    /// All tasks
-    @State private var tasks: [Task] = []
-
-    /// All perspectives
-    @State private var perspectives: [Perspective] = Perspective.builtInPerspectives
-
-    /// All boards
-    @State private var boards: [Board] = Board.builtInBoards
+    /// All perspectives (built-in)
+    private var perspectives: [Perspective] {
+        Perspective.builtInPerspectives
+    }
 
     /// All contexts
-    @State private var contexts: [Context] = Context.defaults
+    private var contexts: [Context] {
+        Context.defaults
+    }
 
     /// Selected perspective ID
     @State private var selectedPerspectiveId: String? = "inbox"
@@ -51,12 +63,16 @@ struct ContentView: View {
     /// Column visibility
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
+    /// Error alert
+    @State private var showingError = false
+    @State private var errorMessage: String = ""
+
     // MARK: - Computed Properties
 
     /// Currently selected task
     private var selectedTask: Task? {
         guard let firstId = selectedTaskIds.first else { return nil }
-        return tasks.first(where: { $0.id == firstId })
+        return taskStore.task(withID: firstId)
     }
 
     /// Currently active perspective
@@ -68,7 +84,7 @@ struct ContentView: View {
     /// Currently active board
     private var currentBoard: Board? {
         guard let id = selectedBoardId else { return nil }
-        return boards.first(where: { $0.id == id })
+        return boardStore.board(withID: id)
     }
 
     // MARK: - Body
@@ -78,8 +94,8 @@ struct ContentView: View {
             // Sidebar
             PerspectiveSidebarView(
                 perspectives: perspectives,
-                boards: boards,
-                tasks: tasks,
+                boards: boardStore.visibleBoards,
+                tasks: taskStore.tasks,
                 selectedPerspectiveId: $selectedPerspectiveId,
                 selectedBoardId: $selectedBoardId,
                 viewMode: $viewMode
@@ -94,7 +110,7 @@ struct ContentView: View {
             TaskInspectorView(
                 task: selectedTaskBinding,
                 contexts: contexts,
-                boards: boards,
+                boards: boardStore.visibleBoards,
                 onDelete: deleteSelectedTask,
                 onDuplicate: duplicateSelectedTask,
                 onTaskModified: saveTask
@@ -106,8 +122,13 @@ struct ContentView: View {
             toolbarContent
         }
         .searchable(text: $searchQuery, prompt: "Search tasks...")
+        .alert("Error", isPresented: $showingError) {
+            Button("OK") {}
+        } message: {
+            Text(errorMessage)
+        }
         .onAppear {
-            loadSampleData()
+            loadInitialState()
         }
     }
 
@@ -120,7 +141,7 @@ struct ContentView: View {
             if let perspective = currentPerspective {
                 TaskListView(
                     perspective: perspective,
-                    tasks: $tasks,
+                    tasks: taskStoreTasksBinding,
                     selectedTaskIds: $selectedTaskIds,
                     searchQuery: $searchQuery,
                     onTaskSelected: handleTaskSelected,
@@ -133,14 +154,13 @@ struct ContentView: View {
         } else {
             // Board view
             if let board = currentBoard {
-                CanvasContainerView(
+                BoardCanvasView(
                     board: board,
-                    tasks: $tasks,
+                    tasks: taskStoreTasksBinding,
                     selectedTaskIds: $selectedTaskIds,
                     onTaskSelected: handleTaskSelected,
                     onTaskUpdated: saveTask,
-                    onCreateTask: createTaskAtPosition,
-                    onBoardSettingsRequested: showBoardSettings
+                    onCreateTask: createTaskAtPosition
                 )
             } else {
                 placeholderView
@@ -200,19 +220,29 @@ struct ContentView: View {
 
     // MARK: - Bindings
 
+    /// Binding to the TaskStore's tasks array
+    private var taskStoreTasksBinding: Binding<[Task]> {
+        Binding(
+            get: { taskStore.tasks },
+            set: { newTasks in
+                // The TaskStore manages its own updates, so we don't set directly
+                // This is primarily for child views that expect a binding
+            }
+        )
+    }
+
+    /// Binding to the currently selected task
     private var selectedTaskBinding: Binding<Task?> {
         Binding(
             get: {
                 guard let firstId = selectedTaskIds.first,
-                      let task = tasks.first(where: { $0.id == firstId }) else {
+                      let task = taskStore.task(withID: firstId) else {
                     return nil
                 }
                 return task
             },
             set: { newValue in
-                if let newValue = newValue,
-                   let index = tasks.firstIndex(where: { $0.id == newValue.id }) {
-                    tasks[index] = newValue
+                if let newValue = newValue {
                     saveTask(newValue)
                 }
             }
@@ -228,10 +258,10 @@ struct ContentView: View {
     private func addNewTask() {
         let task = Task(
             title: "New Task",
-            status: .inbox
+            status: configManager.defaultTaskStatus
         )
 
-        tasks.append(task)
+        taskStore.add(task)
         selectedTaskIds = [task.id]
     }
 
@@ -244,32 +274,39 @@ struct ContentView: View {
         )
 
         task.setPosition(position, for: board.id)
-        tasks.append(task)
+
+        // If this is a context or project board, apply that metadata
+        if board.type == .context {
+            task.context = board.id
+        } else if board.type == .project {
+            task.project = board.displayTitle
+        }
+
+        taskStore.add(task)
         selectedTaskIds = [task.id]
     }
 
     private func deleteTask(_ taskId: UUID) {
-        tasks.removeAll(where: { $0.id == taskId })
+        guard let task = taskStore.task(withID: taskId) else { return }
+        taskStore.delete(task)
         selectedTaskIds.remove(taskId)
     }
 
     private func deleteSelectedTask() {
-        guard let taskId = selectedTaskIds.first else { return }
-        deleteTask(taskId)
+        guard let task = selectedTask else { return }
+        taskStore.delete(task)
+        selectedTaskIds.removeAll()
     }
 
     private func duplicateSelectedTask() {
         guard let task = selectedTask else { return }
         let duplicate = task.duplicate()
-        tasks.append(duplicate)
+        taskStore.add(duplicate)
         selectedTaskIds = [duplicate.id]
     }
 
     private func saveTask(_ task: Task) {
-        if let index = tasks.firstIndex(where: { $0.id == task.id }) {
-            tasks[index] = task
-        }
-        // In a real app, this would save to disk/database
+        taskStore.update(task)
     }
 
     private func showSettings() {
@@ -279,72 +316,44 @@ struct ContentView: View {
         print("Settings requested")
     }
 
+    // MARK: - Initialization
+
+    private func loadInitialState() {
+        // Restore last selected perspective/board from configuration
+        if let lastPerspectiveID = configManager.lastPerspectiveID {
+            selectedPerspectiveId = lastPerspectiveID
+            viewMode = .list
+        } else if let lastBoardID = configManager.lastBoardID {
+            selectedBoardId = lastBoardID
+            viewMode = .board
+        } else {
+            // Default to inbox
+            selectedPerspectiveId = "inbox"
+            viewMode = .list
+        }
+
+        // Restore view mode
+        viewMode = configManager.lastViewMode
+
+        // Auto-create boards for contexts and projects
+        autoCreateBoards()
+    }
+
+    private func autoCreateBoards() {
+        // Auto-create context boards
+        for context in contexts {
+            _ = boardStore.getOrCreateContextBoard(for: context)
+        }
+
+        // Auto-create project boards
+        for projectName in taskStore.projects {
+            _ = boardStore.getOrCreateProjectBoard(for: projectName)
+        }
+    }
+
     private func showBoardSettings() {
         // Open board settings
         print("Board settings requested")
-    }
-
-    // MARK: - Sample Data
-
-    private func loadSampleData() {
-        // Load some sample tasks for demonstration
-        tasks = [
-            Task(
-                title: "Call John about proposal",
-                notes: "Discuss the new website design and timeline",
-                status: .nextAction,
-                project: "Website Redesign",
-                context: "@phone",
-                due: Date().addingTimeInterval(86400),
-                flagged: true,
-                priority: .high,
-                effort: 30,
-                positions: ["inbox": Position(x: 200, y: 150)]
-            ),
-            Task(
-                title: "Review mockups",
-                notes: "Check the latest design iterations",
-                status: .nextAction,
-                project: "Website Redesign",
-                context: "@computer",
-                priority: .medium,
-                effort: 60,
-                positions: ["inbox": Position(x: 400, y: 200)]
-            ),
-            Task(
-                title: "Buy groceries",
-                status: .nextAction,
-                context: "@errands",
-                priority: .low,
-                effort: 45
-            ),
-            Task(
-                title: "Write Q4 report",
-                status: .waiting,
-                project: "Q4 Planning",
-                context: "@computer",
-                due: Date().addingTimeInterval(7 * 86400),
-                priority: .high,
-                effort: 120
-            ),
-            Task(
-                title: "Research new tools",
-                status: .someday,
-                project: "Q4 Planning",
-                context: "@computer"
-            ),
-        ]
-
-        // Add context boards for each context
-        for context in contexts {
-            boards.append(Board.contextBoard(for: context))
-        }
-
-        // Add project boards
-        let projectNames = Set(tasks.compactMap { $0.project })
-        for projectName in projectNames {
-            boards.append(Board.projectBoard(name: projectName))
-        }
     }
 }
 

@@ -56,17 +56,21 @@ struct SettingsView: View {
 // MARK: - General Settings
 
 struct GeneralSettingsView: View {
-    @AppStorage("storageLocation") private var storageLocation = "~/Documents/StickyToDo"
-    @AppStorage("defaultBoard") private var defaultBoard = "inbox"
-    @AppStorage("autoHideInactiveDays") private var autoHideInactiveDays = 7
-    @AppStorage("autoSaveInterval") private var autoSaveInterval = 0.5
+    @EnvironmentObject var configManager: ConfigurationManager
+    @EnvironmentObject var dataManager: DataManager
+
+    @State private var showingRestartAlert = false
 
     var body: some View {
         Form {
             Section("Data Storage") {
                 HStack {
-                    TextField("Storage Location", text: $storageLocation)
+                    TextField("Storage Location", text: Binding(
+                        get: { configManager.dataDirectory.path },
+                        set: { _ in }
+                    ))
                         .textFieldStyle(.roundedBorder)
+                        .disabled(true)
 
                     Button("Choose...") {
                         chooseStorageLocation()
@@ -76,18 +80,25 @@ struct GeneralSettingsView: View {
                 Text("All tasks and boards are stored in plain text markdown files")
                     .font(.caption)
                     .foregroundColor(.secondary)
+
+                if showingRestartAlert {
+                    Text("⚠️ Restart required to use new location")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
             }
 
             Section("Defaults") {
-                Picker("Default Board on Launch", selection: $defaultBoard) {
-                    Text("Inbox").tag("inbox")
-                    Text("Next Actions").tag("next-actions")
-                    Text("Flagged").tag("flagged")
+                Picker("Default Board on Launch", selection: $configManager.defaultBoardOnLaunch) {
+                    Text("Last Used").tag(nil as String?)
+                    Text("Inbox").tag("inbox" as String?)
+                    Text("Next Actions").tag("next-actions" as String?)
+                    Text("Flagged").tag("flagged" as String?)
                 }
 
                 HStack {
                     Text("Auto-hide Inactive Projects After")
-                    TextField("Days", value: $autoHideInactiveDays, format: .number)
+                    TextField("Days", value: $configManager.autoHideInactiveBoardsDays, format: .number)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 60)
                     Text("days")
@@ -97,7 +108,7 @@ struct GeneralSettingsView: View {
             Section("Performance") {
                 HStack {
                     Text("Auto-save Interval")
-                    TextField("Seconds", value: $autoSaveInterval, format: .number)
+                    TextField("Seconds", value: $configManager.autoSaveInterval, format: .number)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 80)
                     Text("seconds")
@@ -121,7 +132,8 @@ struct GeneralSettingsView: View {
         panel.message = "Choose where to store your StickyToDo data"
 
         if panel.runModal() == .OK, let url = panel.url {
-            storageLocation = url.path
+            configManager.changeDataDirectory(to: url)
+            showingRestartAlert = true
         }
     }
 }
@@ -129,10 +141,11 @@ struct GeneralSettingsView: View {
 // MARK: - Quick Capture Settings
 
 struct QuickCaptureSettingsView: View {
-    @AppStorage("quickCaptureEnabled") private var quickCaptureEnabled = true
-    @AppStorage("quickCaptureHotkey") private var quickCaptureHotkey = "⌘⇧Space"
-    @AppStorage("enableNaturalLanguageParsing") private var enableNaturalLanguageParsing = true
-    @AppStorage("showRecentSuggestions") private var showRecentSuggestions = true
+    @EnvironmentObject var configManager: ConfigurationManager
+
+    @State private var quickCaptureEnabled = true
+    @State private var enableNaturalLanguageParsing = true
+    @State private var showRecentSuggestions = true
 
     var body: some View {
         Form {
@@ -141,7 +154,7 @@ struct QuickCaptureSettingsView: View {
 
                 HStack {
                     Text("Hotkey")
-                    Text(quickCaptureHotkey)
+                    Text("⌘⇧Space")
                         .font(.body.monospaced())
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
@@ -153,6 +166,7 @@ struct QuickCaptureSettingsView: View {
                     Button("Change...") {
                         changeHotkey()
                     }
+                    .disabled(true) // TODO: Implement hotkey recorder
                 }
 
                 if !GlobalHotkeyManager.hasAccessibilityPermissions() {
@@ -265,6 +279,9 @@ struct QuickCaptureSettingsView: View {
 // MARK: - Contexts Settings
 
 struct ContextsSettingsView: View {
+    @EnvironmentObject var configManager: ConfigurationManager
+    @EnvironmentObject var dataManager: DataManager
+
     @State private var contexts: [Context] = Context.defaults
     @State private var selectedContext: Context?
     @State private var showingAddContext = false
@@ -419,13 +436,15 @@ struct AddContextSheet: View {
 // MARK: - Boards Settings
 
 struct BoardsSettingsView: View {
+    @EnvironmentObject var configManager: ConfigurationManager
+    @EnvironmentObject var dataManager: DataManager
+
     @State private var showInbox = true
     @State private var showNextActions = true
     @State private var showFlagged = true
     @State private var showWaiting = true
     @State private var showSomeday = true
-
-    @AppStorage("defaultBoardLayout") private var defaultBoardLayout = "freeform"
+    @State private var defaultBoardLayout = "freeform"
 
     var body: some View {
         Form {
@@ -463,14 +482,15 @@ struct BoardsSettingsView: View {
 // MARK: - Advanced Settings
 
 struct AdvancedSettingsView: View {
-    @AppStorage("enableFileWatching") private var enableFileWatching = true
-    @AppStorage("conflictResolution") private var conflictResolution = "prompt"
-    @AppStorage("debugMode") private var debugMode = false
+    @EnvironmentObject var configManager: ConfigurationManager
+    @EnvironmentObject var dataManager: DataManager
+
+    @State private var conflictResolution = "prompt"
 
     var body: some View {
         Form {
             Section("File Watching") {
-                Toggle("Watch for External Changes", isOn: $enableFileWatching)
+                Toggle("Watch for External Changes", isOn: $configManager.enableFileWatching)
 
                 Text("Automatically reload tasks when files are modified externally")
                     .font(.caption)
@@ -484,21 +504,21 @@ struct AdvancedSettingsView: View {
             }
 
             Section("Debug") {
-                Toggle("Enable Debug Mode", isOn: $debugMode)
+                Toggle("Enable Debug Mode", isOn: $configManager.enableLogging)
 
                 Text("Show additional debugging information in console")
                     .font(.caption)
                     .foregroundColor(.secondary)
 
-                if debugMode {
+                if configManager.enableLogging {
                     Button("Export Diagnostic Logs") {
                         exportLogs()
                     }
 
-                    Button("Clear All Data") {
-                        clearAllData()
+                    Button("Reset to Defaults") {
+                        configManager.resetToDefaults()
                     }
-                    .foregroundColor(.red)
+                    .foregroundColor(.orange)
                 }
             }
 
@@ -527,11 +547,14 @@ struct AdvancedSettingsView: View {
     }
 
     private func exportLogs() {
-        print("Export logs requested")
-    }
-
-    private func clearAllData() {
-        print("Clear all data requested")
+        // Export diagnostic logs
+        if let statistics = dataManager?.statistics {
+            print("=== StickyToDo Diagnostic Information ===")
+            print(statistics.description)
+            print("Data Directory: \(configManager.dataDirectory.path)")
+            print("File Watching: \(configManager.enableFileWatching)")
+            print("Logging: \(configManager.enableLogging)")
+        }
     }
 
     private func openDocumentation() {

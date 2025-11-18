@@ -12,56 +12,140 @@ struct StickyToDoApp: App {
 
     // MARK: - Properties
 
+    /// Global data manager (single source of truth)
+    @StateObject private var dataManager = DataManager.shared
+
+    /// Configuration manager
+    @StateObject private var configManager = ConfigurationManager.shared
+
     /// Global hotkey manager for quick capture
     @StateObject private var hotkeyManager = GlobalHotkeyManager()
 
     /// Flag to show/hide quick capture window
     @State private var showQuickCapture = false
 
-    /// Sample data for quick capture suggestions
-    @State private var recentProjects: [String] = ["Website Redesign", "Q4 Planning"]
-    @State private var recentContexts: [Context] = Context.defaults
+    /// Initialization state
+    @State private var isInitialized = false
+    @State private var initializationError: Error?
+    @State private var showInitializationError = false
 
     // MARK: - Scenes
 
     var body: some Scene {
         // Main application window
         WindowGroup {
-            ContentView()
-                .frame(minWidth: 900, minHeight: 600)
-                .onAppear {
-                    setupHotkeys()
+            Group {
+                if isInitialized {
+                    ContentView()
+                        .environmentObject(dataManager.taskStore!)
+                        .environmentObject(dataManager.boardStore!)
+                        .environmentObject(dataManager)
+                        .environmentObject(configManager)
+                        .frame(minWidth: 900, minHeight: 600)
+                } else {
+                    VStack(spacing: 20) {
+                        ProgressView("Loading StickyToDo...")
+                            .controlSize(.large)
+
+                        if let error = initializationError {
+                            Text("Error: \(error.localizedDescription)")
+                                .foregroundColor(.red)
+                                .font(.caption)
+                        }
+                    }
+                    .frame(width: 400, height: 200)
                 }
+            }
+            .onAppear {
+                initializeApp()
+                setupHotkeys()
+            }
+            .alert("Initialization Error", isPresented: $showInitializationError) {
+                Button("OK") {}
+            } message: {
+                if let error = initializationError {
+                    Text(error.localizedDescription)
+                }
+            }
         }
         .commands {
             commandMenus
         }
         .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unified)
+        .handlesExternalEvents(matching: ["main"])
 
         // Quick Capture window
         WindowGroup("Quick Capture", id: "quick-capture", for: Bool.self) { $showing in
-            QuickCaptureView(
-                recentProjects: recentProjects,
-                recentContexts: recentContexts,
-                onCreateTask: { task in
-                    handleQuickCaptureTask(task)
-                },
-                onClose: {
-                    closeQuickCaptureWindow()
-                }
-            )
+            if isInitialized {
+                QuickCaptureView(
+                    recentProjects: Array(dataManager.taskStore.projects.prefix(5)),
+                    recentContexts: Array(dataManager.taskStore.contexts.prefix(5)).map {
+                        Context.defaults.first(where: { $0.name == $0 }) ?? Context(name: $0, icon: "📍", color: "blue")
+                    },
+                    onCreateTask: { task in
+                        handleQuickCaptureTask(task)
+                    },
+                    onClose: {
+                        closeQuickCaptureWindow()
+                    }
+                )
+                .environmentObject(dataManager.taskStore!)
+                .environmentObject(dataManager)
+            } else {
+                ProgressView("Loading...")
+                    .frame(width: 200, height: 100)
+            }
         }
         .windowStyle(.plain)
         .windowResizability(.contentSize)
         .defaultPosition(.center)
+        .handlesExternalEvents(matching: ["quick-capture"])
 
         // Settings window
         #if os(macOS)
         Settings {
             SettingsView()
+                .environmentObject(configManager)
+                .environmentObject(dataManager)
         }
         #endif
+    }
+
+    // MARK: - Initialization
+
+    /// Initializes the app and data manager
+    private func initializeApp() {
+        guard !isInitialized else { return }
+
+        Task {
+            do {
+                // Get data directory from configuration
+                let dataDirectory = configManager.dataDirectory
+
+                // Initialize DataManager
+                try await dataManager.initialize(rootDirectory: dataDirectory)
+
+                // Enable logging if configured
+                dataManager.enableLogging = configManager.enableLogging
+                dataManager.enableFileWatching = configManager.enableFileWatching
+
+                // Perform first-run setup if needed
+                if configManager.isFirstRun {
+                    dataManager.performFirstRunSetup(createSampleData: true)
+                    configManager.isFirstRun = false
+                }
+
+                await MainActor.run {
+                    isInitialized = true
+                }
+            } catch {
+                await MainActor.run {
+                    initializationError = error
+                    showInitializationError = true
+                }
+            }
+        }
     }
 
     // MARK: - Commands
@@ -218,27 +302,11 @@ struct StickyToDoApp: App {
     }
 
     private func handleQuickCaptureTask(_ task: Task) {
-        // Save the task
-        // In a real app, this would save to the data store
+        guard isInitialized else { return }
+
+        // Add the task to the data store
+        dataManager.taskStore.add(task)
         print("Quick capture task created: \(task.title)")
-
-        // Update recent projects and contexts
-        if let project = task.project, !recentProjects.contains(project) {
-            recentProjects.insert(project, at: 0)
-            if recentProjects.count > 5 {
-                recentProjects = Array(recentProjects.prefix(5))
-            }
-        }
-
-        if let contextName = task.context,
-           !recentContexts.contains(where: { $0.name == contextName }) {
-            if let context = Context.defaults.first(where: { $0.name == contextName }) {
-                recentContexts.insert(context, at: 0)
-                if recentContexts.count > 5 {
-                    recentContexts = Array(recentContexts.prefix(5))
-                }
-            }
-        }
     }
 
     // MARK: - Menu Actions
@@ -279,6 +347,7 @@ extension StickyToDoApp {
     /// Handles custom URL schemes (stickytodo://)
     private func handleURL(_ url: URL) {
         guard url.scheme == "stickytodo" else { return }
+        guard isInitialized else { return }
 
         switch url.host {
         case "quick-capture":

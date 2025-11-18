@@ -62,8 +62,8 @@ class AppKitCoordinator: BaseAppCoordinator, AppCoordinatorProtocol {
 
     func performFirstRunSetupIfNeeded() {
         if configManager.isFirstRun {
-            // Perform any AppKit-specific first-run setup
-            showWelcomeMessage()
+            // Show onboarding window
+            showOnboarding()
         }
     }
 
@@ -159,6 +159,89 @@ class AppKitCoordinator: BaseAppCoordinator, AppCoordinatorProtocol {
 
     func bringAllWindowsToFront() {
         NSApp.arrangeInFront(nil)
+    }
+
+    // MARK: - Conflict Resolution
+
+    private var conflictWindowController: ConflictResolutionWindowController?
+
+    /// Shows conflict resolution UI for file conflicts
+    func showConflictResolution(conflicts: [FileConflictItem]) {
+        let controller = ConflictResolutionWindowController(conflicts: conflicts)
+        controller.onResolutionApplied = { [weak self] resolvedConflicts in
+            self?.handleResolvedConflicts(resolvedConflicts)
+        }
+        conflictWindowController = controller
+        controller.showWindow(nil)
+    }
+
+    /// Handles resolved conflicts from file watcher
+    private func handleResolvedConflicts(_ conflicts: [FileConflictItem]) {
+        for conflict in conflicts {
+            switch conflict.resolution {
+            case .keepMine:
+                // Keep our version - save it to disk
+                try? conflict.ourContent.write(to: conflict.url, atomically: true, encoding: .utf8)
+
+            case .keepTheirs:
+                // Keep their version - reload from disk
+                dataManager.reloadFile(at: conflict.url)
+
+            case .viewBoth:
+                // Create a backup with timestamp and keep both versions
+                let timestamp = DateFormatter.backupFormatter.string(from: Date())
+                let backupURL = conflict.url.deletingPathExtension()
+                    .appendingPathExtension("backup-\(timestamp)")
+                    .appendingPathExtension("md")
+
+                try? FileManager.default.copyItem(at: conflict.url, to: backupURL)
+                dataManager.reloadFile(at: conflict.url)
+
+            case .merge(let mergedContent):
+                // Save merged content
+                try? mergedContent.write(to: conflict.url, atomically: true, encoding: .utf8)
+                dataManager.reloadFile(at: conflict.url)
+
+            case .unresolved:
+                break
+            }
+        }
+
+        // Resume file watching
+        dataManager.resumeFileWatching()
+        conflictWindowController = nil
+    }
+
+    // MARK: - Onboarding
+
+    private var onboardingWindowController: OnboardingWindowController?
+
+    /// Shows onboarding for first-run experience
+    func showOnboarding() {
+        let controller = OnboardingWindowController()
+        controller.onComplete = { [weak self] config in
+            self?.handleOnboardingComplete(with: config)
+        }
+        onboardingWindowController = controller
+        controller.showWindow(nil)
+    }
+
+    private func handleOnboardingComplete(with config: OnboardingConfiguration) {
+        // Update data directory if changed
+        if config.dataDirectory != configManager.dataDirectory {
+            configManager.changeDataDirectory(to: config.dataDirectory)
+        }
+
+        // Create sample data if requested
+        if config.createSampleData {
+            dataManager.performFirstRunSetup(createSampleData: true)
+        }
+
+        // Mark first run as complete
+        configManager.isFirstRun = false
+        configManager.save()
+
+        onboardingWindowController = nil
     }
 
     // MARK: - Task Operations (AppKit-specific overrides)
@@ -513,4 +596,14 @@ extension MainWindowController {
     func updateBadgeCounts(_ counts: [String: Int]) {
         // Implementation in MainWindowController
     }
+}
+
+// MARK: - DateFormatter Extension
+
+extension DateFormatter {
+    static let backupFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        return formatter
+    }()
 }

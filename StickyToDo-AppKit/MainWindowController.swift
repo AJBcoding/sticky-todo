@@ -394,6 +394,17 @@ extension MainWindowController: NSToolbarDelegate {
     }
 }
 
+    // MARK: - Public Methods
+
+    /// Switch to a specific perspective by identifier
+    func switchToPerspective(_ perspectiveID: String) {
+        // Find the perspective
+        if let perspective = perspectives.first(where: { $0.id == perspectiveID }) {
+            sidebarDidSelectPerspective(perspective)
+        }
+    }
+}
+
 // MARK: - Array Extension
 
 fileprivate extension Array {

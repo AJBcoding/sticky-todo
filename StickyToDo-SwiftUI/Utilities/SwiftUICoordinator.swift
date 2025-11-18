@@ -392,6 +392,53 @@ class SwiftUICoordinator: BaseAppCoordinator, AppCoordinatorProtocol {
         }
     }
 
+    // MARK: - Conflict Resolution
+
+    /// Shows conflict resolution UI for file conflicts
+    func showConflictResolution(conflicts: [FileConflictItem]) {
+        presentedSheet = .conflictResolution(conflicts)
+    }
+
+    /// Handles resolved conflicts from file watcher
+    func handleResolvedConflicts(_ conflicts: [FileConflictItem]) {
+        for conflict in conflicts {
+            switch conflict.resolution {
+            case .keepMine:
+                // Keep our version - save it to disk
+                try? FileManager.default.createFile(
+                    atPath: conflict.url.path,
+                    contents: conflict.ourContent.data(using: .utf8),
+                    attributes: nil
+                )
+
+            case .keepTheirs:
+                // Keep their version - reload from disk
+                dataManager.reloadFile(at: conflict.url)
+
+            case .viewBoth:
+                // Create a backup with timestamp and keep both versions
+                let timestamp = DateFormatter.backupFormatter.string(from: Date())
+                let backupURL = conflict.url.deletingPathExtension()
+                    .appendingPathExtension("backup-\(timestamp)")
+                    .appendingPathExtension("md")
+
+                try? FileManager.default.copyItem(at: conflict.url, to: backupURL)
+                dataManager.reloadFile(at: conflict.url)
+
+            case .merge(let mergedContent):
+                // Save merged content
+                try? mergedContent.write(to: conflict.url, atomically: true, encoding: .utf8)
+                dataManager.reloadFile(at: conflict.url)
+
+            case .unresolved:
+                break
+            }
+        }
+
+        // Resume file watching
+        dataManager.resumeFileWatching()
+    }
+
     // MARK: - Notifications
 
     private func showNotification(title: String, message: String) {
@@ -428,6 +475,7 @@ enum SheetType: Identifiable {
     case taskDetail(Task)
     case boardSettings(Board)
     case help
+    case conflictResolution([FileConflictItem])
 
     var id: String {
         switch self {
@@ -436,6 +484,7 @@ enum SheetType: Identifiable {
         case .taskDetail(let task): return "task-\(task.id)"
         case .boardSettings(let board): return "board-\(board.id)"
         case .help: return "help"
+        case .conflictResolution: return "conflictResolution"
         }
     }
 }
@@ -503,4 +552,14 @@ extension EnvironmentValues {
         get { self[CoordinatorKey.self] }
         set { self[CoordinatorKey.self] = newValue }
     }
+}
+
+// MARK: - DateFormatter Extension
+
+extension DateFormatter {
+    static let backupFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        return formatter
+    }()
 }
