@@ -56,12 +56,22 @@ public class ExportManager {
             result = try await exportSimplifiedMarkdown(tasks: filteredTasks, to: url, options: options)
         case .taskpaper:
             result = try await exportTaskPaper(tasks: filteredTasks, to: url, options: options)
+        case .omnifocus:
+            result = try await exportOmniFocus(tasks: filteredTasks, to: url, options: options)
+        case .things:
+            result = try await exportThings(tasks: filteredTasks, to: url, options: options)
         case .csv:
             result = try await exportCSV(tasks: filteredTasks, to: url, options: options)
         case .tsv:
             result = try await exportTSV(tasks: filteredTasks, to: url, options: options)
         case .json:
             result = try await exportJSON(tasks: filteredTasks, to: url, options: options)
+        case .html:
+            result = try await exportHTML(tasks: filteredTasks, to: url, options: options)
+        case .pdf:
+            result = try await exportPDF(tasks: filteredTasks, to: url, options: options)
+        case .ical:
+            result = try await exportiCal(tasks: filteredTasks, to: url, options: options)
         }
 
         reportProgress(1.0, "Export complete")
@@ -454,6 +464,172 @@ public class ExportManager {
         return line
     }
 
+    // MARK: - OmniFocus Export
+
+    /// Exports tasks in OmniFocus-compatible TaskPaper format
+    private func exportOmniFocus(tasks: [Task], to url: URL, options: ExportOptions) async throws -> ExportResult {
+        reportProgress(0.2, "Converting to OmniFocus format...")
+
+        var content = ""
+        let grouped = Dictionary(grouping: tasks) { $0.project ?? "Inbox" }
+
+        for (project, projectTasks) in grouped.sorted(by: { $0.key < $1.key }) {
+            content += "\(project):\n"
+
+            for task in projectTasks.sorted(by: { $0.created < $1.created }) {
+                content += renderOmniFocusTask(task)
+            }
+
+            content += "\n"
+        }
+
+        reportProgress(0.8, "Writing file...")
+
+        let fileURL = url.pathExtension == "taskpaper" ? url : url.appendingPathExtension("taskpaper")
+        try content.write(to: fileURL, atomically: true, encoding: .utf8)
+
+        let attrs = try FileManager.default.attributesOfItem(atPath: fileURL.path)
+        let fileSize = attrs[.size] as? Int64 ?? 0
+
+        return ExportResult(
+            fileURL: fileURL,
+            format: .omnifocus,
+            taskCount: tasks.count,
+            fileSize: fileSize,
+            warnings: ExportFormat.omnifocus.dataLossWarnings
+        )
+    }
+
+    /// Renders a task in OmniFocus-compatible TaskPaper format
+    /// OmniFocus recognizes: @context, @defer(), @due(), @parallel, @sequential, @done
+    private func renderOmniFocusTask(_ task: Task) -> String {
+        var line = "\t- \(task.title)"
+
+        if task.status == .completed {
+            line += " @done(\(formatShortDate(task.modified)))"
+        }
+
+        if let context = task.context {
+            line += " \(context)"
+        }
+
+        if let due = task.due {
+            line += " @due(\(formatShortDate(due)))"
+        }
+
+        if let defer = task.defer {
+            line += " @defer(\(formatShortDate(defer)))"
+        }
+
+        if task.flagged {
+            line += " @flagged"
+        }
+
+        // Map priority to OmniFocus tags
+        switch task.priority {
+        case .high:
+            line += " @priority(1)"
+        case .medium:
+            line += " @priority(2)"
+        case .low:
+            line += " @priority(3)"
+        }
+
+        if task.status == .waiting {
+            line += " @waiting"
+        }
+
+        line += "\n"
+
+        // Add notes as indented lines
+        if !task.notes.isEmpty {
+            let indentedNotes = task.notes.components(separatedBy: .newlines)
+                .map { "\t\t\($0)" }
+                .joined(separator: "\n")
+            line += indentedNotes + "\n"
+        }
+
+        return line
+    }
+
+    // MARK: - Things Export
+
+    /// Exports tasks in Things-compatible JSON format
+    private func exportThings(tasks: [Task], to url: URL, options: ExportOptions) async throws -> ExportResult {
+        reportProgress(0.2, "Converting to Things format...")
+
+        // Things JSON format structure
+        var thingsItems: [[String: Any]] = []
+
+        for task in tasks {
+            var item: [String: Any] = [
+                "type": "to-do",
+                "title": task.title,
+                "notes": task.notes
+            ]
+
+            // Project mapping (Things calls them "projects" or "areas")
+            if let project = task.project {
+                item["list"] = project
+            }
+
+            // Tags (Things uses tags for contexts)
+            var tags: [String] = []
+            if let context = task.context {
+                tags.append(context.replacingOccurrences(of: "@", with: ""))
+            }
+            if !tags.isEmpty {
+                item["tags"] = tags
+            }
+
+            // Due date
+            if let due = task.due {
+                item["when"] = formatShortDate(due)
+            }
+
+            // Defer date (Things calls this "when")
+            if let defer = task.defer {
+                item["deadline"] = formatShortDate(defer)
+            }
+
+            // Completed status
+            if task.status == .completed {
+                item["completed"] = true
+                item["completed-date"] = formatShortDate(task.modified)
+            }
+
+            // Checklist items (subtasks)
+            if !task.subtaskIds.isEmpty {
+                item["checklist-items"] = task.subtaskIds.map { ["title": $0.uuidString] }
+            }
+
+            thingsItems.append(item)
+        }
+
+        // Create wrapper array for Things import
+        let thingsData = thingsItems
+
+        reportProgress(0.6, "Writing file...")
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+
+        let data = try encoder.encode(thingsData)
+
+        let fileURL = url.pathExtension == "json" ? url : url.appendingPathExtension("json")
+        try data.write(to: fileURL)
+
+        let fileSize = Int64(data.count)
+
+        return ExportResult(
+            fileURL: fileURL,
+            format: .things,
+            taskCount: tasks.count,
+            fileSize: fileSize,
+            warnings: ExportFormat.things.dataLossWarnings
+        )
+    }
+
     // MARK: - CSV Export
 
     /// Exports tasks as CSV
@@ -472,33 +648,58 @@ public class ExportManager {
     private func exportDelimited(tasks: [Task], to url: URL, options: ExportOptions, delimiter: String, format: ExportFormat) async throws -> ExportResult {
         reportProgress(0.2, "Converting to \(format.displayName)...")
 
+        // Determine which columns to include
+        let columns = options.csvColumns ?? CSVColumn.allCases
+
         // Header row
-        let headers = [
-            "ID", "Type", "Title", "Status", "Project", "Context",
-            "Due", "Defer", "Flagged", "Priority", "Effort",
-            "Created", "Modified", "Notes"
-        ]
+        let headers = columns.map { $0.rawValue }
 
         var rows: [[String]] = [headers]
 
         // Data rows
         for task in tasks {
-            let row = [
-                task.id.uuidString,
-                task.type.rawValue,
-                task.title,
-                task.status.rawValue,
-                task.project ?? "",
-                task.context ?? "",
-                task.due.map(formatShortDate) ?? "",
-                task.defer.map(formatShortDate) ?? "",
-                task.flagged ? "true" : "false",
-                task.priority.rawValue,
-                task.effort.map(String.init) ?? "",
-                formatISO8601(task.created),
-                formatISO8601(task.modified),
-                task.notes
-            ]
+            var row: [String] = []
+
+            for column in columns {
+                let value: String
+                switch column {
+                case .id:
+                    value = task.id.uuidString
+                case .type:
+                    value = task.type.rawValue
+                case .title:
+                    value = task.title
+                case .status:
+                    value = task.status.rawValue
+                case .project:
+                    value = task.project ?? ""
+                case .context:
+                    value = task.context ?? ""
+                case .due:
+                    value = task.due.map(formatShortDate) ?? ""
+                case .deferDate:
+                    value = task.defer.map(formatShortDate) ?? ""
+                case .flagged:
+                    value = task.flagged ? "true" : "false"
+                case .priority:
+                    value = task.priority.rawValue
+                case .effort:
+                    value = task.effort.map(String.init) ?? ""
+                case .created:
+                    value = formatISO8601(task.created)
+                case .modified:
+                    value = formatISO8601(task.modified)
+                case .notes:
+                    value = task.notes
+                case .tags:
+                    value = task.tags.map { $0.name }.joined(separator: ", ")
+                case .timeSpent:
+                    value = task.timeSpentDescription ?? ""
+                case .completionDate:
+                    value = task.status == .completed ? formatShortDate(task.modified) : ""
+                }
+                row.append(value)
+            }
             rows.append(row)
         }
 
@@ -687,6 +888,496 @@ public class ExportManager {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter.string(from: date)
+    }
+
+    // MARK: - HTML Export
+
+    /// Exports tasks as formatted HTML report
+    private func exportHTML(tasks: [Task], to url: URL, options: ExportOptions) async throws -> ExportResult {
+        reportProgress(0.2, "Generating HTML report...")
+
+        let analytics = AnalyticsCalculator().calculate(for: tasks)
+        let html = generateHTMLReport(tasks: tasks, analytics: analytics, options: options)
+
+        reportProgress(0.8, "Writing file...")
+
+        let fileURL = url.pathExtension == "html" ? url : url.appendingPathExtension("html")
+        try html.write(to: fileURL, atomically: true, encoding: .utf8)
+
+        let attrs = try FileManager.default.attributesOfItem(atPath: fileURL.path)
+        let fileSize = attrs[.size] as? Int64 ?? 0
+
+        return ExportResult(
+            fileURL: fileURL,
+            format: .html,
+            taskCount: tasks.count,
+            fileSize: fileSize,
+            warnings: ExportFormat.html.dataLossWarnings
+        )
+    }
+
+    /// Generates HTML report content
+    private func generateHTMLReport(tasks: [Task], analytics: AnalyticsCalculator.Analytics, options: ExportOptions) -> String {
+        var html = """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>StickyToDo Export - \(options.filename)</title>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    max-width: 1200px;
+                    margin: 0 auto;
+                    padding: 20px;
+                    background: #f5f5f5;
+                }
+                .header {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    padding: 40px;
+                    border-radius: 10px;
+                    margin-bottom: 30px;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                }
+                .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+                .header p { opacity: 0.9; font-size: 1.1em; }
+                .stats {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 20px;
+                    margin-bottom: 30px;
+                }
+                .stat-card {
+                    background: white;
+                    padding: 20px;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+                .stat-card h3 {
+                    font-size: 0.9em;
+                    color: #666;
+                    text-transform: uppercase;
+                    margin-bottom: 10px;
+                }
+                .stat-card .value {
+                    font-size: 2em;
+                    font-weight: bold;
+                    color: #667eea;
+                }
+                .section {
+                    background: white;
+                    padding: 30px;
+                    border-radius: 8px;
+                    margin-bottom: 20px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+                .section h2 {
+                    color: #667eea;
+                    margin-bottom: 20px;
+                    padding-bottom: 10px;
+                    border-bottom: 2px solid #eee;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 20px;
+                }
+                th, td {
+                    padding: 12px;
+                    text-align: left;
+                    border-bottom: 1px solid #eee;
+                }
+                th {
+                    background: #f8f9fa;
+                    font-weight: 600;
+                    color: #666;
+                    text-transform: uppercase;
+                    font-size: 0.85em;
+                }
+                tr:hover { background: #f8f9fa; }
+                .status-badge {
+                    display: inline-block;
+                    padding: 4px 12px;
+                    border-radius: 12px;
+                    font-size: 0.85em;
+                    font-weight: 500;
+                }
+                .status-inbox { background: #e3f2fd; color: #1976d2; }
+                .status-next-action { background: #e8f5e9; color: #388e3c; }
+                .status-waiting { background: #fff3e0; color: #f57c00; }
+                .status-someday { background: #f3e5f5; color: #7b1fa2; }
+                .status-completed { background: #e0e0e0; color: #616161; }
+                .priority-high { color: #d32f2f; font-weight: bold; }
+                .priority-medium { color: #f57c00; }
+                .priority-low { color: #1976d2; }
+                .chart-bar {
+                    display: flex;
+                    align-items: center;
+                    margin-bottom: 15px;
+                }
+                .chart-label {
+                    width: 150px;
+                    font-size: 0.9em;
+                    color: #666;
+                }
+                .chart-bar-container {
+                    flex: 1;
+                    background: #e0e0e0;
+                    border-radius: 4px;
+                    height: 24px;
+                    position: relative;
+                    overflow: hidden;
+                }
+                .chart-bar-fill {
+                    background: linear-gradient(90deg, #667eea, #764ba2);
+                    height: 100%;
+                    border-radius: 4px;
+                    transition: width 0.3s;
+                }
+                .chart-value {
+                    margin-left: 10px;
+                    font-weight: 600;
+                    color: #667eea;
+                    min-width: 40px;
+                }
+                .footer {
+                    text-align: center;
+                    margin-top: 40px;
+                    padding: 20px;
+                    color: #999;
+                    font-size: 0.9em;
+                }
+                @media print {
+                    body { background: white; }
+                    .section, .stat-card { box-shadow: none; border: 1px solid #ddd; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>📋 StickyToDo Export</h1>
+                <p>Generated on \(formatLongDate(Date()))</p>
+            </div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <h3>Total Tasks</h3>
+                    <div class="value">\(analytics.totalTasks)</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Completed</h3>
+                    <div class="value">\(analytics.completedTasks)</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Active</h3>
+                    <div class="value">\(analytics.activeTasks)</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Completion Rate</h3>
+                    <div class="value">\(analytics.completionRateString)</div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>📊 Task Distribution</h2>
+
+                <h3 style="margin-top: 20px;">By Status</h3>
+        """
+
+        // Status distribution chart
+        let maxStatusCount = analytics.tasksByStatus.values.max() ?? 1
+        for status in Status.allCases {
+            let count = analytics.tasksByStatus[status] ?? 0
+            let percentage = maxStatusCount > 0 ? (Double(count) / Double(maxStatusCount)) * 100 : 0
+            html += """
+                <div class="chart-bar">
+                    <div class="chart-label">\(status.displayName)</div>
+                    <div class="chart-bar-container">
+                        <div class="chart-bar-fill" style="width: \(percentage)%"></div>
+                    </div>
+                    <div class="chart-value">\(count)</div>
+                </div>
+            """
+        }
+
+        html += """
+                <h3 style="margin-top: 30px;">By Priority</h3>
+        """
+
+        // Priority distribution chart
+        let maxPriorityCount = analytics.tasksByPriority.values.max() ?? 1
+        for priority in Priority.allCases {
+            let count = analytics.tasksByPriority[priority] ?? 0
+            let percentage = maxPriorityCount > 0 ? (Double(count) / Double(maxPriorityCount)) * 100 : 0
+            html += """
+                <div class="chart-bar">
+                    <div class="chart-label">\(priority.displayName)</div>
+                    <div class="chart-bar-container">
+                        <div class="chart-bar-fill" style="width: \(percentage)%"></div>
+                    </div>
+                    <div class="chart-value">\(count)</div>
+                </div>
+            """
+        }
+
+        html += """
+            </div>
+
+            <div class="section">
+                <h2>📝 All Tasks</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Status</th>
+                            <th>Priority</th>
+                            <th>Project</th>
+                            <th>Due Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        """
+
+        // Task table
+        for task in tasks.sorted(by: { $0.created > $1.created }) {
+            let statusClass = "status-\(task.status.rawValue)"
+            let priorityClass = "priority-\(task.priority.rawValue)"
+            let dueDate = task.due.map { formatShortDate($0) } ?? "-"
+            let project = task.project ?? "-"
+
+            html += """
+                        <tr>
+                            <td>\(escapeHTML(task.title))</td>
+                            <td><span class="status-badge \(statusClass)">\(task.status.displayName)</span></td>
+                            <td class="\(priorityClass)">\(task.priority.displayName)</td>
+                            <td>\(escapeHTML(project))</td>
+                            <td>\(dueDate)</td>
+                        </tr>
+            """
+        }
+
+        html += """
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="footer">
+                <p>Exported from StickyToDo • \(tasks.count) task\(tasks.count == 1 ? "" : "s")</p>
+            </div>
+        </body>
+        </html>
+        """
+
+        return html
+    }
+
+    // MARK: - PDF Export
+
+    /// Exports tasks as PDF report (via HTML rendering)
+    private func exportPDF(tasks: [Task], to url: URL, options: ExportOptions) async throws -> ExportResult {
+        reportProgress(0.2, "Generating PDF report...")
+
+        // First generate HTML
+        let analytics = AnalyticsCalculator().calculate(for: tasks)
+        let html = generateHTMLReport(tasks: tasks, analytics: analytics, options: options)
+
+        // Create temporary HTML file
+        let tempHTMLURL = FileManager.default.temporaryDirectory.appendingPathComponent("export.html")
+        try html.write(to: tempHTMLURL, atomically: true, encoding: .utf8)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempHTMLURL)
+        }
+
+        reportProgress(0.5, "Converting to PDF...")
+
+        // Use wkhtmltopdf or similar tool to convert HTML to PDF
+        // For macOS, we can use the built-in HTML to PDF conversion
+        let pdfURL = url.pathExtension == "pdf" ? url : url.appendingPathExtension("pdf")
+
+        // This is a placeholder - actual PDF generation would require PDFKit or similar
+        // For now, we'll create a simple note that PDF generation requires additional setup
+        let pdfNote = """
+        StickyToDo PDF Export
+
+        Note: PDF export requires additional setup.
+
+        To generate a PDF from this export:
+        1. Export as HTML format
+        2. Open the HTML file in a web browser
+        3. Use Print > Save as PDF
+
+        Or install wkhtmltopdf for automatic PDF generation.
+
+        Tasks exported: \(tasks.count)
+        Export date: \(formatLongDate(Date()))
+        """
+
+        try pdfNote.write(to: pdfURL, atomically: true, encoding: .utf8)
+
+        let attrs = try FileManager.default.attributesOfItem(atPath: pdfURL.path)
+        let fileSize = attrs[.size] as? Int64 ?? 0
+
+        var warnings = ExportFormat.pdf.dataLossWarnings
+        warnings.append("PDF generation requires additional tools - exported as text file with instructions")
+
+        return ExportResult(
+            fileURL: pdfURL,
+            format: .pdf,
+            taskCount: tasks.count,
+            fileSize: fileSize,
+            warnings: warnings
+        )
+    }
+
+    // MARK: - iCal Export
+
+    /// Exports tasks as iCalendar format
+    private func exportiCal(tasks: [Task], to url: URL, options: ExportOptions) async throws -> ExportResult {
+        reportProgress(0.2, "Generating iCalendar file...")
+
+        // Only export tasks with due dates
+        let tasksWithDueDates = tasks.filter { $0.due != nil }
+
+        var ical = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        PRODID:-//StickyToDo//Export//EN
+        CALSCALE:GREGORIAN
+        METHOD:PUBLISH
+        X-WR-CALNAME:StickyToDo Tasks
+        X-WR-TIMEZONE:UTC
+        X-WR-CALDESC:Tasks exported from StickyToDo
+
+        """
+
+        reportProgress(0.4, "Adding tasks...")
+
+        for task in tasksWithDueDates {
+            ical += renderTaskAsVTODO(task)
+        }
+
+        ical += "END:VCALENDAR\n"
+
+        reportProgress(0.8, "Writing file...")
+
+        let fileURL = url.pathExtension == "ics" ? url : url.appendingPathExtension("ics")
+        try ical.write(to: fileURL, atomically: true, encoding: .utf8)
+
+        let attrs = try FileManager.default.attributesOfItem(atPath: fileURL.path)
+        let fileSize = attrs[.size] as? Int64 ?? 0
+
+        var warnings = ExportFormat.ical.dataLossWarnings
+        if tasksWithDueDates.count < tasks.count {
+            warnings.append("\(tasks.count - tasksWithDueDates.count) task(s) without due dates were skipped")
+        }
+
+        return ExportResult(
+            fileURL: fileURL,
+            format: .ical,
+            taskCount: tasksWithDueDates.count,
+            fileSize: fileSize,
+            warnings: warnings
+        )
+    }
+
+    /// Renders a task as iCalendar VTODO component
+    private func renderTaskAsVTODO(_ task: Task) -> String {
+        guard let dueDate = task.due else { return "" }
+
+        var vtodo = "BEGIN:VTODO\n"
+        vtodo += "UID:\(task.id.uuidString)\n"
+        vtodo += "DTSTAMP:\(formatICalDate(task.created))\n"
+        vtodo += "SUMMARY:\(escapeICalText(task.title))\n"
+
+        if !task.notes.isEmpty {
+            vtodo += "DESCRIPTION:\(escapeICalText(task.notes))\n"
+        }
+
+        vtodo += "DUE:\(formatICalDate(dueDate))\n"
+        vtodo += "CREATED:\(formatICalDate(task.created))\n"
+        vtodo += "LAST-MODIFIED:\(formatICalDate(task.modified))\n"
+
+        // Status mapping
+        let status: String
+        switch task.status {
+        case .completed:
+            status = "COMPLETED"
+        case .nextAction:
+            status = "IN-PROCESS"
+        default:
+            status = "NEEDS-ACTION"
+        }
+        vtodo += "STATUS:\(status)\n"
+
+        // Priority mapping (iCal uses 1-9, where 1 is highest)
+        let priority: Int
+        switch task.priority {
+        case .high:
+            priority = 1
+        case .medium:
+            priority = 5
+        case .low:
+            priority = 9
+        }
+        vtodo += "PRIORITY:\(priority)\n"
+
+        if let project = task.project {
+            vtodo += "CATEGORIES:\(escapeICalText(project))\n"
+        }
+
+        if let context = task.context {
+            vtodo += "LOCATION:\(escapeICalText(context))\n"
+        }
+
+        if task.status == .completed {
+            vtodo += "COMPLETED:\(formatICalDate(task.modified))\n"
+            vtodo += "PERCENT-COMPLETE:100\n"
+        }
+
+        vtodo += "END:VTODO\n"
+
+        return vtodo
+    }
+
+    /// Formats a date in iCal format (YYYYMMDDTHHMMSSZ)
+    private func formatICalDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd'T'HHmmss'Z'"
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        return formatter.string(from: date)
+    }
+
+    /// Escapes text for iCal format
+    private func escapeICalText(_ text: String) -> String {
+        return text
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: ",", with: "\\,")
+            .replacingOccurrences(of: ";", with: "\\;")
+            .replacingOccurrences(of: "\n", with: "\\n")
+    }
+
+    /// Formats a date in long format for display
+    private func formatLongDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
+    /// Escapes HTML special characters
+    private func escapeHTML(_ text: String) -> String {
+        return text
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "'", with: "&#39;")
     }
 }
 

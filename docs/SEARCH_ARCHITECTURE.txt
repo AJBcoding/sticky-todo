@@ -1,0 +1,320 @@
+================================================================================
+SEARCH SYSTEM ARCHITECTURE
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           USER INTERFACE LAYER                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌──────────────────────────┐        ┌──────────────────────────┐      │
+│  │      SwiftUI Views       │        │      AppKit Views        │      │
+│  ├──────────────────────────┤        ├──────────────────────────┤      │
+│  │                          │        │                          │      │
+│  │  SearchView              │        │  SearchViewController    │      │
+│  │  ├─ SearchBar            │        │  ├─ NSSearchField        │      │
+│  │  │  ├─ Search Input      │        │  ├─ Recent Searches Menu │      │
+│  │  │  ├─ Recent Searches   │        │  └─ Search Tips Label   │      │
+│  │  │  └─ Search Tips       │        │                          │      │
+│  │  │                       │        │  SearchResultTableView   │      │
+│  │  └─ SearchResultsView    │        │  ├─ Title Column         │      │
+│  │     ├─ Results List      │        │  ├─ Relevance Column     │      │
+│  │     ├─ SearchResultRow   │        │  └─ Matches Column       │      │
+│  │     │  ├─ Status Icon    │        │                          │      │
+│  │     │  ├─ Highlighted    │        │  SearchResultTableCell   │      │
+│  │     │  │   Title         │        │  ├─ Status Icon          │      │
+│  │     │  ├─ Metadata       │        │  ├─ Highlighted Title    │      │
+│  │     │  ├─ Notes Preview  │        │  ├─ Metadata             │      │
+│  │     │  └─ Relevance      │        │  └─ Notes Preview        │      │
+│  │     │       Badge        │        │                          │      │
+│  │     │                    │        │  SearchWindowController  │      │
+│  │     └─ HighlightedText   │        │  └─ Window Management    │      │
+│  │                          │        │                          │      │
+│  └──────────────────────────┘        └──────────────────────────┘      │
+│                                                                         │
+│           ▲                                      ▲                      │
+│           │                                      │                      │
+│           │   SearchResult[]                     │   SearchResult[]     │
+│           │                                      │                      │
+└───────────┼──────────────────────────────────────┼──────────────────────┘
+            │                                      │
+            │                                      │
+┌───────────┴──────────────────────────────────────┴──────────────────────┐
+│                         BUSINESS LOGIC LAYER                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│                       ┌─────────────────────────┐                       │
+│                       │     SearchManager       │                       │
+│                       │     (Static Class)      │                       │
+│                       ├─────────────────────────┤                       │
+│                       │                         │                       │
+│                       │  parseQuery()           │◄─── Query String     │
+│                       │  ├─ Tokenize            │                       │
+│                       │  ├─ Detect Operators    │                       │
+│                       │  ├─ Handle Quotes       │                       │
+│                       │  └─ Build SearchQuery   │                       │
+│                       │                         │                       │
+│                       │  search()               │◄─── Tasks[]          │
+│                       │  ├─ Match Each Task     │                       │
+│                       │  ├─ Score Matches       │                       │
+│                       │  ├─ Track Highlights    │                       │
+│                       │  ├─ Apply Boosts        │                       │
+│                       │  └─ Sort by Relevance   │                       │
+│                       │                         │                       │
+│                       │  Recent Searches        │◄─── UserDefaults     │
+│                       │  ├─ saveRecentSearch()  │                       │
+│                       │  ├─ getRecentSearches() │                       │
+│                       │  └─ clearRecents()      │                       │
+│                       │                         │                       │
+│                       │  extractContext()       │                       │
+│                       │  └─ Preview Generation  │                       │
+│                       │                         │                       │
+│                       └─────────────────────────┘                       │
+│                                 │                                       │
+│                                 │                                       │
+│           ┌─────────────────────┼─────────────────────┐                │
+│           │                     │                     │                │
+│           ▼                     ▼                     ▼                │
+│  ┌────────────────┐   ┌────────────────┐   ┌────────────────┐         │
+│  │  SearchQuery   │   │ SearchResult   │   │SearchHighlight │         │
+│  ├────────────────┤   ├────────────────┤   ├────────────────┤         │
+│  │ terms[]        │   │ task           │   │ fieldName      │         │
+│  │ operator       │   │ relevanceScore │   │ range          │         │
+│  └────────────────┘   │ highlights[]   │   │ matchedText    │         │
+│                       │ matchedFields  │   └────────────────┘         │
+│  ┌────────────────┐   └────────────────┘                              │
+│  │  SearchTerm    │                                                    │
+│  ├────────────────┤                                                    │
+│  │ text           │                                                    │
+│  │ exact          │                                                    │
+│  │ negated        │                                                    │
+│  └────────────────┘                                                    │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+            │                                      │
+            │   Task Data                          │   Task Data
+            │                                      │
+┌───────────┴──────────────────────────────────────┴──────────────────────┐
+│                            DATA LAYER                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│                       ┌─────────────────────────┐                       │
+│                       │         Task            │                       │
+│                       ├─────────────────────────┤                       │
+│                       │                         │                       │
+│                       │  Searchable Fields:     │                       │
+│                       │  ├─ title (10x weight)  │                       │
+│                       │  ├─ project (5x)        │                       │
+│                       │  ├─ tags[] (4x)         │                       │
+│                       │  ├─ context (3x)        │                       │
+│                       │  └─ notes (1x)          │                       │
+│                       │                         │                       │
+│                       │  Boost Factors:         │                       │
+│                       │  ├─ flagged             │                       │
+│                       │  ├─ priority            │                       │
+│                       │  └─ modified date       │                       │
+│                       │                         │                       │
+│                       └─────────────────────────┘                       │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+SEARCH FLOW DIAGRAM:
+═══════════════════════════════════════════════════════════════════════════
+
+User Input: "bug AND urgent"
+    │
+    ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│ 1. QUERY PARSING                                                      │
+│    Input: "bug AND urgent"                                            │
+│    Output: SearchQuery(                                               │
+│              terms: [SearchTerm("bug"), SearchTerm("urgent")],        │
+│              operator: .and                                           │
+│            )                                                          │
+└───────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│ 2. TASK MATCHING                                                      │
+│    For each task:                                                     │
+│      For each field (title, notes, project, context, tags):          │
+│        ├─ Search for "bug"                                            │
+│        │  ├─ Found in title at position 4                             │
+│        │  └─ Score: 10.0 (title weight)                               │
+│        │                                                               │
+│        └─ Search for "urgent"                                         │
+│           ├─ Found in tags                                            │
+│           └─ Score: 4.0 (tags weight)                                 │
+│                                                                        │
+│      Base Score: 14.0                                                 │
+└───────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│ 3. HIGHLIGHT TRACKING                                                 │
+│    Highlights: [                                                      │
+│      SearchHighlight(fieldName: "title", range: (4, 3), text: "bug"), │
+│      SearchHighlight(fieldName: "tags", range: (0, 6), text: "urgent")│
+│    ]                                                                  │
+└───────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│ 4. BOOST FACTORS                                                      │
+│    Base Score: 14.0                                                   │
+│    × 1.2 (flagged)                                                    │
+│    × 1.3 (high priority)                                              │
+│    × 1.1 (recently modified)                                          │
+│    = Final Score: 24.024                                              │
+└───────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│ 5. RESULT CREATION                                                    │
+│    SearchResult(                                                      │
+│      task: Task(...),                                                 │
+│      relevanceScore: 24.024,                                          │
+│      highlights: [...],                                               │
+│      matchedFields: ["title": true, "tags": true]                     │
+│    )                                                                  │
+└───────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│ 6. SORT & RETURN                                                      │
+│    Results sorted by relevanceScore (descending)                      │
+│    [Result1(24.024), Result2(18.5), Result3(12.3), ...]               │
+└───────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│ 7. UI RENDERING                                                       │
+│    For each result:                                                   │
+│      Display task with highlights:                                    │
+│      "Fix [bug] in authentication module"  ⭐⭐⭐⭐⭐                  │
+│           ^^^^                                                         │
+│      Yellow background                                                │
+└───────────────────────────────────────────────────────────────────────┘
+
+
+DATA STRUCTURES:
+═══════════════════════════════════════════════════════════════════════════
+
+SearchQuery                    SearchResult
+┌─────────────────┐           ┌──────────────────────────┐
+│ terms: []       │──────┐    │ task: Task               │
+│ operator: enum  │      │    │ relevanceScore: Double   │
+└─────────────────┘      │    │ highlights: []           │
+                         │    │ matchedFields: [:]       │
+SearchTerm               │    └──────────────────────────┘
+┌─────────────────┐      │              │
+│ text: String    │◄─────┘              │
+│ exact: Bool     │                     ▼
+│ negated: Bool   │           SearchHighlight
+└─────────────────┘           ┌──────────────────────────┐
+                              │ fieldName: String        │
+                              │ range: NSRange           │
+                              │ matchedText: String      │
+                              └──────────────────────────┘
+
+
+COMPONENT INTERACTION:
+═══════════════════════════════════════════════════════════════════════════
+
+   User                SearchBar           SearchManager         Task Store
+    │                     │                      │                    │
+    │  Type "bug"         │                      │                    │
+    ├────────────────────►│                      │                    │
+    │                     │                      │                    │
+    │  Press Enter        │                      │                    │
+    ├────────────────────►│                      │                    │
+    │                     │  parseQuery("bug")   │                    │
+    │                     ├─────────────────────►│                    │
+    │                     │                      │                    │
+    │                     │  search(tasks, query)│                    │
+    │                     ├─────────────────────►│  getAllTasks()     │
+    │                     │                      ├───────────────────►│
+    │                     │                      │    Tasks[]         │
+    │                     │                      │◄───────────────────┤
+    │                     │                      │                    │
+    │                     │                      │ [Match & Score]    │
+    │                     │                      │                    │
+    │                     │   SearchResult[]     │                    │
+    │                     │◄─────────────────────┤                    │
+    │                     │                      │                    │
+    │                     │ saveRecentSearch()   │                    │
+    │                     ├─────────────────────►│                    │
+    │                     │                      │  UserDefaults      │
+    │                     │                      ├───────────────────►│
+    │                     │                      │                    │
+    │  Display Results    │                      │                    │
+    │◄────────────────────┤                      │                    │
+    │                     │                      │                    │
+    │  Click Result       │                      │                    │
+    ├────────────────────►│                      │                    │
+    │                     │                      │                    │
+    │  Select Task        │                      │                    │
+    │◄────────────────────┤                      │                    │
+    │                     │                      │                    │
+
+
+KEYBOARD SHORTCUTS:
+═══════════════════════════════════════════════════════════════════════════
+
+⌘F → MenuCommands → NotificationCenter.post(.focusSearch) → SearchView.show()
+
+User Press ⌘F
+     │
+     ▼
+MenuCommands detects shortcut
+     │
+     ▼
+Post .focusSearch notification
+     │
+     ▼
+SearchView/SearchViewController receives
+     │
+     ▼
+Show search interface
+     │
+     ▼
+Focus search field
+     │
+     ▼
+Ready for input
+
+
+PERFORMANCE OPTIMIZATION:
+═══════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────┐
+│ OPTIMIZATION STRATEGIES                                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│ 1. Early Termination                                            │
+│    If NOT term matches → return nil immediately                 │
+│    Saves processing remaining fields                            │
+│                                                                 │
+│ 2. Lazy Field Evaluation                                        │
+│    Only search fields that exist (skip nil fields)              │
+│    Reduces unnecessary string operations                        │
+│                                                                 │
+│ 3. Stateless SearchManager                                      │
+│    No instance state → minimal memory footprint                 │
+│    Thread-safe for concurrent searches                          │
+│                                                                 │
+│ 4. UserDefaults Caching                                         │
+│    Recent searches stored persistently                          │
+│    Instant retrieval on app launch                              │
+│                                                                 │
+│ 5. Efficient String Matching                                    │
+│    Uses Swift's optimized String.contains()                     │
+│    Single-pass range detection                                  │
+│                                                                 │
+│ 6. Result Sorting                                               │
+│    Only sort final results (not all tasks)                      │
+│    O(r log r) instead of O(t log t)                             │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+================================================================================

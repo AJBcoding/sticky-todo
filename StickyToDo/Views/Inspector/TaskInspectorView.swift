@@ -80,6 +80,12 @@ struct TaskInspectorView: View {
                 // Effort estimate
                 effortSection(task: task)
 
+                // Color picker
+                colorSection(task: task)
+
+                // Recurrence
+                recurrenceSection(task: task)
+
                 // Notes
                 notesSection(task: task)
 
@@ -320,6 +326,80 @@ struct TaskInspectorView: View {
         }
     }
 
+    // MARK: - Color Section
+
+    private func colorSection(task: Task) -> some View {
+        ColorPickerView(
+            selectedColor: binding(for: \.color),
+            allowNoColor: true,
+            onColorSelected: { _ in
+                onTaskModified()
+            }
+        )
+    }
+
+    // MARK: - Recurrence Section
+
+    private func recurrenceSection(task: Task) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Show recurrence info for instances
+            if task.isRecurringInstance {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Recurring Task Instance")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    if let occurrenceDate = task.occurrenceDate {
+                        let formatter = DateFormatter()
+                        formatter.dateStyle = .medium
+                        Text("Occurrence: \(formatter.string(from: occurrenceDate))")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+
+                    if let templateId = task.originalTaskId {
+                        Text("Template ID: \(templateId.uuidString.prefix(8))...")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(8)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.blue.opacity(0.1))
+                )
+            } else {
+                // Recurrence picker for template tasks
+                RecurrencePicker(
+                    recurrence: binding(for: \.recurrence),
+                    onChange: onTaskModified
+                )
+
+                // Show next occurrence if recurring
+                if let nextOccurrence = task.nextOccurrence {
+                    let formatter = DateFormatter()
+                    formatter.dateStyle = .medium
+                    formatter.timeStyle = .short
+
+                    HStack {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+
+                        Text("Next: \(formatter.string(from: nextOccurrence))")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.blue.opacity(0.1))
+                    )
+                }
+            }
+        }
+    }
+
     // MARK: - Notes Section
 
     private func notesSection(task: Task) -> some View {
@@ -394,6 +474,18 @@ struct TaskInspectorView: View {
             }
             .buttonStyle(.bordered)
 
+            // Complete series button for recurring instances
+            if let task = task, task.isRecurringInstance {
+                Button(action: {
+                    // TODO: Implement complete series functionality
+                }) {
+                    Label("Complete Series", systemImage: "checkmark.circle.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .foregroundColor(.green)
+            }
+
             Button(role: .destructive, action: {
                 showingDeleteAlert = true
             }) {
@@ -407,7 +499,11 @@ struct TaskInspectorView: View {
                     onDelete()
                 }
             } message: {
-                Text("This action cannot be undone.")
+                if let task = task, task.isRecurring {
+                    Text("This is a recurring task. Deleting it will remove all future occurrences. This action cannot be undone.")
+                } else {
+                    Text("This action cannot be undone.")
+                }
             }
         }
     }

@@ -23,6 +23,7 @@ enum SortBy: String, Codable, CaseIterable {
     case created
     case modified
     case due
+    case defer
     case priority
     case status
     case effort
@@ -181,6 +182,19 @@ extension Perspective {
             case .due:
                 // nil dates go to end
                 switch (lhs.due, rhs.due) {
+                case (.none, .none):
+                    return false
+                case (.some, .none):
+                    return ascending
+                case (.none, .some):
+                    return !ascending
+                case (.some(let lDate), .some(let rDate)):
+                    return ascending ? lDate < rDate : lDate > rDate
+                }
+
+            case .defer:
+                // nil dates go to end
+                switch (lhs.defer, rhs.defer) {
                 case (.none, .none):
                     return false
                 case (.some, .none):
@@ -440,6 +454,8 @@ extension SortBy {
             return "Modified"
         case .due:
             return "Due Date"
+        case .defer:
+            return "Defer Date"
         case .priority:
             return "Priority"
         case .status:

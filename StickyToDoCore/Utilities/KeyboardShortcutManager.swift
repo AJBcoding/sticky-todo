@@ -207,6 +207,15 @@ public class KeyboardShortcutManager: ObservableObject {
                 category: .go
             ),
 
+            // GTD
+            AppShortcut(
+                id: "weeklyReview",
+                title: "Weekly Review",
+                key: "r",
+                modifiers: [.command, .shift],
+                category: .go
+            ),
+
             // Navigation
             AppShortcut(
                 id: "nextTask",

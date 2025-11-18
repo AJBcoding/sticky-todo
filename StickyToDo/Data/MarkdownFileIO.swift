@@ -89,6 +89,7 @@ class MarkdownFileIO {
     ///     archive/
     ///   boards/
     ///   config/
+    ///   activity-log/
     /// ```
     ///
     /// - Throws: MarkdownFileError if directory creation fails
@@ -97,7 +98,8 @@ class MarkdownFileIO {
             rootDirectory.appendingPathComponent("tasks/active"),
             rootDirectory.appendingPathComponent("tasks/archive"),
             rootDirectory.appendingPathComponent("boards"),
-            rootDirectory.appendingPathComponent("config")
+            rootDirectory.appendingPathComponent("config"),
+            rootDirectory.appendingPathComponent("activity-log")
         ]
 
         for directory in directories {
@@ -506,5 +508,355 @@ extension MarkdownFileIO {
     /// Returns the URL for the config directory
     var configDirectory: URL {
         rootDirectory.appendingPathComponent("config")
+    }
+
+    /// Returns the URL for the rules.yaml file
+    var rulesFileURL: URL {
+        configDirectory.appendingPathComponent("rules.yaml")
+    }
+
+    /// Returns the URL for the time entries directory
+    var timeEntriesDirectory: URL {
+        rootDirectory.appendingPathComponent("time-entries")
+    }
+
+    /// Returns the URL for the activity log directory
+    var activityLogDirectory: URL {
+        rootDirectory.appendingPathComponent("activity-log")
+    }
+
+    /// Returns the URL for the activity log file
+    var activityLogFileURL: URL {
+        activityLogDirectory.appendingPathComponent("activity-log.json")
+    }
+}
+
+// MARK: - Rules I/O
+
+extension MarkdownFileIO {
+    /// Loads all automation rules from rules.yaml
+    ///
+    /// - Returns: An array of all loaded rules
+    /// - Throws: MarkdownFileError if reading fails
+    func loadAllRules() throws -> [Rule] {
+        logger?("Loading rules from: \(rulesFileURL.path)")
+
+        // Check if rules file exists
+        guard fileManager.fileExists(atPath: rulesFileURL.path) else {
+            logger?("Rules file does not exist yet, returning empty array")
+            return []
+        }
+
+        // Read the file contents
+        let yamlString = try readFileContents(from: rulesFileURL)
+
+        // Parse the YAML
+        let rules = YAMLParser.parseRules(yamlString)
+
+        logger?("Loaded \(rules.count) rules")
+        return rules
+    }
+
+    /// Writes all automation rules to rules.yaml
+    ///
+    /// - Parameter rules: The rules to write
+    /// - Throws: MarkdownFileError if writing fails
+    func writeAllRules(_ rules: [Rule]) throws {
+        logger?("Writing \(rules.count) rules to: \(rulesFileURL.path)")
+
+        // Ensure the config directory exists
+        try createDirectoryIfNeeded(configDirectory)
+
+        // Generate YAML
+        let yaml: String
+        do {
+            yaml = try YAMLParser.generateRules(rules)
+        } catch {
+            logger?("Failed to generate rules YAML: \(error)")
+            throw MarkdownFileError.writeError(rulesFileURL, error)
+        }
+
+        // Write to file
+        try writeFileContents(yaml, to: rulesFileURL)
+
+        logger?("Successfully wrote \(rules.count) rules")
+    }
+}
+
+// MARK: - Time Entry I/O
+
+extension MarkdownFileIO {
+    /// Reads a time entry from a markdown file
+    ///
+    /// - Parameter url: The URL of the markdown file to read
+    /// - Returns: The parsed TimeEntry object, or nil if parsing fails
+    /// - Throws: MarkdownFileError if reading fails
+    func readTimeEntry(from url: URL) throws -> TimeEntry? {
+        logger?("Reading time entry from: \(url.path)")
+
+        // Read the file contents
+        let markdown = try readFileContents(from: url)
+
+        // Parse the frontmatter and body
+        let (entryData, body): (TimeEntry?, String) = YAMLParser.parseFrontmatter(markdown)
+
+        guard var entry = entryData else {
+            logger?("No valid time entry frontmatter found in: \(url.path)")
+            return nil
+        }
+
+        // Update the entry's notes with the body content
+        entry.notes = body
+
+        logger?("Successfully read time entry: \(entry.id)")
+        return entry
+    }
+
+    /// Writes a time entry to a markdown file
+    ///
+    /// This method will:
+    /// 1. Create the directory structure if needed (e.g., time-entries/2025/11/)
+    /// 2. Generate markdown with YAML frontmatter from the time entry
+    /// 3. Write the file to the appropriate location
+    ///
+    /// - Parameters:
+    ///   - entry: The time entry to write
+    ///   - url: The URL where the file should be written (optional, derived from entry if not provided)
+    /// - Throws: MarkdownFileError if writing fails
+    func writeTimeEntry(_ entry: TimeEntry, to url: URL? = nil) throws {
+        // Determine the target URL
+        let targetURL = url ?? timeEntryURL(for: entry)
+
+        logger?("Writing time entry to: \(targetURL.path)")
+
+        // Ensure the parent directory exists
+        let parentDirectory = targetURL.deletingLastPathComponent()
+        try createDirectoryIfNeeded(parentDirectory)
+
+        // Generate markdown with frontmatter
+        let markdown: String
+        do {
+            markdown = try YAMLParser.generateTimeEntry(entry, body: entry.notes)
+        } catch {
+            logger?("Failed to generate markdown for time entry: \(error)")
+            throw MarkdownFileError.writeError(targetURL, error)
+        }
+
+        // Write to file
+        try writeFileContents(markdown, to: targetURL)
+
+        logger?("Successfully wrote time entry: \(entry.id)")
+    }
+
+    /// Returns the URL where a time entry should be stored based on its properties
+    ///
+    /// Format: time-entries/YYYY/MM/uuid.md
+    ///
+    /// - Parameter entry: The time entry
+    /// - Returns: The URL where the time entry should be stored
+    func timeEntryURL(for entry: TimeEntry) -> URL {
+        return rootDirectory.appendingPathComponent(entry.filePath)
+    }
+
+    /// Loads all time entries from the file system
+    ///
+    /// This method scans the time-entries directory and loads all
+    /// time entry files it finds. Corrupted files are skipped and logged.
+    ///
+    /// - Returns: An array of all loaded time entries
+    /// - Throws: MarkdownFileError if directory scanning fails
+    func loadAllTimeEntries() throws -> [TimeEntry] {
+        logger?("Loading all time entries from file system")
+
+        let timeEntriesDir = rootDirectory.appendingPathComponent("time-entries")
+
+        guard fileManager.fileExists(atPath: timeEntriesDir.path) else {
+            logger?("Time entries directory does not exist yet")
+            return []
+        }
+
+        let entries = try loadTimeEntriesFromDirectory(timeEntriesDir)
+        logger?("Total time entries loaded: \(entries.count)")
+        return entries
+    }
+
+    /// Recursively loads all time entries from a directory and its subdirectories
+    private func loadTimeEntriesFromDirectory(_ directory: URL) throws -> [TimeEntry] {
+        var entries: [TimeEntry] = []
+
+        let enumerator = fileManager.enumerator(
+            at: directory,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        )
+
+        guard let enumerator = enumerator else {
+            throw MarkdownFileError.readError(directory, NSError(domain: "FileManager", code: -1))
+        }
+
+        for case let fileURL as URL in enumerator {
+            // Only process .md files
+            guard fileURL.pathExtension == "md" else { continue }
+
+            do {
+                if let entry = try readTimeEntry(from: fileURL) {
+                    entries.append(entry)
+                }
+            } catch {
+                // Log but don't fail - skip corrupted files
+                logger?("Failed to load time entry from \(fileURL.path): \(error)")
+            }
+        }
+
+        return entries
+    }
+
+    /// Deletes a time entry file from the file system
+    ///
+    /// - Parameter entry: The time entry whose file should be deleted
+    /// - Throws: MarkdownFileError if deletion fails
+    func deleteTimeEntry(_ entry: TimeEntry) throws {
+        let url = timeEntryURL(for: entry)
+        try deleteFile(at: url)
+        logger?("Deleted time entry file: \(url.path)")
+    }
+}
+
+// MARK: - Activity Log I/O
+
+extension MarkdownFileIO {
+    /// Loads all activity logs from the file system
+    ///
+    /// Activity logs are stored in a single JSON file: activity-log/activity-log.json
+    ///
+    /// - Returns: An array of all loaded activity logs
+    /// - Throws: MarkdownFileError if reading fails
+    func loadAllActivityLogs() throws -> [ActivityLog] {
+        logger?("Loading activity logs from: \(activityLogFileURL.path)")
+
+        // Check if activity log file exists
+        guard fileManager.fileExists(atPath: activityLogFileURL.path) else {
+            logger?("Activity log file does not exist yet, returning empty array")
+            return []
+        }
+
+        // Read the file contents
+        let jsonData: Data
+        do {
+            jsonData = try Data(contentsOf: activityLogFileURL)
+        } catch {
+            throw MarkdownFileError.readError(activityLogFileURL, error)
+        }
+
+        // Decode the JSON
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let logs: [ActivityLog]
+        do {
+            logs = try decoder.decode([ActivityLog].self, from: jsonData)
+        } catch {
+            logger?("Failed to decode activity logs: \(error)")
+            throw MarkdownFileError.readError(activityLogFileURL, error)
+        }
+
+        logger?("Loaded \(logs.count) activity logs")
+        return logs
+    }
+
+    /// Writes all activity logs to the file system
+    ///
+    /// Activity logs are stored in a single JSON file: activity-log/activity-log.json
+    ///
+    /// - Parameter logs: The activity logs to write
+    /// - Throws: MarkdownFileError if writing fails
+    func writeAllActivityLogs(_ logs: [ActivityLog]) throws {
+        logger?("Writing \(logs.count) activity logs to: \(activityLogFileURL.path)")
+
+        // Ensure the activity log directory exists
+        try createDirectoryIfNeeded(activityLogDirectory)
+
+        // Encode to JSON
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+
+        let jsonData: Data
+        do {
+            jsonData = try encoder.encode(logs)
+        } catch {
+            logger?("Failed to encode activity logs: \(error)")
+            throw MarkdownFileError.writeError(activityLogFileURL, error)
+        }
+
+        // Write to file
+        do {
+            try jsonData.write(to: activityLogFileURL, options: .atomic)
+        } catch {
+            throw MarkdownFileError.writeError(activityLogFileURL, error)
+        }
+
+        logger?("Successfully wrote \(logs.count) activity logs")
+    }
+
+    /// Appends new activity logs to the existing log file
+    ///
+    /// This is more efficient than rewriting the entire file when adding a few logs
+    ///
+    /// - Parameter newLogs: The new activity logs to append
+    /// - Throws: MarkdownFileError if writing fails
+    func appendActivityLogs(_ newLogs: [ActivityLog]) throws {
+        // Load existing logs
+        var allLogs = try loadAllActivityLogs()
+
+        // Append new logs
+        allLogs.append(contentsOf: newLogs)
+
+        // Sort by timestamp (most recent first)
+        allLogs.sort { $0.timestamp > $1.timestamp }
+
+        // Write all logs
+        try writeAllActivityLogs(allLogs)
+
+        logger?("Appended \(newLogs.count) new activity logs (total: \(allLogs.count))")
+    }
+
+    /// Deletes activity logs older than the specified date
+    ///
+    /// - Parameter cutoffDate: The date before which logs should be deleted
+    /// - Returns: Number of logs deleted
+    /// - Throws: MarkdownFileError if reading/writing fails
+    @discardableResult
+    func deleteActivityLogs(olderThan cutoffDate: Date) throws -> Int {
+        // Load existing logs
+        var allLogs = try loadAllActivityLogs()
+
+        let beforeCount = allLogs.count
+
+        // Remove old logs
+        allLogs.removeAll { $0.timestamp < cutoffDate }
+
+        let deletedCount = beforeCount - allLogs.count
+
+        if deletedCount > 0 {
+            // Write updated logs
+            try writeAllActivityLogs(allLogs)
+            logger?("Deleted \(deletedCount) old activity logs")
+        }
+
+        return deletedCount
+    }
+
+    /// Clears all activity logs
+    ///
+    /// - Throws: MarkdownFileError if deletion fails
+    func clearAllActivityLogs() throws {
+        guard fileManager.fileExists(atPath: activityLogFileURL.path) else {
+            // Nothing to delete
+            return
+        }
+
+        try deleteFile(at: activityLogFileURL)
+        logger?("Cleared all activity logs")
     }
 }
