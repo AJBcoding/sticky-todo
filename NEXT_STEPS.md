@@ -1,31 +1,74 @@
 # StickyToDo - Next Steps & Development Roadmap
 
 **Last Updated**: 2025-11-18
-**Current Status**: Phase 1 Core Complete (~70%), UI Integration In Progress
+**Current Status**: Phase 1 MVP ~92% Complete - Xcode Configuration Documented
 
 ---
 
 ## Quick Start (Make It Runnable)
 
+### ⚠️ FIRST: Complete Xcode Configuration
+
+**Before attempting to build**, complete the Xcode setup:
+
+1. **Read [XCODE_SETUP.md](XCODE_SETUP.md)** - Comprehensive step-by-step configuration guide
+2. **Run verification**: `./scripts/configure-xcode.sh`
+3. **Add Yams package** - CRITICAL dependency (see below)
+4. **Configure Info.plist** - Required for Siri shortcuts
+5. **Verify frameworks** - AppIntents, CoreSpotlight, etc.
+
 ### Immediate Actions (1-2 Days)
 
 These steps will get the apps building and running with basic functionality:
 
-#### 1. Add Swift Package Dependencies (30 minutes)
+#### 1. Add Swift Package Dependencies (30 minutes) ✅ DOCUMENTED
 
 **Yams Library** (CRITICAL - Required for YAML parsing)
 
+**Comprehensive instructions available in [XCODE_SETUP.md](XCODE_SETUP.md)**
+
+Quick reference:
 ```bash
 # In Xcode:
 1. File → Add Packages...
 2. Enter URL: https://github.com/jpsim/Yams.git
 3. Select version: 5.0.0 or later
-4. Add to all targets: StickyToDoCore, StickyToDo, StickyToDo-SwiftUI, StickyToDo-AppKit
+4. Add to all targets: StickyToDoCore, StickyToDo-SwiftUI, StickyToDo-AppKit
 ```
 
 **Why**: All YAML parsing depends on Yams. Nothing will compile without it.
 
-#### 2. Build Both Apps (4 hours)
+**Status**: ✅ Complete documentation provided in XCODE_SETUP.md
+
+#### 2. Configure Info.plist for Siri Shortcuts (30 minutes) ✅ DOCUMENTED
+
+**Complete guide available**: [XCODE_SETUP.md](XCODE_SETUP.md#infoplist-configuration)
+**Template available**: [Info-Template.plist](Info-Template.plist)
+
+Required keys:
+- `NSSiriUsageDescription` - Privacy description for Siri
+- `NSUserActivityTypes` - Array of 11 intent types
+- Optional: Calendar, Reminders, Notifications descriptions
+
+**Status**: ✅ Template and documentation complete
+
+#### 3. Verify Configuration (15 minutes) ✅ AUTOMATED
+
+Run the automated verification script:
+```bash
+./scripts/configure-xcode.sh
+```
+
+This checks:
+- Package dependencies (Yams)
+- Framework references
+- Entitlements configuration
+- Build settings
+- Test build
+
+**Status**: ✅ Verification script created and tested
+
+#### 4. Build Both Apps (4 hours)
 
 **SwiftUI App**:
 ```bash
