@@ -15,8 +15,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "A1000000B"
-               BuildableName = "StickyToDo.app"
-               BlueprintName = "StickyToDo"
+               BuildableName = "StickyToDo-SwiftUI.app"
+               BlueprintName = "StickyToDo-SwiftUI"
                ReferencedContainer = "container:StickyToDo.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -57,8 +57,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "A1000000B"
-            BuildableName = "StickyToDo.app"
-            BlueprintName = "StickyToDo"
+            BuildableName = "StickyToDo-SwiftUI.app"
+            BlueprintName = "StickyToDo-SwiftUI"
             ReferencedContainer = "container:StickyToDo.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -74,8 +74,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "A1000000B"
-            BuildableName = "StickyToDo.app"
-            BlueprintName = "StickyToDo"
+            BuildableName = "StickyToDo-SwiftUI.app"
+            BlueprintName = "StickyToDo-SwiftUI"
             ReferencedContainer = "container:StickyToDo.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
