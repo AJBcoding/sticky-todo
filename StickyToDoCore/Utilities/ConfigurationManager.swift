@@ -49,6 +49,7 @@ final class ConfigurationManager: ObservableObject {
         static let groupBy = "groupBy"
         static let sortBy = "sortBy"
         static let defaultContext = "defaultContext"
+        static let lastReviewDate = "lastReviewDate"
     }
 
     // MARK: - Published Properties
@@ -220,6 +221,19 @@ final class ConfigurationManager: ObservableObject {
         }
     }
 
+    // MARK: - Weekly Review
+
+    /// Date of last completed weekly review
+    @Published var lastReviewDate: Date? {
+        didSet {
+            if let date = lastReviewDate {
+                UserDefaults.standard.set(date.timeIntervalSince1970, forKey: Keys.lastReviewDate)
+            } else {
+                UserDefaults.standard.removeObject(forKey: Keys.lastReviewDate)
+            }
+        }
+    }
+
     // MARK: - Initialization
 
     private init() {
@@ -308,6 +322,14 @@ final class ConfigurationManager: ObservableObject {
 
         let sortByString = UserDefaults.standard.string(forKey: Keys.sortBy) ?? SortOption.created.rawValue
         self.sortBy = SortOption(rawValue: sortByString) ?? .created
+
+        // Weekly Review
+        let lastReviewTimestamp = UserDefaults.standard.double(forKey: Keys.lastReviewDate)
+        if lastReviewTimestamp > 0 {
+            self.lastReviewDate = Date(timeIntervalSince1970: lastReviewTimestamp)
+        } else {
+            self.lastReviewDate = nil
+        }
     }
 
     // MARK: - Public Methods
@@ -358,6 +380,7 @@ final class ConfigurationManager: ObservableObject {
         showCompletedTasks = false
         groupBy = .none
         sortBy = .created
+        lastReviewDate = nil
 
         save()
     }

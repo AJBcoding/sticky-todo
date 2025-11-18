@@ -52,10 +52,37 @@ struct Task: Identifiable, Codable, Equatable {
     /// Estimated effort in minutes
     var effort: Int?
 
+    // MARK: - Organization
+
+    /// Custom tags applied to this task
+    var tags: [Tag]
+
+    /// Attachments associated with this task
+    var attachments: [Attachment]
+
     // MARK: - Board Positioning
 
     /// Position of this task on different boards, keyed by board ID
     var positions: [String: Position]
+
+    // MARK: - Task Hierarchy
+
+    /// Reference to parent task (nil if this is a top-level task)
+    var parentId: UUID?
+
+    /// Array of child task IDs (subtasks)
+    var subtaskIds: [UUID]
+
+    // MARK: - Recurrence
+
+    /// Recurrence pattern for this task (nil if not recurring)
+    var recurrence: Recurrence?
+
+    /// For recurring task instances: the ID of the original template task
+    var originalTaskId: UUID?
+
+    /// For recurring task instances: the occurrence date this instance represents
+    var occurrenceDate: Date?
 
     // MARK: - Timestamps
 
@@ -81,7 +108,14 @@ struct Task: Identifiable, Codable, Equatable {
     ///   - flagged: Flagged state (defaults to false)
     ///   - priority: Priority level (defaults to .medium)
     ///   - effort: Estimated effort in minutes
+    ///   - tags: Custom tags (defaults to empty)
+    ///   - attachments: Task attachments (defaults to empty)
     ///   - positions: Initial board positions (defaults to empty)
+    ///   - parentId: Reference to parent task (defaults to nil)
+    ///   - subtaskIds: Array of child task IDs (defaults to empty)
+    ///   - recurrence: Recurrence pattern for recurring tasks
+    ///   - originalTaskId: ID of the template task (for recurring instances)
+    ///   - occurrenceDate: Date this occurrence represents
     ///   - created: Creation timestamp (defaults to now)
     ///   - modified: Modification timestamp (defaults to now)
     init(
@@ -97,7 +131,14 @@ struct Task: Identifiable, Codable, Equatable {
         flagged: Bool = false,
         priority: Priority = .medium,
         effort: Int? = nil,
+        tags: [Tag] = [],
+        attachments: [Attachment] = [],
         positions: [String: Position] = [:],
+        parentId: UUID? = nil,
+        subtaskIds: [UUID] = [],
+        recurrence: Recurrence? = nil,
+        originalTaskId: UUID? = nil,
+        occurrenceDate: Date? = nil,
         created: Date = Date(),
         modified: Date = Date()
     ) {
@@ -113,7 +154,14 @@ struct Task: Identifiable, Codable, Equatable {
         self.flagged = flagged
         self.priority = priority
         self.effort = effort
+        self.tags = tags
+        self.attachments = attachments
         self.positions = positions
+        self.parentId = parentId
+        self.subtaskIds = subtaskIds
+        self.recurrence = recurrence
+        self.originalTaskId = originalTaskId
+        self.occurrenceDate = occurrenceDate
         self.created = created
         self.modified = modified
     }
@@ -217,6 +265,41 @@ extension Task {
             }
         }
     }
+
+    /// Returns true if this task has subtasks
+    var hasSubtasks: Bool {
+        return !subtaskIds.isEmpty
+    }
+
+    /// Returns true if this task is a subtask (has a parent)
+    var isSubtask: Bool {
+        return parentId != nil
+    }
+
+    /// Returns the indentation level for this task (0 = top-level, 1 = first-level subtask, etc.)
+    /// Note: This is a simple implementation. For deeper hierarchies, use TaskStore.indentationLevel(for:)
+    var indentationLevel: Int {
+        return isSubtask ? 1 : 0
+    }
+
+    /// Returns true if this task is recurring
+    var isRecurring: Bool {
+        return recurrence != nil && originalTaskId == nil
+    }
+
+    /// Returns true if this is a recurring task instance (created from a template)
+    var isRecurringInstance: Bool {
+        return originalTaskId != nil
+    }
+
+    /// Returns the next occurrence date for a recurring task
+    var nextOccurrence: Date? {
+        guard let recurrence = recurrence,
+              !recurrence.isComplete else { return nil }
+
+        let baseDate = occurrenceDate ?? due ?? Date()
+        return RecurrenceEngine.calculateNextOccurrence(from: baseDate, recurrence: recurrence)
+    }
 }
 
 // MARK: - Helper Methods
@@ -298,6 +381,93 @@ extension Task {
     mutating func touch() {
         modified = Date()
     }
+
+    /// Adds a subtask to this task
+    /// - Parameter taskId: The ID of the subtask to add
+    mutating func addSubtask(_ taskId: UUID) {
+        guard !subtaskIds.contains(taskId) else { return }
+        subtaskIds.append(taskId)
+        modified = Date()
+    }
+
+    /// Removes a subtask from this task
+    /// - Parameter taskId: The ID of the subtask to remove
+    mutating func removeSubtask(_ taskId: UUID) {
+        subtaskIds.removeAll { $0 == taskId }
+        modified = Date()
+    }
+
+    /// Removes all subtasks from this task
+    mutating func clearSubtasks() {
+        subtaskIds.removeAll()
+        modified = Date()
+    }
+
+    /// Sets the parent task for this task
+    /// - Parameter parentId: The ID of the parent task (or nil to clear)
+    mutating func setParent(_ parentId: UUID?) {
+        self.parentId = parentId
+        modified = Date()
+    }
+
+    /// Adds a tag to this task
+    /// - Parameter tag: The tag to add
+    mutating func addTag(_ tag: Tag) {
+        guard !tags.contains(tag) else { return }
+        tags.append(tag)
+        modified = Date()
+    }
+
+    /// Removes a tag from this task
+    /// - Parameter tag: The tag to remove
+    mutating func removeTag(_ tag: Tag) {
+        tags.removeAll { $0.id == tag.id }
+        modified = Date()
+    }
+
+    /// Removes all tags from this task
+    mutating func clearTags() {
+        tags.removeAll()
+        modified = Date()
+    }
+
+    /// Returns true if this task has the given tag
+    /// - Parameter tag: The tag to check
+    /// - Returns: True if the task has this tag
+    func hasTag(_ tag: Tag) -> Bool {
+        return tags.contains { $0.id == tag.id }
+    }
+
+    /// Returns true if this task has any tags
+    var hasTags: Bool {
+        return !tags.isEmpty
+    }
+
+    /// Adds an attachment to this task
+    /// - Parameter attachment: The attachment to add
+    mutating func addAttachment(_ attachment: Attachment) {
+        guard !attachments.contains(where: { $0.id == attachment.id }) else { return }
+        attachments.append(attachment)
+        modified = Date()
+    }
+
+    /// Removes an attachment from this task
+    /// - Parameter attachment: The attachment to remove
+    mutating func removeAttachment(_ attachment: Attachment) {
+        attachments.removeAll { $0.id == attachment.id }
+        modified = Date()
+    }
+
+    /// Removes all attachments from this task
+    mutating func clearAttachments() {
+        attachments.removeAll()
+        modified = Date()
+    }
+
+    /// Returns true if this task has attachments
+    var hasAttachments: Bool {
+        return !attachments.isEmpty
+    }
 }
 
 // MARK: - Filtering and Matching
@@ -366,7 +536,7 @@ extension Task {
 
     /// Returns true if this task matches the search query
     /// - Parameter query: The search string
-    /// - Returns: True if the query matches title, notes, project, or context
+    /// - Returns: True if the query matches title, notes, project, context, tags, or attachments
     func matchesSearch(_ query: String) -> Bool {
         let lowercaseQuery = query.lowercased()
 
@@ -383,6 +553,19 @@ extension Task {
         }
 
         if let ctx = context, ctx.lowercased().contains(lowercaseQuery) {
+            return true
+        }
+
+        // Search in tags
+        if tags.contains(where: { $0.name.lowercased().contains(lowercaseQuery) }) {
+            return true
+        }
+
+        // Search in attachments
+        if attachments.contains(where: { attachment in
+            attachment.name.lowercased().contains(lowercaseQuery) ||
+            attachment.description?.lowercased().contains(lowercaseQuery) == true
+        }) {
             return true
         }
 

@@ -231,9 +231,20 @@ struct BoardCanvasView: View {
         let position = task.position(for: board.id) ?? Position(x: 0, y: 0)
         let isSelected = selectedTaskIds.contains(task.id)
 
+        // Calculate subtask progress if task has subtasks
+        let subtaskProgress: (completed: Int, total: Int)? = {
+            guard task.hasSubtasks else { return nil }
+            let subtaskIds = task.subtaskIds
+            let subtasks = tasks.filter { subtaskIds.contains($0.id) }
+            guard !subtasks.isEmpty else { return nil }
+            let completed = subtasks.filter { $0.status == .completed }.count
+            return (completed, subtasks.count)
+        }()
+
         return TaskNoteView(
             task: task,
             isSelected: isSelected,
+            subtaskProgress: subtaskProgress,
             onTap: {
                 handleTaskTap(task.id)
             },
@@ -368,6 +379,7 @@ struct BoardCanvasView: View {
 struct TaskNoteView: View {
     let task: Task
     let isSelected: Bool
+    let subtaskProgress: (completed: Int, total: Int)?
     let onTap: () -> Void
     let onDragStart: () -> Void
     let onDragChange: (CGSize) -> Void
@@ -385,6 +397,30 @@ struct TaskNoteView: View {
 
             // Metadata badges
             HStack(spacing: 4) {
+                // Subtask progress
+                if let progress = subtaskProgress, progress.total > 0 {
+                    HStack(spacing: 2) {
+                        Image(systemName: "checklist")
+                            .font(.system(size: 9))
+                        Text("\(progress.completed)/\(progress.total)")
+                            .font(.caption2)
+                    }
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
+                    .background(
+                        Capsule().fill(
+                            progress.completed == progress.total
+                                ? Color.green.opacity(0.2)
+                                : Color.orange.opacity(0.2)
+                        )
+                    )
+                    .foregroundColor(
+                        progress.completed == progress.total
+                            ? .green
+                            : .orange
+                    )
+                }
+
                 if let context = task.context {
                     Text(context)
                         .font(.caption2)

@@ -35,6 +35,18 @@ struct TaskRowView: View {
     /// Whether the row is being hovered
     @State private var isHovered: Bool = false
 
+    /// Indentation level for hierarchical display (0 = top-level)
+    let indentationLevel: Int
+
+    /// Whether this task has subtasks
+    let hasSubtasks: Bool
+
+    /// Subtask progress (completed, total) - nil if no subtasks
+    let subtaskProgress: (completed: Int, total: Int)?
+
+    /// Whether subtasks are expanded (for disclosure triangle)
+    @Binding var isExpanded: Bool
+
     /// Callback when task is tapped
     var onTap: () -> Void
 
@@ -44,10 +56,39 @@ struct TaskRowView: View {
     /// Callback when task should be deleted
     var onDelete: () -> Void
 
+    /// Callback when disclosure triangle is tapped
+    var onToggleExpansion: (() -> Void)?
+
+    /// Callback when "Add Subtask" is tapped
+    var onAddSubtask: (() -> Void)?
+
     // MARK: - Body
 
     var body: some View {
         HStack(spacing: 12) {
+            // Indentation spacer
+            if indentationLevel > 0 {
+                Spacer()
+                    .frame(width: CGFloat(indentationLevel) * 20)
+            }
+
+            // Disclosure triangle (if task has subtasks)
+            if hasSubtasks {
+                Button(action: {
+                    onToggleExpansion?()
+                }) {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(width: 12, height: 12)
+                }
+                .buttonStyle(.plain)
+            } else if indentationLevel > 0 {
+                // Placeholder for alignment
+                Spacer()
+                    .frame(width: 12, height: 12)
+            }
+
             // Completion checkbox
             Button(action: {
                 onToggleComplete()
@@ -84,6 +125,15 @@ struct TaskRowView: View {
 
                 // Metadata badges
                 HStack(spacing: 6) {
+                    // Subtask progress badge (only if has subtasks)
+                    if let progress = subtaskProgress, progress.total > 0 {
+                        MetadataBadge(
+                            text: "\(progress.completed)/\(progress.total)",
+                            color: progress.completed == progress.total ? .green : .orange,
+                            icon: "checklist"
+                        )
+                    }
+
                     // Context badge
                     if let context = task.context {
                         MetadataBadge(
@@ -190,6 +240,15 @@ struct TaskRowView: View {
 
         Divider()
 
+        // Subtask menu
+        if let addSubtask = onAddSubtask {
+            Button("Add Subtask", systemImage: "plus.circle") {
+                addSubtask()
+            }
+
+            Divider()
+        }
+
         Button("Flag", systemImage: task.flagged ? "star.slash" : "star") {
             task.flagged.toggle()
         }
@@ -278,24 +337,57 @@ struct MetadataBadge: View {
             effort: 30
         )),
         isSelected: false,
+        indentationLevel: 0,
+        hasSubtasks: false,
+        subtaskProgress: nil,
+        isExpanded: .constant(false),
         onTap: {},
         onToggleComplete: {},
-        onDelete: {}
+        onDelete: {},
+        onToggleExpansion: nil,
+        onAddSubtask: {}
     )
     .padding()
 }
 
-#Preview("Task Row - Completed") {
+#Preview("Task Row - With Subtasks") {
     TaskRowView(
         task: .constant(Task(
-            title: "Completed task with long title that wraps",
-            status: .completed,
-            project: "Q4 Planning"
+            title: "Complete website redesign",
+            status: .nextAction,
+            project: "Website Redesign"
         )),
         isSelected: false,
+        indentationLevel: 0,
+        hasSubtasks: true,
+        subtaskProgress: (completed: 2, total: 5),
+        isExpanded: .constant(true),
         onTap: {},
         onToggleComplete: {},
-        onDelete: {}
+        onDelete: {},
+        onToggleExpansion: {},
+        onAddSubtask: {}
+    )
+    .padding()
+}
+
+#Preview("Task Row - Subtask") {
+    TaskRowView(
+        task: .constant(Task(
+            title: "Design homepage mockup",
+            status: .completed,
+            project: "Website Redesign"
+        )),
+        isSelected: false,
+        indentationLevel: 1,
+        hasSubtasks: false,
+        subtaskProgress: nil,
+        isExpanded: .constant(false),
+        onTap: {},
+        onToggleComplete: {},
+        onDelete: {},
+        onToggleExpansion: nil,
+        onAddSubtask: {}
     )
     .padding()
 }
@@ -307,9 +399,15 @@ struct MetadataBadge: View {
             flagged: true
         )),
         isSelected: true,
+        indentationLevel: 0,
+        hasSubtasks: false,
+        subtaskProgress: nil,
+        isExpanded: .constant(false),
         onTap: {},
         onToggleComplete: {},
-        onDelete: {}
+        onDelete: {},
+        onToggleExpansion: nil,
+        onAddSubtask: {}
     )
     .padding()
 }

@@ -40,6 +40,12 @@ class TaskTableCellView: NSTableCellView {
     /// Flagged star indicator
     private let flaggedIndicator = NSTextField(labelWithString: "⭐")
 
+    /// Disclosure triangle for subtasks
+    private let disclosureButton = NSButton()
+
+    /// Subtask progress indicator
+    private let subtaskProgressLabel = NSTextField(labelWithString: "")
+
     // MARK: - Properties
 
     /// Callback for checkbox changes
@@ -48,8 +54,20 @@ class TaskTableCellView: NSTableCellView {
     /// Callback for title changes
     var onTitleChanged: ((String) -> Void)?
 
+    /// Callback for disclosure triangle toggle
+    var onDisclosureToggled: (() -> Void)?
+
     /// Current task being displayed
     private var currentTask: Task?
+
+    /// Current indentation level
+    private var indentationLevel: Int = 0
+
+    /// Whether task has subtasks
+    private var hasSubtasks: Bool = false
+
+    /// Whether subtasks are expanded
+    private var isExpanded: Bool = false
 
     // MARK: - Initialization
 
@@ -109,6 +127,21 @@ class TaskTableCellView: NSTableCellView {
         flaggedIndicator.font = .systemFont(ofSize: 12)
         flaggedIndicator.isHidden = true
         addSubview(flaggedIndicator)
+
+        // Configure disclosure button
+        disclosureButton.isBordered = false
+        disclosureButton.title = ""
+        disclosureButton.bezelStyle = .disclosure
+        disclosureButton.setButtonType(.onOff)
+        disclosureButton.target = self
+        disclosureButton.action = #selector(disclosureToggled(_:))
+        disclosureButton.isHidden = true
+        addSubview(disclosureButton)
+
+        // Configure subtask progress label
+        configureBadge(subtaskProgressLabel, backgroundColor: .systemOrange.withAlphaComponent(0.1), textColor: .systemOrange)
+        subtaskProgressLabel.isHidden = true
+        badgeContainer.addSubview(subtaskProgressLabel)
     }
 
     private func configureBadge(_ badge: NSTextField, backgroundColor: NSColor, textColor: NSColor) {
@@ -128,6 +161,19 @@ class TaskTableCellView: NSTableCellView {
         let padding: CGFloat = 8
         var xOffset: CGFloat = padding
 
+        // Add indentation
+        let indentWidth = CGFloat(indentationLevel) * 20
+        xOffset += indentWidth
+
+        // Disclosure triangle (if has subtasks)
+        if !disclosureButton.isHidden {
+            disclosureButton.frame = NSRect(x: xOffset, y: (bounds.height - 16) / 2, width: 16, height: 16)
+            xOffset += disclosureButton.frame.width + 4
+        } else if indentationLevel > 0 {
+            // Add spacing for alignment with siblings that have disclosure
+            xOffset += 20
+        }
+
         // Checkbox (left-aligned)
         checkbox.frame = NSRect(x: xOffset, y: (bounds.height - 18) / 2, width: 18, height: 18)
         xOffset += checkbox.frame.width + 8
@@ -143,8 +189,19 @@ class TaskTableCellView: NSTableCellView {
         titleField.frame = NSRect(x: xOffset, y: (bounds.height - 20) / 2, width: titleWidth, height: 20)
         xOffset += titleField.frame.width + 12
 
-        // Badges (context and project)
+        // Badges (subtask progress, context, and project)
         var badgeX: CGFloat = 0
+
+        if !subtaskProgressLabel.isHidden {
+            subtaskProgressLabel.sizeToFit()
+            var badgeFrame = subtaskProgressLabel.frame
+            badgeFrame.size.width += 12
+            badgeFrame.size.height = 18
+            badgeFrame.origin = NSPoint(x: badgeX, y: (bounds.height - 18) / 2)
+            subtaskProgressLabel.frame = badgeFrame
+            badgeX += badgeFrame.width + 4
+        }
+
         if !contextBadge.isHidden {
             contextBadge.sizeToFit()
             var badgeFrame = contextBadge.frame
@@ -213,8 +270,42 @@ class TaskTableCellView: NSTableCellView {
     // MARK: - Configuration
 
     /// Configures the cell with task data
-    func configure(with task: Task) {
+    /// - Parameters:
+    ///   - task: The task to display
+    ///   - indentationLevel: The indentation level (0 = top-level)
+    ///   - hasSubtasks: Whether this task has subtasks
+    ///   - isExpanded: Whether subtasks are expanded
+    ///   - subtaskProgress: Optional subtask completion progress (completed, total)
+    func configure(
+        with task: Task,
+        indentationLevel: Int = 0,
+        hasSubtasks: Bool = false,
+        isExpanded: Bool = false,
+        subtaskProgress: (completed: Int, total: Int)? = nil
+    ) {
         currentTask = task
+        self.indentationLevel = indentationLevel
+        self.hasSubtasks = hasSubtasks
+        self.isExpanded = isExpanded
+
+        // Disclosure triangle
+        disclosureButton.isHidden = !hasSubtasks
+        disclosureButton.state = isExpanded ? .on : .off
+
+        // Subtask progress
+        if let progress = subtaskProgress, progress.total > 0 {
+            subtaskProgressLabel.stringValue = "\(progress.completed)/\(progress.total)"
+            subtaskProgressLabel.isHidden = false
+
+            // Update color based on completion
+            if progress.completed == progress.total {
+                configureBadge(subtaskProgressLabel, backgroundColor: .systemGreen.withAlphaComponent(0.1), textColor: .systemGreen)
+            } else {
+                configureBadge(subtaskProgressLabel, backgroundColor: .systemOrange.withAlphaComponent(0.1), textColor: .systemOrange)
+            }
+        } else {
+            subtaskProgressLabel.isHidden = true
+        }
 
         // Checkbox state
         checkbox.state = task.status == .completed ? .on : .off
@@ -289,6 +380,10 @@ class TaskTableCellView: NSTableCellView {
 
     @objc private func checkboxToggled(_ sender: NSButton) {
         onCheckboxToggled?(sender.state == .on)
+    }
+
+    @objc private func disclosureToggled(_ sender: NSButton) {
+        onDisclosureToggled?()
     }
 
     // MARK: - Editing
