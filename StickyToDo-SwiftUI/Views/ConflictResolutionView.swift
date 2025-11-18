@@ -66,6 +66,8 @@ struct ConflictResolutionView: View {
                     Button("Cancel") {
                         dismiss()
                     }
+                    .accessibilityLabel("Cancel")
+                    .accessibilityHint("Close without applying conflict resolutions")
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
@@ -74,16 +76,22 @@ struct ConflictResolutionView: View {
                         dismiss()
                     }
                     .disabled(!viewModel.allConflictsResolved)
+                    .accessibilityLabel("Apply resolution")
+                    .accessibilityHint(viewModel.allConflictsResolved ? "Apply all conflict resolutions and close" : "Disabled: resolve all conflicts first")
                 }
 
                 ToolbarItemGroup(placement: .automatic) {
                     Button("Keep All Mine") {
                         viewModel.resolveAll(.keepMine)
                     }
+                    .accessibilityLabel("Keep all mine")
+                    .accessibilityHint("Resolve all conflicts by keeping your versions")
 
                     Button("Keep All Theirs") {
                         viewModel.resolveAll(.keepTheirs)
                     }
+                    .accessibilityLabel("Keep all theirs")
+                    .accessibilityHint("Resolve all conflicts by keeping disk versions")
                 }
             }
         }
@@ -190,6 +198,8 @@ struct ConflictResolutionView: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(.blue)
+            .accessibilityLabel("Keep my version")
+            .accessibilityHint("Use your in-memory changes and discard external changes from disk")
 
             Button {
                 viewModel.resolve(conflict, with: .keepTheirs)
@@ -198,6 +208,8 @@ struct ConflictResolutionView: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(.purple)
+            .accessibilityLabel("Keep disk version")
+            .accessibilityHint("Use external changes from disk and discard your in-memory changes")
 
             Spacer()
 
@@ -207,6 +219,8 @@ struct ConflictResolutionView: View {
                 Label("View Both", systemImage: "eye.fill")
             }
             .buttonStyle(.bordered)
+            .accessibilityLabel("View both versions")
+            .accessibilityHint("Create a backup and keep both versions of the file")
 
             if conflict.hasChanges {
                 Button {
@@ -215,6 +229,8 @@ struct ConflictResolutionView: View {
                     Label("Merge...", systemImage: "arrow.triangle.merge")
                 }
                 .buttonStyle(.bordered)
+                .accessibilityLabel("Merge changes")
+                .accessibilityHint("Manually merge the conflicting changes")
             }
         }
         .padding()
@@ -275,6 +291,7 @@ struct ConflictListRow: View {
         HStack {
             Image(systemName: conflict.resolution == .unresolved ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
                 .foregroundColor(conflict.resolution == .unresolved ? .orange : .green)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(conflict.fileName)
@@ -288,6 +305,9 @@ struct ConflictListRow: View {
             Spacer()
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(conflict.fileName), \(resolutionText)")
+        .accessibilityHint("Double tap to view and resolve this conflict")
     }
 
     private var resolutionText: String {
@@ -329,6 +349,8 @@ struct ConflictContentView: View {
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(isSelected ? Color.blue.opacity(0.1) : Color(NSColor.controlBackgroundColor))
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(title), modified \(subtitle)")
 
             Divider()
 
@@ -340,11 +362,15 @@ struct ConflictContentView: View {
                     .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .accessibilityLabel("\(title) content")
+            .accessibilityValue(content)
         }
         .overlay(
             RoundedRectangle(cornerRadius: 4)
                 .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
         )
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(isSelected ? "\(title), currently selected" : title)
     }
 }
 

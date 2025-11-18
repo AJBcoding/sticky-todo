@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import Carbon.HIToolbox
+import StickyToDoCore
 
 /// Settings view with tabbed interface
 ///
@@ -160,6 +162,22 @@ struct QuickCaptureSettingsView: View {
     @State private var quickCaptureEnabled = true
     @State private var enableNaturalLanguageParsing = true
     @State private var showRecentSuggestions = true
+    @State private var showingHotkeyRecorder = false
+
+    private var currentHotkeyDisplay: String {
+        var parts: [String] = []
+
+        let modifiers = configManager.quickCaptureHotkeyModifiers
+        if modifiers & 0x001 != 0 { parts.append("⌃") }
+        if modifiers & 0x020 != 0 { parts.append("⌥") }
+        if modifiers & 0x008 != 0 { parts.append("⇧") }
+        if modifiers & 0x100 != 0 { parts.append("⌘") }
+
+        let keyCode = configManager.quickCaptureHotkey
+        parts.append(keyNameForCode(keyCode))
+
+        return parts.joined()
+    }
 
     var body: some View {
         Form {
@@ -168,7 +186,7 @@ struct QuickCaptureSettingsView: View {
 
                 HStack {
                     Text("Hotkey")
-                    Text("⌘⇧Space")
+                    Text(currentHotkeyDisplay)
                         .font(.body.monospaced())
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
@@ -178,9 +196,10 @@ struct QuickCaptureSettingsView: View {
                         )
 
                     Button("Change...") {
-                        changeHotkey()
+                        showingHotkeyRecorder = true
                     }
-                    .disabled(true) // TODO: Implement hotkey recorder
+                    .accessibilityLabel("Change hotkey")
+                    .accessibilityHint("Opens the hotkey recorder to set a custom keyboard shortcut")
                 }
 
                 if !GlobalHotkeyManager.hasAccessibilityPermissions() {
@@ -282,11 +301,64 @@ struct QuickCaptureSettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
+        .sheet(isPresented: $showingHotkeyRecorder) {
+            HotkeyRecorderView()
+                .environmentObject(configManager)
+        }
     }
 
-    private func changeHotkey() {
-        // Show hotkey recorder
-        print("Change hotkey requested")
+    private func keyNameForCode(_ keyCode: UInt16) -> String {
+        switch Int(keyCode) {
+        case kVK_Space: return "Space"
+        case kVK_Return: return "↩"
+        case kVK_Tab: return "⇥"
+        case kVK_Delete: return "⌫"
+        case kVK_ForwardDelete: return "⌦"
+        case kVK_Escape: return "⎋"
+        case kVK_LeftArrow: return "←"
+        case kVK_RightArrow: return "→"
+        case kVK_UpArrow: return "↑"
+        case kVK_DownArrow: return "↓"
+        case kVK_Home: return "↖"
+        case kVK_End: return "↘"
+        case kVK_PageUp: return "⇞"
+        case kVK_PageDown: return "⇟"
+        case kVK_F1...kVK_F20:
+            return "F\(Int(keyCode) - kVK_F1 + 1)"
+        default:
+            // Try to get the character representation
+            let keyboard = TISCopyCurrentKeyboardInputSource().takeRetainedValue()
+            let layoutData = TISGetInputSourceProperty(keyboard, kTISPropertyUnicodeKeyLayoutData)
+
+            if let layoutData = layoutData {
+                let layout = unsafeBitCast(layoutData, to: CFData.self)
+                let dataPtr = CFDataGetBytePtr(layout)
+                let keyboardLayout = unsafeBitCast(dataPtr, to: UnsafePointer<UCKeyboardLayout>.self)
+
+                var deadKeyState: UInt32 = 0
+                var length = 0
+                var chars = [UniChar](repeating: 0, count: 4)
+
+                UCKeyTranslate(
+                    keyboardLayout,
+                    keyCode,
+                    UInt16(kUCKeyActionDisplay),
+                    0,
+                    UInt32(LMGetKbdType()),
+                    UInt32(kUCKeyTranslateNoDeadKeysMask),
+                    &deadKeyState,
+                    4,
+                    &length,
+                    &chars
+                )
+
+                if length > 0 {
+                    return String(utf16CodeUnits: chars, count: length).uppercased()
+                }
+            }
+
+            return "Key(\(keyCode))"
+        }
     }
 }
 
@@ -580,6 +652,327 @@ struct AdvancedSettingsView: View {
     private func openDocumentation() {
         if let url = URL(string: "https://stickytodo.app/docs") {
             NSWorkspace.shared.open(url)
+        }
+    }
+}
+
+// MARK: - Hotkey Recorder
+
+/// View for recording keyboard shortcuts
+struct HotkeyRecorderView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var configManager: ConfigurationManager
+
+    @State private var isRecording = false
+    @State private var recordedKeyCode: UInt16?
+    @State private var recordedModifiers: NSEvent.ModifierFlags = []
+    @State private var conflictWarning: String?
+    @State private var eventMonitor: Any?
+
+    private var hasValidShortcut: Bool {
+        recordedKeyCode != nil && !recordedModifiers.isEmpty
+    }
+
+    private var displayString: String {
+        guard let keyCode = recordedKeyCode else {
+            return "Press keys..."
+        }
+
+        var parts: [String] = []
+
+        if recordedModifiers.contains(.control) { parts.append("⌃") }
+        if recordedModifiers.contains(.option) { parts.append("⌥") }
+        if recordedModifiers.contains(.shift) { parts.append("⇧") }
+        if recordedModifiers.contains(.command) { parts.append("⌘") }
+
+        parts.append(keyNameForCode(keyCode))
+
+        return parts.joined()
+    }
+
+    var body: some View {
+        VStack(spacing: 24) {
+            // Header
+            VStack(spacing: 8) {
+                Text("Record Keyboard Shortcut")
+                    .font(.headline)
+
+                Text("Click 'Start Recording' and press your desired key combination")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            // Recorder display
+            VStack(spacing: 16) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(isRecording ? Color.blue.opacity(0.1) : Color.secondary.opacity(0.1))
+                        .frame(height: 80)
+
+                    Text(displayString)
+                        .font(.title2.monospaced())
+                        .foregroundColor(isRecording ? .blue : .primary)
+                }
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(isRecording ? Color.blue : Color.clear, lineWidth: 2)
+                )
+
+                if isRecording {
+                    HStack {
+                        Image(systemName: "circlebadge.fill")
+                            .foregroundColor(.red)
+                        Text("Recording... Press your shortcut")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Button(isRecording ? "Stop Recording" : "Start Recording") {
+                    if isRecording {
+                        stopRecording()
+                    } else {
+                        startRecording()
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+
+            // Conflict warning
+            if let warning = conflictWarning {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.orange)
+                    Text(warning)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(8)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.orange.opacity(0.1))
+                )
+            }
+
+            // Requirements
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Requirements:")
+                    .font(.caption)
+                    .fontWeight(.medium)
+
+                HStack {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(recordedModifiers.isEmpty ? .secondary : .green)
+                        .font(.caption)
+                    Text("At least one modifier key (⌘, ⌥, ⌃, or ⇧)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                HStack {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(recordedKeyCode == nil ? .secondary : .green)
+                        .font(.caption)
+                    Text("One regular key or special key")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.secondary.opacity(0.05))
+            )
+
+            Spacer()
+
+            // Action buttons
+            HStack(spacing: 12) {
+                Button("Cancel") {
+                    stopRecording()
+                    dismiss()
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Button("Save") {
+                    saveHotkey()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!hasValidShortcut)
+            }
+        }
+        .padding(24)
+        .frame(width: 450, height: 450)
+        .onDisappear {
+            stopRecording()
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Hotkey recorder")
+        .accessibilityHint("Record a new keyboard shortcut for quick capture")
+    }
+
+    // MARK: - Recording
+
+    private func startRecording() {
+        isRecording = true
+        conflictWarning = nil
+        recordedKeyCode = nil
+        recordedModifiers = []
+
+        // Install event monitor
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [self] event in
+            handleKeyEvent(event)
+            return nil // Consume the event
+        }
+    }
+
+    private func stopRecording() {
+        isRecording = false
+
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
+            eventMonitor = nil
+        }
+    }
+
+    private func handleKeyEvent(_ event: NSEvent) {
+        if event.type == .flagsChanged {
+            // Update modifier flags
+            recordedModifiers = event.modifierFlags.intersection([.command, .shift, .option, .control])
+        } else if event.type == .keyDown {
+            // Capture the key
+            recordedKeyCode = event.keyCode
+            recordedModifiers = event.modifierFlags.intersection([.command, .shift, .option, .control])
+
+            // Check for conflicts
+            checkForConflicts()
+
+            // Stop recording automatically after capturing a key
+            stopRecording()
+        }
+    }
+
+    // MARK: - Validation
+
+    private func checkForConflicts() {
+        guard let keyCode = recordedKeyCode else { return }
+
+        // Define common system shortcuts to warn about
+        let systemShortcuts: [(keyCode: UInt16, modifiers: NSEvent.ModifierFlags, description: String)] = [
+            (UInt16(kVK_Space), [.command], "Spotlight"),
+            (UInt16(kVK_Space), [.command, .option], "Spotlight Finder"),
+            (UInt16(kVK_Tab), [.command], "App Switcher"),
+            (UInt16(kVK_ANSI_Q), [.command], "Quit Application"),
+            (UInt16(kVK_ANSI_W), [.command], "Close Window"),
+            (UInt16(kVK_ANSI_H), [.command], "Hide Window"),
+            (UInt16(kVK_ANSI_M), [.command], "Minimize Window"),
+            (UInt16(kVK_ANSI_C), [.command], "Copy"),
+            (UInt16(kVK_ANSI_V), [.command], "Paste"),
+            (UInt16(kVK_ANSI_X), [.command], "Cut"),
+            (UInt16(kVK_ANSI_Z), [.command], "Undo"),
+            (UInt16(kVK_ANSI_A), [.command], "Select All"),
+            (UInt16(kVK_ANSI_S), [.command], "Save"),
+            (UInt16(kVK_ANSI_P), [.command], "Print"),
+            (UInt16(kVK_ANSI_F), [.command], "Find"),
+        ]
+
+        for shortcut in systemShortcuts {
+            if shortcut.keyCode == keyCode && shortcut.modifiers == recordedModifiers {
+                conflictWarning = "⚠️ This shortcut conflicts with system '\(shortcut.description)' command"
+                return
+            }
+        }
+
+        // Check if modifiers are sufficient (need at least one)
+        if recordedModifiers.isEmpty {
+            conflictWarning = "⚠️ You must use at least one modifier key (⌘, ⌥, ⌃, or ⇧)"
+            return
+        }
+
+        conflictWarning = nil
+    }
+
+    // MARK: - Save
+
+    private func saveHotkey() {
+        guard let keyCode = recordedKeyCode, !recordedModifiers.isEmpty else { return }
+
+        // Convert NSEvent.ModifierFlags to our storage format
+        var modifierBits: UInt = 0
+        if recordedModifiers.contains(.command) { modifierBits |= 0x100 }
+        if recordedModifiers.contains(.shift) { modifierBits |= 0x008 }
+        if recordedModifiers.contains(.option) { modifierBits |= 0x020 }
+        if recordedModifiers.contains(.control) { modifierBits |= 0x001 }
+
+        // Save to configuration
+        configManager.quickCaptureHotkey = keyCode
+        configManager.quickCaptureHotkeyModifiers = modifierBits
+
+        // Post notification to update global hotkey manager
+        NotificationCenter.default.post(
+            name: NSNotification.Name("hotkeyChanged"),
+            object: nil,
+            userInfo: ["keyCode": keyCode, "modifiers": modifierBits]
+        )
+
+        dismiss()
+    }
+
+    // MARK: - Helpers
+
+    private func keyNameForCode(_ keyCode: UInt16) -> String {
+        switch Int(keyCode) {
+        case kVK_Space: return "Space"
+        case kVK_Return: return "↩"
+        case kVK_Tab: return "⇥"
+        case kVK_Delete: return "⌫"
+        case kVK_ForwardDelete: return "⌦"
+        case kVK_Escape: return "⎋"
+        case kVK_LeftArrow: return "←"
+        case kVK_RightArrow: return "→"
+        case kVK_UpArrow: return "↑"
+        case kVK_DownArrow: return "↓"
+        case kVK_Home: return "↖"
+        case kVK_End: return "↘"
+        case kVK_PageUp: return "⇞"
+        case kVK_PageDown: return "⇟"
+        case kVK_F1...kVK_F20:
+            return "F\(Int(keyCode) - kVK_F1 + 1)"
+        default:
+            // Try to get the character representation
+            let keyboard = TISCopyCurrentKeyboardInputSource().takeRetainedValue()
+            let layoutData = TISGetInputSourceProperty(keyboard, kTISPropertyUnicodeKeyLayoutData)
+
+            if let layoutData = layoutData {
+                let layout = unsafeBitCast(layoutData, to: CFData.self)
+                let dataPtr = CFDataGetBytePtr(layout)
+                let keyboardLayout = unsafeBitCast(dataPtr, to: UnsafePointer<UCKeyboardLayout>.self)
+
+                var deadKeyState: UInt32 = 0
+                var length = 0
+                var chars = [UniChar](repeating: 0, count: 4)
+
+                UCKeyTranslate(
+                    keyboardLayout,
+                    keyCode,
+                    UInt16(kUCKeyActionDisplay),
+                    0,
+                    UInt32(LMGetKbdType()),
+                    UInt32(kUCKeyTranslateNoDeadKeysMask),
+                    &deadKeyState,
+                    4,
+                    &length,
+                    &chars
+                )
+
+                if length > 0 {
+                    return String(utf16CodeUnits: chars, count: length).uppercased()
+                }
+            }
+
+            return "Key(\(keyCode))"
         }
     }
 }

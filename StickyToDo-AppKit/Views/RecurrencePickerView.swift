@@ -52,6 +52,7 @@ class RecurrencePickerView: NSView {
     // Container views
     private let mainStack = NSStackView()
     private let settingsContainer = NSView()
+    private var previewStack: NSStackView?
 
     // MARK: - State
 
@@ -103,6 +104,8 @@ class RecurrencePickerView: NSView {
         // Enable checkbox
         enableCheckbox.target = self
         enableCheckbox.action = #selector(enableCheckboxChanged)
+        enableCheckbox.setAccessibilityLabel("Repeat task")
+        enableCheckbox.setAccessibilityHelp("Toggle to enable or disable task recurrence")
         mainStack.addArrangedSubview(enableCheckbox)
 
         // Settings container
@@ -137,6 +140,8 @@ class RecurrencePickerView: NSView {
         frequencyPopup.addItems(withTitles: ["Daily", "Weekly", "Monthly", "Yearly"])
         frequencyPopup.target = self
         frequencyPopup.action = #selector(frequencyChanged)
+        frequencyPopup.setAccessibilityLabel("Recurrence frequency")
+        frequencyPopup.setAccessibilityHelp("Select how often the task repeats")
         stack.addArrangedSubview(frequencyPopup)
 
         // Interval section
@@ -153,11 +158,14 @@ class RecurrencePickerView: NSView {
         intervalStepper.integerValue = 1
         intervalStepper.target = self
         intervalStepper.action = #selector(intervalChanged)
+        intervalStepper.setAccessibilityLabel("Repeat interval")
+        intervalStepper.setAccessibilityHelp("Adjust how many periods between each occurrence")
 
         intervalLabel.isEditable = false
         intervalLabel.isBordered = false
         intervalLabel.backgroundColor = .clear
         intervalLabel.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
+        intervalLabel.setAccessibilityLabel("Interval value")
 
         intervalUnitLabel.isEditable = false
         intervalUnitLabel.isBordered = false
@@ -187,6 +195,18 @@ class RecurrencePickerView: NSView {
 
         // End condition section
         setupEndConditionSection(in: stack)
+
+        // Separator before preview
+        let previewSeparator = NSBox()
+        previewSeparator.boxType = .separator
+        previewSeparator.translatesAutoresizingMaskIntoConstraints = false
+        previewSeparator.widthAnchor.constraint(equalToConstant: 300).isActive = true
+        stack.addArrangedSubview(previewSeparator)
+
+        // Preview section
+        let preview = createPreviewSection()
+        stack.addArrangedSubview(preview)
+        previewStack = preview
     }
 
     private func setupWeeklyDaysSection() {
@@ -204,6 +224,7 @@ class RecurrencePickerView: NSView {
         buttonsStack.spacing = 4
 
         let dayNames = ["S", "M", "T", "W", "T", "F", "S"]
+        let fullDayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
         for (index, name) in dayNames.enumerated() {
             let button = NSButton(title: name, target: self, action: #selector(dayButtonClicked(_:)))
             button.setButtonType(.toggle)
@@ -211,6 +232,8 @@ class RecurrencePickerView: NSView {
             button.tag = index
             button.widthAnchor.constraint(equalToConstant: 32).isActive = true
             button.heightAnchor.constraint(equalToConstant: 32).isActive = true
+            button.setAccessibilityLabel(fullDayNames[index])
+            button.setAccessibilityHelp("Toggle \(fullDayNames[index]) for weekly recurrence")
             dayButtons.append(button)
             buttonsStack.addArrangedSubview(button)
         }
@@ -235,16 +258,21 @@ class RecurrencePickerView: NSView {
 
         dayOfMonthRadio.target = self
         dayOfMonthRadio.action = #selector(monthlyOptionChanged)
+        dayOfMonthRadio.setAccessibilityLabel("Specific day of month")
+        dayOfMonthRadio.setAccessibilityHelp("Select to repeat on a specific day number")
 
         dayOfMonthStepper.minValue = 1
         dayOfMonthStepper.maxValue = 31
         dayOfMonthStepper.integerValue = 1
         dayOfMonthStepper.target = self
         dayOfMonthStepper.action = #selector(dayOfMonthChanged)
+        dayOfMonthStepper.setAccessibilityLabel("Day of month")
+        dayOfMonthStepper.setAccessibilityHelp("Adjust which day of the month to repeat on")
 
         dayOfMonthLabel.isEditable = false
         dayOfMonthLabel.isBordered = false
         dayOfMonthLabel.backgroundColor = .clear
+        dayOfMonthLabel.setAccessibilityLabel("Day number")
 
         dayStack.addArrangedSubview(dayOfMonthRadio)
         dayStack.addArrangedSubview(NSTextField(labelWithString: "Day"))
@@ -256,6 +284,8 @@ class RecurrencePickerView: NSView {
         // Last day option
         lastDayRadio.target = self
         lastDayRadio.action = #selector(monthlyOptionChanged)
+        lastDayRadio.setAccessibilityLabel("Last day of month")
+        lastDayRadio.setAccessibilityHelp("Select to repeat on the last day of each month")
         monthlyStack.addArrangedSubview(lastDayRadio)
     }
 
@@ -268,6 +298,8 @@ class RecurrencePickerView: NSView {
         // Never
         neverRadio.target = self
         neverRadio.action = #selector(endConditionChanged)
+        neverRadio.setAccessibilityLabel("Never ends")
+        neverRadio.setAccessibilityHelp("Select for unlimited recurrence")
         stack.addArrangedSubview(neverRadio)
 
         // On date
@@ -278,12 +310,16 @@ class RecurrencePickerView: NSView {
 
         onDateRadio.target = self
         onDateRadio.action = #selector(endConditionChanged)
+        onDateRadio.setAccessibilityLabel("Ends on date")
+        onDateRadio.setAccessibilityHelp("Select to end recurrence on a specific date")
         dateStack.addArrangedSubview(onDateRadio)
 
         endDatePicker.datePickerStyle = .clockAndCalendar
         endDatePicker.dateValue = endDate
         endDatePicker.target = self
         endDatePicker.action = #selector(endDateChanged)
+        endDatePicker.setAccessibilityLabel("End date")
+        endDatePicker.setAccessibilityHelp("Select when the recurrence should end")
         dateStack.addArrangedSubview(endDatePicker)
 
         stack.addArrangedSubview(dateStack)
@@ -295,16 +331,21 @@ class RecurrencePickerView: NSView {
 
         afterCountRadio.target = self
         afterCountRadio.action = #selector(endConditionChanged)
+        afterCountRadio.setAccessibilityLabel("Ends after count")
+        afterCountRadio.setAccessibilityHelp("Select to end after a specific number of occurrences")
 
         countStepper.minValue = 1
         countStepper.maxValue = 999
         countStepper.integerValue = 10
         countStepper.target = self
         countStepper.action = #selector(countChanged)
+        countStepper.setAccessibilityLabel("Number of occurrences")
+        countStepper.setAccessibilityHelp("Adjust how many times the task should repeat")
 
         countLabel.isEditable = false
         countLabel.isBordered = false
         countLabel.backgroundColor = .clear
+        countLabel.setAccessibilityLabel("Occurrence count")
 
         countStack.addArrangedSubview(afterCountRadio)
         countStack.addArrangedSubview(countLabel)
@@ -466,6 +507,12 @@ class RecurrencePickerView: NSView {
         // Show/hide frequency-specific sections
         weeklyDaysStack.isHidden = frequency != .weekly || !isEnabled
         monthlyStack.isHidden = frequency != .monthly || !isEnabled
+        previewStack?.isHidden = !isEnabled
+
+        // Update preview
+        if isEnabled {
+            updatePreviewSection()
+        }
     }
 
     private func updateRecurrence() {
@@ -489,9 +536,224 @@ class RecurrencePickerView: NSView {
         onChange?(recurrence)
     }
 
+    // MARK: - Preview Section
+
+    private func createPreviewSection() -> NSStackView {
+        let container = NSStackView()
+        container.orientation = .vertical
+        container.alignment = .leading
+        container.spacing = 8
+        container.translatesAutoresizingMaskIntoConstraints = false
+
+        // Header
+        let headerStack = NSStackView()
+        headerStack.orientation = .horizontal
+        headerStack.spacing = 6
+
+        let iconLabel = NSTextField(labelWithString: "📅")
+        iconLabel.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        headerStack.addArrangedSubview(iconLabel)
+
+        let titleLabel = NSTextField(labelWithString: "Next Occurrences")
+        titleLabel.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize, weight: .medium)
+        titleLabel.textColor = .secondaryLabelColor
+        headerStack.addArrangedSubview(titleLabel)
+
+        container.addArrangedSubview(headerStack)
+
+        // Content container
+        let contentContainer = NSView()
+        contentContainer.wantsLayer = true
+        contentContainer.layer?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.05).cgColor
+        contentContainer.layer?.borderColor = NSColor.controlAccentColor.withAlphaComponent(0.2).cgColor
+        contentContainer.layer?.borderWidth = 1
+        contentContainer.layer?.cornerRadius = 8
+        contentContainer.translatesAutoresizingMaskIntoConstraints = false
+
+        let contentStack = NSStackView()
+        contentStack.orientation = .vertical
+        contentStack.alignment = .leading
+        contentStack.spacing = 6
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
+        contentContainer.addSubview(contentStack)
+
+        NSLayoutConstraint.activate([
+            contentStack.topAnchor.constraint(equalTo: contentContainer.topAnchor, constant: 12),
+            contentStack.leadingAnchor.constraint(equalTo: contentContainer.leadingAnchor, constant: 12),
+            contentStack.trailingAnchor.constraint(equalTo: contentContainer.trailingAnchor, constant: -12),
+            contentStack.bottomAnchor.constraint(equalTo: contentContainer.bottomAnchor, constant: -12),
+            contentContainer.widthAnchor.constraint(equalToConstant: 300)
+        ])
+
+        container.addArrangedSubview(contentContainer)
+        container.setAccessibilityLabel("Next occurrences preview")
+
+        return container
+    }
+
+    private func updatePreviewSection() {
+        guard let container = previewStack?.arrangedSubviews.last as? NSView,
+              let contentStack = container.subviews.first as? NSStackView else {
+            return
+        }
+
+        // Clear existing content
+        contentStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+
+        if let recurrence = recurrence, !recurrence.isComplete {
+            let occurrences = calculateNextOccurrences()
+
+            for (index, date) in occurrences.enumerated() {
+                let rowStack = NSStackView()
+                rowStack.orientation = .horizontal
+                rowStack.spacing = 8
+
+                // Bullet point
+                let bullet = NSView()
+                bullet.wantsLayer = true
+                bullet.layer?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.3).cgColor
+                bullet.layer?.cornerRadius = 3
+                bullet.translatesAutoresizingMaskIntoConstraints = false
+                NSLayoutConstraint.activate([
+                    bullet.widthAnchor.constraint(equalToConstant: 6),
+                    bullet.heightAnchor.constraint(equalToConstant: 6)
+                ])
+                rowStack.addArrangedSubview(bullet)
+
+                // Date label
+                let dateLabel = NSTextField(labelWithString: formatDate(date, index: index))
+                dateLabel.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+                dateLabel.textColor = .labelColor
+                dateLabel.isEditable = false
+                dateLabel.isBordered = false
+                dateLabel.backgroundColor = .clear
+                dateLabel.setAccessibilityLabel("Occurrence \(index + 1): \(formatDateForAccessibility(date))")
+                rowStack.addArrangedSubview(dateLabel)
+
+                contentStack.addArrangedSubview(rowStack)
+            }
+
+            // Show end condition if applicable
+            if let endInfo = endConditionInfo {
+                let endLabel = NSTextField(labelWithString: endInfo)
+                endLabel.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize - 1)
+                endLabel.textColor = .secondaryLabelColor
+                endLabel.isEditable = false
+                endLabel.isBordered = false
+                endLabel.backgroundColor = .clear
+                endLabel.lineBreakMode = .byWordWrapping
+                endLabel.setAccessibilityLabel(endInfo)
+
+                let indentedStack = NSStackView()
+                indentedStack.orientation = .horizontal
+                indentedStack.spacing = 14
+                let spacer = NSView()
+                spacer.translatesAutoresizingMaskIntoConstraints = false
+                spacer.widthAnchor.constraint(equalToConstant: 14).isActive = true
+                indentedStack.addArrangedSubview(spacer)
+                indentedStack.addArrangedSubview(endLabel)
+
+                contentStack.addArrangedSubview(indentedStack)
+            }
+        } else if recurrence?.isComplete == true {
+            let completedStack = NSStackView()
+            completedStack.orientation = .horizontal
+            completedStack.spacing = 8
+
+            let checkLabel = NSTextField(labelWithString: "✓")
+            checkLabel.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+            checkLabel.textColor = NSColor.systemGreen
+            completedStack.addArrangedSubview(checkLabel)
+
+            let messageLabel = NSTextField(labelWithString: "Recurrence completed")
+            messageLabel.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+            messageLabel.textColor = .secondaryLabelColor
+            messageLabel.isEditable = false
+            messageLabel.isBordered = false
+            messageLabel.backgroundColor = .clear
+            completedStack.addArrangedSubview(messageLabel)
+
+            contentStack.addArrangedSubview(completedStack)
+        } else {
+            let messageLabel = NSTextField(labelWithString: "No recurrence pattern set")
+            messageLabel.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+            messageLabel.textColor = .secondaryLabelColor
+            messageLabel.isEditable = false
+            messageLabel.isBordered = false
+            messageLabel.backgroundColor = .clear
+            contentStack.addArrangedSubview(messageLabel)
+        }
+    }
+
+    private func calculateNextOccurrences() -> [Date] {
+        guard let recurrence = recurrence else { return [] }
+
+        var occurrences: [Date] = []
+        var currentDate = Date()
+        var iterationCount = 0
+        let maxIterations = 10 // Safety limit
+
+        while occurrences.count < 5 && iterationCount < maxIterations {
+            guard let nextDate = RecurrenceEngine.calculateNextOccurrence(
+                from: currentDate,
+                recurrence: recurrence
+            ) else {
+                break
+            }
+
+            // Check if we've exceeded count limit
+            if let maxCount = recurrence.count,
+               recurrence.occurrenceCount + occurrences.count >= maxCount {
+                break
+            }
+
+            // Check if we've exceeded end date
+            if let endDate = recurrence.endDate, nextDate > endDate {
+                break
+            }
+
+            occurrences.append(nextDate)
+            currentDate = nextDate
+            iterationCount += 1
+        }
+
+        return occurrences
+    }
+
+    private func formatDate(_ date: Date, index: Int) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        formatter.doesRelativeDateFormatting = true
+        return formatter.string(from: date)
+    }
+
+    private func formatDateForAccessibility(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
+        formatter.timeStyle = .none
+        formatter.doesRelativeDateFormatting = true
+        return formatter.string(from: date)
+    }
+
+    private var endConditionInfo: String? {
+        guard let recurrence = recurrence else { return nil }
+
+        if let endDate = recurrence.endDate {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            return "Ends on \(formatter.string(from: endDate))"
+        } else if let maxCount = recurrence.count {
+            let remaining = maxCount - recurrence.occurrenceCount
+            return "Ends after \(remaining) more occurrence\(remaining == 1 ? "" : "s")"
+        }
+
+        return nil
+    }
+
     // MARK: - Intrinsic Content Size
 
     override var intrinsicContentSize: NSSize {
-        return NSSize(width: 350, height: isEnabled ? 500 : 30)
+        return NSSize(width: 350, height: isEnabled ? 600 : 30)
     }
 }

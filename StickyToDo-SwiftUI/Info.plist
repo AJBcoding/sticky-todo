@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+    Info.plist for StickyToDo-SwiftUI
+
+    Complete configuration for:
+    - Siri Shortcuts (App Intents)
+    - Calendar Integration (EventKit)
+    - User Notifications
+    - Spotlight Search
+    - Document Types
+    - App Store Submission
+
+    Last Updated: 2025-11-18
+-->
+<plist version="1.0">
+<dict>
+    <!-- ==================== Bundle Information ==================== -->
+
+    <key>CFBundleDevelopmentRegion</key>
+    <string>$(DEVELOPMENT_LANGUAGE)</string>
+
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+
+    <key>CFBundleName</key>
+    <string>$(PRODUCT_NAME)</string>
+
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+
+    <key>CFBundleVersion</key>
+    <string>1</string>
+
+    <key>CFBundleDisplayName</key>
+    <string>StickyToDo</string>
+
+    <!-- ==================== App Category ==================== -->
+
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.productivity</string>
+
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+
+    <!-- ==================== Privacy Descriptions (REQUIRED) ==================== -->
+
+    <!-- Siri Integration - REQUIRED for App Intents -->
+    <key>NSSiriUsageDescription</key>
+    <string>StickyToDo uses Siri to help you manage tasks with your voice. You can add tasks, check your inbox, start timers, and manage your to-do list using Siri shortcuts.</string>
+
+    <!-- User Notifications - REQUIRED for task reminders and alerts -->
+    <key>NSUserNotificationsUsageDescription</key>
+    <string>StickyToDo sends notifications for task reminders, due dates, and timer alerts to help you stay on track with your work.</string>
+
+    <!-- Calendar Access - REQUIRED for calendar integration -->
+    <key>NSCalendarsUsageDescription</key>
+    <string>StickyToDo can sync with your calendar to show tasks with due dates alongside your events, helping you plan your day more effectively.</string>
+
+    <!-- Reminders Access - For importing from Reminders app -->
+    <key>NSRemindersUsageDescription</key>
+    <string>StickyToDo can import tasks from Reminders to help you consolidate all your task lists in one place.</string>
+
+    <!-- ==================== App Intents / Siri Shortcuts (REQUIRED) ==================== -->
+
+    <!--
+        User Activity Types - REQUIRED for Siri Shortcuts
+        These must match the intent class names in AppIntents implementation
+    -->
+    <key>NSUserActivityTypes</key>
+    <array>
+        <!-- Task Management -->
+        <string>AddTaskIntent</string>
+        <string>CompleteTaskIntent</string>
+        <string>FlagTaskIntent</string>
+        <string>AddTaskToProjectIntent</string>
+
+        <!-- Task Views -->
+        <string>ShowInboxIntent</string>
+        <string>ShowNextActionsIntent</string>
+        <string>ShowTodayTasksIntent</string>
+        <string>ShowFlaggedTasksIntent</string>
+        <string>ShowWeeklyReviewIntent</string>
+
+        <!-- Time Tracking -->
+        <string>StartTimerIntent</string>
+        <string>StopTimerIntent</string>
+    </array>
+
+    <!-- ==================== Document Types ==================== -->
+
+    <!--
+        Configure to open .md and .yaml files
+        Set as "Alternate" so it doesn't override default markdown editor
+    -->
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <!-- Markdown Files -->
+        <dict>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>md</string>
+                <string>markdown</string>
+            </array>
+            <key>CFBundleTypeName</key>
+            <string>Markdown Document</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>net.daringfireball.markdown</string>
+            </array>
+        </dict>
+
+        <!-- YAML Files -->
+        <dict>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>yaml</string>
+                <string>yml</string>
+            </array>
+            <key>CFBundleTypeName</key>
+            <string>YAML Document</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.yaml</string>
+            </array>
+        </dict>
+    </array>
+
+    <!-- ==================== Application Configuration ==================== -->
+
+    <!-- Application Scene Manifest (for SwiftUI apps) -->
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <true/>
+    </dict>
+
+    <!-- Launch Services (macOS specific) -->
+    <key>LSUIElement</key>
+    <false/>
+
+    <!-- ==================== Copyright and Credits ==================== -->
+
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2025 StickyToDo. All rights reserved.</string>
+
+    <!-- ==================== Display and Graphics Settings ==================== -->
+
+    <!-- High Resolution Display Support -->
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+
+    <!-- Supports Retina Displays -->
+    <key>NSHighResolutionCapable</key>
+    <true/>
+
+    <!-- Supports Automatic Graphics Switching (for MacBooks with dual GPUs) -->
+    <key>NSSupportsAutomaticGraphicsSwitching</key>
+    <true/>
+
+    <!-- ==================== App Capabilities ==================== -->
+
+    <!-- Supports Secure State Restoration -->
+    <key>NSSupportsAutomaticTermination</key>
+    <true/>
+
+    <key>NSSupportsSuddenTermination</key>
+    <true/>
+
+    <!-- ==================== File Access ==================== -->
+
+    <!-- Main Storyboard - Not needed for pure SwiftUI apps -->
+    <!-- NSMainStoryboardFile is omitted -->
+
+</dict>
+</plist>

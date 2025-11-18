@@ -66,9 +66,23 @@ struct RecurrencePicker: View {
                         onChange()
                     }
                 }
+                .accessibilityLabel("Repeat task")
+                .accessibilityHint("Toggle to enable or disable task recurrence")
 
             if isEnabled {
                 recurrenceSettingsView
+
+                Divider()
+                    .padding(.vertical, 8)
+
+                // Preview of next occurrences
+                if let recurrence = recurrence {
+                    NextOccurrencesPreview(
+                        recurrence: recurrence,
+                        baseDate: Date(),
+                        count: 5
+                    )
+                }
             }
         }
         .padding()
@@ -109,6 +123,7 @@ struct RecurrencePicker: View {
             Text("Frequency")
                 .font(.caption)
                 .foregroundColor(.secondary)
+                .accessibilityHidden(true)
 
             Picker("Frequency", selection: $frequency) {
                 Text("Daily").tag(RecurrenceFrequency.daily)
@@ -120,6 +135,9 @@ struct RecurrencePicker: View {
             .onChange(of: frequency) { _ in
                 updateRecurrence()
             }
+            .accessibilityLabel("Recurrence frequency")
+            .accessibilityValue(frequency.displayName)
+            .accessibilityHint("Select how often the task repeats")
         }
     }
 
@@ -130,6 +148,7 @@ struct RecurrencePicker: View {
             Text("Repeat Every")
                 .font(.caption)
                 .foregroundColor(.secondary)
+                .accessibilityHidden(true)
 
             HStack {
                 Stepper(
@@ -146,6 +165,9 @@ struct RecurrencePicker: View {
                             .foregroundColor(.secondary)
                     }
                 }
+                .accessibilityLabel("Repeat interval")
+                .accessibilityValue("\(interval) \(intervalUnit)")
+                .accessibilityHint("Adjust how many \(intervalUnit) between each occurrence")
             }
         }
     }
@@ -172,18 +194,22 @@ struct RecurrencePicker: View {
             Text("Repeat On")
                 .font(.caption)
                 .foregroundColor(.secondary)
+                .accessibilityHidden(true)
 
             HStack(spacing: 8) {
                 ForEach(0..<7) { day in
                     dayButton(for: day)
                 }
             }
+            .accessibilityElement(combining: .contain)
+            .accessibilityLabel("Days of week selection")
         }
     }
 
     private func dayButton(for day: Int) -> some View {
         let dayNames = ["S", "M", "T", "W", "T", "F", "S"]
-        let fullDayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        let fullDayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+        let shortDayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
         let isSelected = selectedDays.contains(day)
 
         return Button(action: {
@@ -203,7 +229,11 @@ struct RecurrencePicker: View {
                 .clipShape(Circle())
         }
         .buttonStyle(.plain)
-        .help(fullDayNames[day])
+        .help(shortDayNames[day])
+        .accessibilityLabel(fullDayNames[day])
+        .accessibilityValue(isSelected ? "selected" : "not selected")
+        .accessibilityHint("Tap to toggle \(fullDayNames[day])")
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 
     // MARK: - Monthly Day Section
@@ -213,6 +243,7 @@ struct RecurrencePicker: View {
             Text("Repeat On")
                 .font(.caption)
                 .foregroundColor(.secondary)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 8) {
                 // Specific day of month
@@ -224,8 +255,12 @@ struct RecurrencePicker: View {
                             updateRecurrence()
                         }
                     )
+                    .accessibilityLabel("Specific day of month")
+                    .accessibilityValue(!useLastDayOfMonth ? "selected" : "not selected")
+                    .accessibilityHint("Select to repeat on a specific day number")
 
                     Text("Day")
+                        .accessibilityHidden(true)
 
                     Stepper(
                         value: $dayOfMonth,
@@ -239,6 +274,9 @@ struct RecurrencePicker: View {
                             .fontWeight(.semibold)
                     }
                     .disabled(useLastDayOfMonth)
+                    .accessibilityLabel("Day of month")
+                    .accessibilityValue("Day \(dayOfMonth)")
+                    .accessibilityHint("Adjust which day of the month to repeat on")
                 }
 
                 // Last day of month
@@ -250,8 +288,12 @@ struct RecurrencePicker: View {
                             updateRecurrence()
                         }
                     )
+                    .accessibilityLabel("Last day of month")
+                    .accessibilityValue(useLastDayOfMonth ? "selected" : "not selected")
+                    .accessibilityHint("Select to repeat on the last day of each month")
 
                     Text("Last day of month")
+                        .accessibilityHidden(true)
                 }
             }
             .padding(8)
@@ -269,6 +311,7 @@ struct RecurrencePicker: View {
             Text("Ends")
                 .font(.caption)
                 .foregroundColor(.secondary)
+                .accessibilityHidden(true)
 
             // Never
             HStack {
@@ -280,7 +323,12 @@ struct RecurrencePicker: View {
                         updateRecurrence()
                     }
                 )
+                .accessibilityLabel("Never ends")
+                .accessibilityValue(!hasEndDate && !hasCount ? "selected" : "not selected")
+                .accessibilityHint("Select for unlimited recurrence")
+
                 Text("Never")
+                    .accessibilityHidden(true)
             }
 
             // On date
@@ -294,7 +342,12 @@ struct RecurrencePicker: View {
                             updateRecurrence()
                         }
                     )
+                    .accessibilityLabel("Ends on date")
+                    .accessibilityValue(hasEndDate ? "selected" : "not selected")
+                    .accessibilityHint("Select to end recurrence on a specific date")
+
                     Text("On date")
+                        .accessibilityHidden(true)
                 }
 
                 if hasEndDate {
@@ -308,6 +361,8 @@ struct RecurrencePicker: View {
                     .onChange(of: endDate) { _ in
                         updateRecurrence()
                     }
+                    .accessibilityLabel("End date")
+                    .accessibilityHint("Select when the recurrence should end")
                 }
             }
 
@@ -321,8 +376,12 @@ struct RecurrencePicker: View {
                         updateRecurrence()
                     }
                 )
+                .accessibilityLabel("Ends after count")
+                .accessibilityValue(hasCount ? "selected" : "not selected")
+                .accessibilityHint("Select to end after a specific number of occurrences")
 
                 Text("After")
+                    .accessibilityHidden(true)
 
                 Stepper(
                     value: $count,
@@ -333,8 +392,12 @@ struct RecurrencePicker: View {
                         .fontWeight(.semibold)
                 }
                 .disabled(!hasCount)
+                .accessibilityLabel("Number of occurrences")
+                .accessibilityValue("\(count) occurrences")
+                .accessibilityHint("Adjust how many times the task should repeat")
 
                 Text("occurrences")
+                    .accessibilityHidden(true)
             }
         }
     }

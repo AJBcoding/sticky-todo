@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AppKit
 
 /// Inspector panel showing detailed task information and metadata
 ///
@@ -42,12 +43,40 @@ struct TaskInspectorView: View {
     /// Callback when "Save as Template" is requested
     var onSaveAsTemplate: ((Task) -> Void)?
 
+    /// Callback when a subtask should be created
+    var onCreateSubtask: ((Task, String) -> Void)?
+
+    /// Callback when complete series is requested for recurring tasks
+    var onCompleteSeries: ((Task) -> Void)?
+
+    /// All available tags in the system
+    var availableTags: [Tag]
+
     // MARK: - State
 
     @State private var editedTitle: String = ""
     @State private var editedNotes: String = ""
     @State private var showingDeleteAlert = false
     @State private var showingSaveTemplateDialog = false
+
+    // Subtask state
+    @State private var showingAddSubtask = false
+    @State private var newSubtaskTitle = ""
+
+    // Attachment state
+    @State private var showingAddLinkAttachment = false
+    @State private var newLinkURL = ""
+    @State private var newLinkName = ""
+    @State private var showingAddNoteAttachment = false
+    @State private var newNoteName = ""
+    @State private var newNoteText = ""
+
+    // Tag state
+    @State private var showingTagPicker = false
+    @State private var showingCreateNewTag = false
+    @State private var newTagName = ""
+    @State private var newTagColor = "#007AFF"
+    @State private var newTagIcon = ""
 
     // MARK: - Body
 
@@ -480,13 +509,17 @@ struct TaskInspectorView: View {
 
                 // Add subtask button
                 Button(action: {
-                    // TODO: Add subtask functionality
-                    // This would need to be wired to TaskStore.createSubtask()
+                    newSubtaskTitle = ""
+                    showingAddSubtask = true
                 }) {
                     Label("Add Subtask", systemImage: "plus.circle")
                         .font(.caption)
                 }
                 .buttonStyle(.borderless)
+                .accessibilityLabel("Add Subtask")
+                .sheet(isPresented: $showingAddSubtask) {
+                    addSubtaskDialog
+                }
             }
         }
     }
@@ -544,19 +577,23 @@ struct TaskInspectorView: View {
             // Add attachment button
             Menu {
                 Button(action: {
-                    // TODO: Add file attachment
+                    openFilePicker()
                 }) {
                     Label("Add File", systemImage: "doc")
                 }
 
                 Button(action: {
-                    // TODO: Add link attachment
+                    newLinkURL = ""
+                    newLinkName = ""
+                    showingAddLinkAttachment = true
                 }) {
                     Label("Add Link", systemImage: "link")
                 }
 
                 Button(action: {
-                    // TODO: Add note attachment
+                    newNoteName = ""
+                    newNoteText = ""
+                    showingAddNoteAttachment = true
                 }) {
                     Label("Add Note", systemImage: "note.text")
                 }
@@ -565,6 +602,13 @@ struct TaskInspectorView: View {
                     .font(.caption)
             }
             .buttonStyle(.borderless)
+            .accessibilityLabel("Add Attachment")
+            .sheet(isPresented: $showingAddLinkAttachment) {
+                addLinkAttachmentDialog
+            }
+            .sheet(isPresented: $showingAddNoteAttachment) {
+                addNoteAttachmentDialog
+            }
         }
     }
 
@@ -625,12 +669,19 @@ struct TaskInspectorView: View {
 
             // Add tag button
             Button(action: {
-                // TODO: Show tag picker
+                showingTagPicker = true
             }) {
                 Label("Add Tag", systemImage: "plus.circle")
                     .font(.caption)
             }
             .buttonStyle(.borderless)
+            .accessibilityLabel("Add Tag")
+            .sheet(isPresented: $showingTagPicker) {
+                tagPickerDialog
+            }
+            .sheet(isPresented: $showingCreateNewTag) {
+                createNewTagDialog
+            }
         }
     }
 
@@ -733,13 +784,14 @@ struct TaskInspectorView: View {
             // Complete series button for recurring instances
             if let task = task, task.isRecurringInstance {
                 Button(action: {
-                    // TODO: Implement complete series functionality
+                    onCompleteSeries?(task)
                 }) {
                     Label("Complete Series", systemImage: "checkmark.circle.fill")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
                 .foregroundColor(.green)
+                .accessibilityLabel("Complete entire recurring series")
             }
 
             Button(role: .destructive, action: {
@@ -848,7 +900,11 @@ struct TaskInspectorView: View {
         boards: Board.builtInBoards,
         onDelete: {},
         onDuplicate: {},
-        onTaskModified: {}
+        onTaskModified: {},
+        onSaveAsTemplate: nil,
+        onCreateSubtask: nil,
+        onCompleteSeries: nil,
+        availableTags: Tag.defaultTags
     )
 }
 
@@ -859,7 +915,11 @@ struct TaskInspectorView: View {
         boards: Board.builtInBoards,
         onDelete: {},
         onDuplicate: {},
-        onTaskModified: {}
+        onTaskModified: {},
+        onSaveAsTemplate: nil,
+        onCreateSubtask: nil,
+        onCompleteSeries: nil,
+        availableTags: Tag.defaultTags
     )
 }
 
@@ -869,6 +929,329 @@ extension TaskInspectorView {
     private func removeTag(_ tag: Tag) {
         task?.tags.removeAll { $0.id == tag.id }
         onTaskModified()
+    }
+
+    // MARK: - Add Subtask Dialog
+
+    private var addSubtaskDialog: some View {
+        VStack(spacing: 20) {
+            Text("Add Subtask")
+                .font(.headline)
+
+            TextField("Subtask title", text: $newSubtaskTitle)
+                .textFieldStyle(.roundedBorder)
+
+            HStack {
+                Button("Cancel") {
+                    showingAddSubtask = false
+                    newSubtaskTitle = ""
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Spacer()
+
+                Button("Add") {
+                    guard !newSubtaskTitle.isEmpty, let task = task else { return }
+                    onCreateSubtask?(task, newSubtaskTitle)
+                    showingAddSubtask = false
+                    newSubtaskTitle = ""
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(newSubtaskTitle.isEmpty)
+            }
+        }
+        .padding()
+        .frame(width: 400)
+    }
+
+    // MARK: - Add Link Attachment Dialog
+
+    private var addLinkAttachmentDialog: some View {
+        VStack(spacing: 20) {
+            Text("Add Link Attachment")
+                .font(.headline)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Name")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                TextField("Link name", text: $newLinkName)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("URL")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                TextField("https://example.com", text: $newLinkURL)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            HStack {
+                Button("Cancel") {
+                    showingAddLinkAttachment = false
+                    newLinkURL = ""
+                    newLinkName = ""
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Spacer()
+
+                Button("Add") {
+                    guard !newLinkURL.isEmpty, !newLinkName.isEmpty,
+                          let url = URL(string: newLinkURL) else { return }
+
+                    let attachment = Attachment.linkAttachment(
+                        url: url,
+                        name: newLinkName
+                    )
+                    task?.addAttachment(attachment)
+                    onTaskModified()
+                    showingAddLinkAttachment = false
+                    newLinkURL = ""
+                    newLinkName = ""
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(newLinkURL.isEmpty || newLinkName.isEmpty)
+            }
+        }
+        .padding()
+        .frame(width: 400)
+    }
+
+    // MARK: - Add Note Attachment Dialog
+
+    private var addNoteAttachmentDialog: some View {
+        VStack(spacing: 20) {
+            Text("Add Note Attachment")
+                .font(.headline)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Name")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                TextField("Note name", text: $newNoteName)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Content")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                TextEditor(text: $newNoteText)
+                    .font(.body)
+                    .frame(minHeight: 120)
+                    .border(Color.secondary.opacity(0.2), width: 1)
+            }
+
+            HStack {
+                Button("Cancel") {
+                    showingAddNoteAttachment = false
+                    newNoteName = ""
+                    newNoteText = ""
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Spacer()
+
+                Button("Add") {
+                    guard !newNoteName.isEmpty, !newNoteText.isEmpty else { return }
+
+                    let attachment = Attachment.noteAttachment(
+                        text: newNoteText,
+                        name: newNoteName
+                    )
+                    task?.addAttachment(attachment)
+                    onTaskModified()
+                    showingAddNoteAttachment = false
+                    newNoteName = ""
+                    newNoteText = ""
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(newNoteName.isEmpty || newNoteText.isEmpty)
+            }
+        }
+        .padding()
+        .frame(width: 400)
+    }
+
+    // MARK: - Tag Picker Dialog
+
+    private var tagPickerDialog: some View {
+        VStack(spacing: 20) {
+            HStack {
+                Text("Add Tag")
+                    .font(.headline)
+
+                Spacer()
+
+                Button(action: {
+                    showingTagPicker = false
+                    showingCreateNewTag = true
+                }) {
+                    Label("New Tag", systemImage: "plus.circle")
+                        .font(.caption)
+                }
+                .buttonStyle(.borderless)
+            }
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    // Show predefined tags
+                    Text("Available Tags")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    ForEach(availableTags.filter { tag in
+                        !(task?.tags.contains(where: { $0.id == tag.id }) ?? false)
+                    }) { tag in
+                        Button(action: {
+                            task?.addTag(tag)
+                            onTaskModified()
+                            showingTagPicker = false
+                        }) {
+                            HStack(spacing: 8) {
+                                if let icon = tag.icon {
+                                    Image(systemName: icon)
+                                        .font(.caption)
+                                }
+
+                                Text(tag.name)
+                                    .font(.body)
+
+                                Spacer()
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Color(hex: tag.color))
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .frame(maxHeight: 300)
+
+            Button("Cancel") {
+                showingTagPicker = false
+            }
+            .keyboardShortcut(.cancelAction)
+        }
+        .padding()
+        .frame(width: 400)
+    }
+
+    // MARK: - Create New Tag Dialog
+
+    private var createNewTagDialog: some View {
+        VStack(spacing: 20) {
+            Text("Create New Tag")
+                .font(.headline)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Name")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                TextField("Tag name", text: $newTagName)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Color")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                HStack(spacing: 8) {
+                    ForEach(predefinedColors, id: \.self) { colorHex in
+                        Button(action: {
+                            newTagColor = colorHex
+                        }) {
+                            Circle()
+                                .fill(Color(hex: colorHex))
+                                .frame(width: 30, height: 30)
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.white, lineWidth: newTagColor == colorHex ? 3 : 0)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Icon (optional)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                TextField("SF Symbol name (e.g., star.fill)", text: $newTagIcon)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            HStack {
+                Button("Cancel") {
+                    showingCreateNewTag = false
+                    newTagName = ""
+                    newTagColor = "#007AFF"
+                    newTagIcon = ""
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Spacer()
+
+                Button("Create") {
+                    guard !newTagName.isEmpty else { return }
+
+                    let newTag = Tag(
+                        name: newTagName,
+                        color: newTagColor,
+                        icon: newTagIcon.isEmpty ? nil : newTagIcon
+                    )
+                    task?.addTag(newTag)
+                    onTaskModified()
+                    showingCreateNewTag = false
+                    newTagName = ""
+                    newTagColor = "#007AFF"
+                    newTagIcon = ""
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(newTagName.isEmpty)
+            }
+        }
+        .padding()
+        .frame(width: 400)
+    }
+
+    // MARK: - File Picker
+
+    private func openFilePicker() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+
+            let attachment = Attachment.fileAttachment(url: url)
+            task?.addAttachment(attachment)
+            onTaskModified()
+        }
+    }
+
+    // MARK: - Helper Properties
+
+    private var predefinedColors: [String] {
+        return [
+            "#FF3B30", // Red
+            "#FF9500", // Orange
+            "#FFCC00", // Yellow
+            "#34C759", // Green
+            "#5856D6", // Purple
+            "#007AFF", // Blue
+            "#5AC8FA", // Light Blue
+            "#FF2D55"  // Pink
+        ]
     }
 }
 
