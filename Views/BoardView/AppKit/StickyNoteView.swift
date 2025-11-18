@@ -103,6 +103,10 @@ class StickyNoteView: NSView {
         textField.maximumNumberOfLines = 0
         textField.alignment = .left
 
+        // CRITICAL: Allow mouse events to pass through to the note view
+        textField.allowsEditingTextAttributes = false
+        textField.isEnabled = false  // This makes it not intercept mouse events
+
         // Position with padding
         let padding: CGFloat = 12
         textField.frame = NSRect(
@@ -166,14 +170,26 @@ class StickyNoteView: NSView {
 
     // MARK: - Mouse Events
 
-    /// Track drag start position
+    /// Accept first mouse click to enable dragging immediately
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        return true
+    }
+
+    /// Track drag start position in view coordinates
     private var dragStartLocation: NSPoint?
 
     override func mouseDown(with event: NSEvent) {
-        super.mouseDown(with: event)
+        print("✅ StickyNoteView mouseDown received")
 
-        // Store drag start location in window coordinates
-        dragStartLocation = event.locationInWindow
+        // Check for double-click to edit
+        if event.clickCount == 2 {
+            enableEditing()
+            return
+        }
+
+        // Store drag start location in this view's coordinates
+        dragStartLocation = convert(event.locationInWindow, from: nil)
+        print("📍 Drag start location: \(dragStartLocation!)")
 
         // Notify delegate about selection
         let modifierFlags = event.modifierFlags
@@ -187,31 +203,36 @@ class StickyNoteView: NSView {
     }
 
     override func mouseDragged(with event: NSEvent) {
-        super.mouseDragged(with: event)
+        print("🖱️ StickyNoteView mouseDragged")
 
-        guard let startLocation = dragStartLocation else { return }
+        guard let startLocation = dragStartLocation else {
+            print("❌ No drag start location!")
+            return
+        }
 
-        let currentLocation = event.locationInWindow
+        // Get current location in this view's coordinates
+        let currentLocation = convert(event.locationInWindow, from: nil)
+
+        // Calculate delta
         let deltaX = currentLocation.x - startLocation.x
         let deltaY = currentLocation.y - startLocation.y
 
-        // Move the view
+        print("📏 Delta: (\(deltaX), \(deltaY))")
+
+        // Move the view by the delta
         var newOrigin = frame.origin
         newOrigin.x += deltaX
         newOrigin.y += deltaY
-
-        // Update frame (parent view will handle bounds checking if needed)
         frame.origin = newOrigin
 
-        // Update drag start for next event
-        dragStartLocation = currentLocation
+        // Don't update dragStartLocation - keep it as the original click point in view coords
+        // The view moves, so the relative position stays correct
 
         // Notify delegate about drag
         delegate?.stickyNoteViewDidMove(self, to: newOrigin)
     }
 
     override func mouseUp(with event: NSEvent) {
-        super.mouseUp(with: event)
         dragStartLocation = nil
 
         // Notify delegate that drag ended
@@ -219,15 +240,6 @@ class StickyNoteView: NSView {
     }
 
     // MARK: - Double-click to edit
-
-    override func mouseDown(with event: NSEvent) {
-        if event.clickCount == 2 {
-            // Double-click to edit
-            enableEditing()
-        } else {
-            super.mouseDown(with: event)
-        }
-    }
 
     private func enableEditing() {
         textField.isEditable = true
