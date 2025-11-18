@@ -125,6 +125,31 @@ struct AppMenuCommands: Commands {
             .keyboardShortcut("r", modifiers: .command)
         }
 
+        // Tools menu
+        CommandMenu("Tools") {
+            Button("Analytics Dashboard...") {
+                NotificationCenter.default.post(name: .showAnalyticsDashboard, object: nil)
+            }
+            .keyboardShortcut("a", modifiers: [.command, .option])
+
+            Button("Automation Rules...") {
+                NotificationCenter.default.post(name: .showAutomationRules, object: nil)
+            }
+            .keyboardShortcut("r", modifiers: [.command, .option])
+
+            Divider()
+
+            Button("Calendar Settings...") {
+                NotificationCenter.default.post(name: .showCalendarSettings, object: nil)
+            }
+            .keyboardShortcut("c", modifiers: [.command, .option])
+
+            Button("Weekly Review...") {
+                NotificationCenter.default.post(name: .showWeeklyReview, object: nil)
+            }
+            .keyboardShortcut("w", modifiers: [.command, .shift])
+        }
+
         // Go menu for perspectives
         CommandMenu("Go") {
             Button("Inbox") {
@@ -261,4 +286,8 @@ public extension Notification.Name {
     static let showKeyboardShortcuts = Notification.Name("showKeyboardShortcuts")
     static let showAbout = Notification.Name("showAbout")
     static let customizeToolbar = Notification.Name("customizeToolbar")
+    static let showAutomationRules = Notification.Name("showAutomationRules")
+    static let showWeeklyReview = Notification.Name("showWeeklyReview")
+    static let showCalendarSettings = Notification.Name("showCalendarSettings")
+    static let showAnalyticsDashboard = Notification.Name("showAnalyticsDashboard")
 }

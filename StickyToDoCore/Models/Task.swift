@@ -52,10 +52,61 @@ struct Task: Identifiable, Codable, Equatable {
     /// Estimated effort in minutes
     var effort: Int?
 
+    // MARK: - Time Tracking
+
+    /// Whether a timer is currently running for this task
+    var isTimerRunning: Bool
+
+    /// When the current timer started (nil if no timer is running)
+    var currentTimerStart: Date?
+
+    /// Total time spent on this task in seconds (accumulated from all time entries)
+    var totalTimeSpent: TimeInterval
+
+    // MARK: - Organization
+
+    /// Custom tags applied to this task
+    var tags: [Tag]
+
+    /// Attachments associated with this task
+    var attachments: [Attachment]
+
+    /// Color for visual indication (hex string format, e.g., "#FF5733")
+    var color: String?
+
     // MARK: - Board Positioning
 
     /// Position of this task on different boards, keyed by board ID
     var positions: [String: Position]
+
+    // MARK: - Task Hierarchy
+
+    /// Reference to parent task (nil if this is a top-level task)
+    var parentId: UUID?
+
+    /// Array of child task IDs (subtasks)
+    var subtaskIds: [UUID]
+
+    // MARK: - Recurrence
+
+    /// Recurrence pattern for this task (nil if not recurring)
+    var recurrence: Recurrence?
+
+    /// For recurring task instances: the ID of the original template task
+    var originalTaskId: UUID?
+
+    /// For recurring task instances: the occurrence date this instance represents
+    var occurrenceDate: Date?
+
+    // MARK: - Calendar Integration
+
+    /// EventKit calendar event identifier (if synced with calendar)
+    var calendarEventId: String?
+
+    // MARK: - Notifications
+
+    /// Array of scheduled notification identifiers for this task
+    var notificationIds: [String]
 
     // MARK: - Timestamps
 
@@ -81,7 +132,20 @@ struct Task: Identifiable, Codable, Equatable {
     ///   - flagged: Flagged state (defaults to false)
     ///   - priority: Priority level (defaults to .medium)
     ///   - effort: Estimated effort in minutes
+    ///   - isTimerRunning: Whether a timer is currently running (defaults to false)
+    ///   - currentTimerStart: When the current timer started (defaults to nil)
+    ///   - totalTimeSpent: Total time spent in seconds (defaults to 0)
+    ///   - tags: Custom tags (defaults to empty)
+    ///   - attachments: Task attachments (defaults to empty)
+    ///   - color: Color for visual indication (defaults to nil)
     ///   - positions: Initial board positions (defaults to empty)
+    ///   - parentId: Reference to parent task (defaults to nil)
+    ///   - subtaskIds: Array of child task IDs (defaults to empty)
+    ///   - recurrence: Recurrence pattern for recurring tasks
+    ///   - originalTaskId: ID of the template task (for recurring instances)
+    ///   - occurrenceDate: Date this occurrence represents
+    ///   - calendarEventId: EventKit calendar event identifier
+    ///   - notificationIds: Array of scheduled notification identifiers (defaults to empty)
     ///   - created: Creation timestamp (defaults to now)
     ///   - modified: Modification timestamp (defaults to now)
     init(
@@ -97,7 +161,20 @@ struct Task: Identifiable, Codable, Equatable {
         flagged: Bool = false,
         priority: Priority = .medium,
         effort: Int? = nil,
+        isTimerRunning: Bool = false,
+        currentTimerStart: Date? = nil,
+        totalTimeSpent: TimeInterval = 0,
+        tags: [Tag] = [],
+        attachments: [Attachment] = [],
+        color: String? = nil,
         positions: [String: Position] = [:],
+        parentId: UUID? = nil,
+        subtaskIds: [UUID] = [],
+        recurrence: Recurrence? = nil,
+        originalTaskId: UUID? = nil,
+        occurrenceDate: Date? = nil,
+        calendarEventId: String? = nil,
+        notificationIds: [String] = [],
         created: Date = Date(),
         modified: Date = Date()
     ) {
@@ -113,7 +190,20 @@ struct Task: Identifiable, Codable, Equatable {
         self.flagged = flagged
         self.priority = priority
         self.effort = effort
+        self.isTimerRunning = isTimerRunning
+        self.currentTimerStart = currentTimerStart
+        self.totalTimeSpent = totalTimeSpent
+        self.tags = tags
+        self.attachments = attachments
+        self.color = color
         self.positions = positions
+        self.parentId = parentId
+        self.subtaskIds = subtaskIds
+        self.recurrence = recurrence
+        self.originalTaskId = originalTaskId
+        self.occurrenceDate = occurrenceDate
+        self.calendarEventId = calendarEventId
+        self.notificationIds = notificationIds
         self.created = created
         self.modified = modified
     }
@@ -217,6 +307,87 @@ extension Task {
             }
         }
     }
+
+    /// Returns true if this task has subtasks
+    var hasSubtasks: Bool {
+        return !subtaskIds.isEmpty
+    }
+
+    /// Returns true if this task is a subtask (has a parent)
+    var isSubtask: Bool {
+        return parentId != nil
+    }
+
+    /// Returns the indentation level for this task (0 = top-level, 1 = first-level subtask, etc.)
+    /// Note: This is a simple implementation. For deeper hierarchies, use TaskStore.indentationLevel(for:)
+    var indentationLevel: Int {
+        return isSubtask ? 1 : 0
+    }
+
+    /// Returns true if this task is recurring
+    var isRecurring: Bool {
+        return recurrence != nil && originalTaskId == nil
+    }
+
+    /// Returns true if this is a recurring task instance (created from a template)
+    var isRecurringInstance: Bool {
+        return originalTaskId != nil
+    }
+
+    /// Returns the next occurrence date for a recurring task
+    var nextOccurrence: Date? {
+        guard let recurrence = recurrence,
+              !recurrence.isComplete else { return nil }
+
+        let baseDate = occurrenceDate ?? due ?? Date()
+        return RecurrenceEngine.calculateNextOccurrence(from: baseDate, recurrence: recurrence)
+    }
+
+    /// Returns a human-readable description of total time spent
+    var timeSpentDescription: String? {
+        guard totalTimeSpent > 0 else { return nil }
+
+        let seconds = Int(totalTimeSpent)
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+
+        if hours > 0 {
+            return String(format: "%dh %dm", hours, minutes)
+        } else if minutes > 0 {
+            return String(format: "%dm", minutes)
+        } else {
+            return String(format: "%ds", seconds)
+        }
+    }
+
+    /// Returns the current timer duration if timer is running
+    var currentTimerDuration: TimeInterval? {
+        guard isTimerRunning, let start = currentTimerStart else { return nil }
+        return Date().timeIntervalSince(start)
+    }
+
+    /// Returns a human-readable description of current timer duration
+    var currentTimerDescription: String? {
+        guard let duration = currentTimerDuration else { return nil }
+
+        let seconds = Int(duration)
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+        let secs = seconds % 60
+
+        if hours > 0 {
+            return String(format: "%dh %dm %ds", hours, minutes, secs)
+        } else if minutes > 0 {
+            return String(format: "%dm %ds", minutes, secs)
+        } else {
+            return String(format: "%ds", secs)
+        }
+    }
+
+    /// Returns true if this task is synced to a calendar
+    var isSyncedToCalendar: Bool {
+        return calendarEventId != nil
+    }
 }
 
 // MARK: - Helper Methods
@@ -298,6 +469,93 @@ extension Task {
     mutating func touch() {
         modified = Date()
     }
+
+    /// Adds a subtask to this task
+    /// - Parameter taskId: The ID of the subtask to add
+    mutating func addSubtask(_ taskId: UUID) {
+        guard !subtaskIds.contains(taskId) else { return }
+        subtaskIds.append(taskId)
+        modified = Date()
+    }
+
+    /// Removes a subtask from this task
+    /// - Parameter taskId: The ID of the subtask to remove
+    mutating func removeSubtask(_ taskId: UUID) {
+        subtaskIds.removeAll { $0 == taskId }
+        modified = Date()
+    }
+
+    /// Removes all subtasks from this task
+    mutating func clearSubtasks() {
+        subtaskIds.removeAll()
+        modified = Date()
+    }
+
+    /// Sets the parent task for this task
+    /// - Parameter parentId: The ID of the parent task (or nil to clear)
+    mutating func setParent(_ parentId: UUID?) {
+        self.parentId = parentId
+        modified = Date()
+    }
+
+    /// Adds a tag to this task
+    /// - Parameter tag: The tag to add
+    mutating func addTag(_ tag: Tag) {
+        guard !tags.contains(tag) else { return }
+        tags.append(tag)
+        modified = Date()
+    }
+
+    /// Removes a tag from this task
+    /// - Parameter tag: The tag to remove
+    mutating func removeTag(_ tag: Tag) {
+        tags.removeAll { $0.id == tag.id }
+        modified = Date()
+    }
+
+    /// Removes all tags from this task
+    mutating func clearTags() {
+        tags.removeAll()
+        modified = Date()
+    }
+
+    /// Returns true if this task has the given tag
+    /// - Parameter tag: The tag to check
+    /// - Returns: True if the task has this tag
+    func hasTag(_ tag: Tag) -> Bool {
+        return tags.contains { $0.id == tag.id }
+    }
+
+    /// Returns true if this task has any tags
+    var hasTags: Bool {
+        return !tags.isEmpty
+    }
+
+    /// Adds an attachment to this task
+    /// - Parameter attachment: The attachment to add
+    mutating func addAttachment(_ attachment: Attachment) {
+        guard !attachments.contains(where: { $0.id == attachment.id }) else { return }
+        attachments.append(attachment)
+        modified = Date()
+    }
+
+    /// Removes an attachment from this task
+    /// - Parameter attachment: The attachment to remove
+    mutating func removeAttachment(_ attachment: Attachment) {
+        attachments.removeAll { $0.id == attachment.id }
+        modified = Date()
+    }
+
+    /// Removes all attachments from this task
+    mutating func clearAttachments() {
+        attachments.removeAll()
+        modified = Date()
+    }
+
+    /// Returns true if this task has attachments
+    var hasAttachments: Bool {
+        return !attachments.isEmpty
+    }
 }
 
 // MARK: - Filtering and Matching
@@ -366,7 +624,7 @@ extension Task {
 
     /// Returns true if this task matches the search query
     /// - Parameter query: The search string
-    /// - Returns: True if the query matches title, notes, project, or context
+    /// - Returns: True if the query matches title, notes, project, context, tags, or attachments
     func matchesSearch(_ query: String) -> Bool {
         let lowercaseQuery = query.lowercased()
 
@@ -383,6 +641,19 @@ extension Task {
         }
 
         if let ctx = context, ctx.lowercased().contains(lowercaseQuery) {
+            return true
+        }
+
+        // Search in tags
+        if tags.contains(where: { $0.name.lowercased().contains(lowercaseQuery) }) {
+            return true
+        }
+
+        // Search in attachments
+        if attachments.contains(where: { attachment in
+            attachment.name.lowercased().contains(lowercaseQuery) ||
+            attachment.description?.lowercased().contains(lowercaseQuery) == true
+        }) {
             return true
         }
 

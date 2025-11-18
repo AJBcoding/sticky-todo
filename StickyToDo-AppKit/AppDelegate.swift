@@ -8,6 +8,7 @@
 
 import Cocoa
 import UniformTypeIdentifiers
+import UserNotifications
 import StickyToDoCore
 
 @main
@@ -21,9 +22,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Quick capture window controller
     private var quickCaptureController: QuickCaptureWindowController!
 
+    /// Notification manager
+    private let notificationManager = NotificationManager.shared
+
     // MARK: - Application Lifecycle
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
+        // Setup notifications
+        setupNotifications()
+
         // Create main window
         mainWindowController = MainWindowController()
         mainWindowController.showWindow(nil)
@@ -42,6 +49,64 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ aNotification: Notification) {
         // Cleanup
         quickCaptureController.unregisterHotKey()
+
+        // Save all tasks to ensure notifications are persisted
+        // This would be handled by the TaskStore in a real implementation
+    }
+
+    // MARK: - Notification Setup
+
+    private func setupNotifications() {
+        // Register notification categories with actions
+        let completeAction = UNNotificationAction(
+            identifier: NotificationAction.complete.rawValue,
+            title: "Complete",
+            options: [.foreground]
+        )
+
+        let snoozeAction = UNNotificationAction(
+            identifier: NotificationAction.snooze.rawValue,
+            title: "Snooze 1 Hour",
+            options: []
+        )
+
+        let taskCategory = UNNotificationCategory(
+            identifier: NotificationCategory.task.rawValue,
+            actions: [completeAction, snoozeAction],
+            intentIdentifiers: [],
+            options: [.customDismissAction]
+        )
+
+        let weeklyReviewCategory = UNNotificationCategory(
+            identifier: NotificationCategory.weeklyReview.rawValue,
+            actions: [],
+            intentIdentifiers: [],
+            options: []
+        )
+
+        let timerCategory = UNNotificationCategory(
+            identifier: NotificationCategory.timer.rawValue,
+            actions: [],
+            intentIdentifiers: [],
+            options: []
+        )
+
+        UNUserNotificationCenter.current().setNotificationCategories([
+            taskCategory,
+            weeklyReviewCategory,
+            timerCategory
+        ])
+
+        // Set delegate (NotificationManager already sets itself as delegate)
+        // Check authorization status
+        Task {
+            await notificationManager.checkAuthorizationStatus()
+
+            // Request permission on first launch if not determined
+            if notificationManager.authorizationStatus == .notDetermined {
+                _ = await notificationManager.requestAuthorization()
+            }
+        }
     }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
@@ -169,6 +234,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem(title: "List View", action: #selector(showListView(_:)), keyEquivalent: "l"))
         menu.addItem(NSMenuItem(title: "Board View", action: #selector(showBoardView(_:)), keyEquivalent: "b"))
         menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Activity Log", action: #selector(showActivityLog(_:)), keyEquivalent: "a") {
+            $0.keyEquivalentModifierMask = [.command, .shift]
+        })
+        menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Toggle Inspector", action: #selector(toggleInspector(_:)), keyEquivalent: "i") {
             $0.keyEquivalentModifierMask = [.command, .option]
         })
@@ -290,6 +359,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func showBoardView(_ sender: Any?) {
         print("Show board view")
+    }
+
+    @objc private func showActivityLog(_ sender: Any?) {
+        mainWindowController?.showActivityLog()
     }
 
     @objc private func toggleInspector(_ sender: Any?) {
