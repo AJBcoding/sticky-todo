@@ -12,7 +12,7 @@ import Foundation
 ///
 /// ActivityLog entries track all task modifications, deletions, and creations
 /// with before/after values for full audit trail and change history.
-struct ActivityLog: Identifiable, Codable, Equatable {
+public struct ActivityLog: Identifiable, Codable, Equatable {
 
     // MARK: - Core Properties
 
@@ -127,7 +127,7 @@ struct ActivityLog: Identifiable, Codable, Equatable {
     ///   - beforeValue: Before value (if applicable)
     ///   - afterValue: After value (if applicable)
     ///   - metadata: Additional metadata about the change
-    init(
+    public init(
         id: UUID = UUID(),
         taskId: UUID,
         taskTitle: String,

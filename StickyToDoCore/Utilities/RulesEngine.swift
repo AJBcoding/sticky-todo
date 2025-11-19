@@ -8,7 +8,7 @@
 import Foundation
 
 /// Engine that evaluates rules and executes actions on tasks
-class RulesEngine {
+public class RulesEngine {
 
     // MARK: - Properties
 
@@ -23,7 +23,7 @@ class RulesEngine {
 
     // MARK: - Initialization
 
-    init(rules: [Rule] = []) {
+    public init(rules: [Rule] = []) {
         self.rules = rules
     }
 
@@ -366,7 +366,7 @@ extension ConditionOperator {
     }
 }
 
-struct RuleStatistics {
+public struct RuleStatistics {
     let totalRules: Int
     let enabledRules: Int
     let disabledRules: Int

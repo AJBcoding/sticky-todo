@@ -55,8 +55,8 @@ struct CanvasPrototypeView: View {
 
     @State private var isSpacebarPressed = false
     @State private var isPanMode = false
-    @State private var showStats = true
-    @State private var showInstructions = true
+    @State private var showStats = false  // Hide stats panel
+    @State private var showInstructions = false  // Start hidden
 
     // MARK: - Body
 
@@ -150,6 +150,7 @@ struct CanvasPrototypeView: View {
                 StickyNoteView(
                     note: note,
                     isSelected: viewModel.selectedNoteIds.contains(note.id),
+                    dragOffset: viewModel.selectedNoteIds.contains(note.id) ? viewModel.currentDragOffset : .zero,
                     scale: viewModel.scale,
                     onTap: {
                         handleNoteTap(note.id)
@@ -365,8 +366,8 @@ struct CanvasPrototypeView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
-        .padding(20)
-        .frame(maxWidth: 400)
+        .padding(12)
+        .frame(maxWidth: 260)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(NSColor.controlBackgroundColor))

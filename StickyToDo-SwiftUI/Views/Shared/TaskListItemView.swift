@@ -24,12 +24,12 @@ struct TaskListItemView: View {
     // MARK: - Body
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: DesignSystem.Spacing.xs) {
             // Completion checkbox
             Button(action: onToggleComplete) {
                 Image(systemName: task.status == .completed ? "checkmark.circle.fill" : "circle")
                     .foregroundColor(task.status == .completed ? .green : .secondary)
-                    .imageScale(.large)
+                    .font(.system(size: DesignSystem.IconSize.lg))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(task.status == .completed ? "Mark task as incomplete" : "Mark task as complete")
@@ -37,7 +37,7 @@ struct TaskListItemView: View {
             .accessibilityAddTraits(.isButton)
 
             // Task content
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.xxxs) {
                 // Title
                 Text(task.title)
                     .font(.body)
@@ -48,7 +48,7 @@ struct TaskListItemView: View {
 
                 // Metadata
                 if hasMetadata {
-                    HStack(spacing: 8) {
+                    HStack(spacing: DesignSystem.Spacing.xxs) {
                         if let project = task.project {
                             Label(project, systemImage: "folder")
                                 .font(.caption)
@@ -95,31 +95,46 @@ struct TaskListItemView: View {
                 Image(systemName: "line.3.horizontal")
                     .foregroundColor(.secondary)
                     .font(.caption)
+                    .transition(.opacity.combined(with: .scale))
                     .accessibilityLabel("Drag handle")
                     .accessibilityHint("Use to reorder this task")
             }
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
+        .padding(.vertical, DesignSystem.Spacing.xxs)
+        .padding(.horizontal, DesignSystem.Spacing.xs)
         .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(isSelected ? Color.accentColor.opacity(0.1) : Color.clear)
+            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
+                .fill(rowBackgroundColor)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 6)
-                .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 1)
+            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
+                .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 1.5)
         )
         .contentShape(Rectangle())
         .onTapGesture {
             onTap()
         }
         .onHover { hovering in
-            isHovering = hovering
+            withAnimation(DesignSystem.Animation.fast) {
+                isHovering = hovering
+            }
         }
         .taskDraggable(task)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(buildAccessibilityLabel())
         .accessibilityValue(task.status == .completed ? "Completed" : "Active")
+    }
+
+    // MARK: - Computed Properties
+
+    private var rowBackgroundColor: Color {
+        if isSelected {
+            return Color.accentColor.opacity(DesignSystem.Opacity.light)
+        } else if isHovering {
+            return Color(NSColor.controlBackgroundColor).opacity(0.5)
+        } else {
+            return Color.clear
+        }
     }
 
     // MARK: - Accessibility Helper

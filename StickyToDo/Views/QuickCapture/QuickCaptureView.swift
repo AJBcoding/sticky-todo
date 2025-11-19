@@ -69,9 +69,14 @@ struct QuickCaptureView: View {
         }
         .frame(width: 500, height: suggestionsHeight)
         .background(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xl)
                 .fill(Color(NSColor.windowBackgroundColor))
-                .shadow(radius: 20)
+                .shadow(
+                    color: DesignSystem.Shadow.modal.color,
+                    radius: DesignSystem.Shadow.modal.radius,
+                    x: DesignSystem.Shadow.modal.x,
+                    y: DesignSystem.Shadow.modal.y
+                )
         )
         .onAppear {
             isInputFocused = true
@@ -84,13 +89,15 @@ struct QuickCaptureView: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack {
+        HStack(spacing: DesignSystem.Spacing.xs) {
             Image(systemName: "plus.circle.fill")
                 .font(.title2)
                 .foregroundColor(.accentColor)
+                .accessibilityHidden(true)
 
             Text("Quick Capture")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
 
             Spacer()
 
@@ -99,14 +106,16 @@ struct QuickCaptureView: View {
                     .foregroundColor(.secondary)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Close quick capture")
+            .accessibilityHint("Double-tap to close this window")
         }
-        .padding()
+        .padding(DesignSystem.Spacing.sm)
     }
 
     // MARK: - Main Content
 
     private var mainContent: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
             // Input field
             TextField("What do you need to do?", text: $inputText)
                 .textFieldStyle(.plain)
@@ -115,13 +124,17 @@ struct QuickCaptureView: View {
                 .onSubmit {
                     submitTask()
                 }
+                .accessibilityLabel("Task description")
+                .accessibilityHint("Enter what you need to do. Press return to create the task")
 
             // Parsed metadata preview
             if !inputText.isEmpty {
                 parsedMetadataPreview
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .padding()
+        .padding(DesignSystem.Spacing.sm)
+        .animation(DesignSystem.Animation.standard, value: inputText.isEmpty)
     }
 
     // MARK: - Parsed Metadata Preview
@@ -130,13 +143,15 @@ struct QuickCaptureView: View {
     private var parsedMetadataPreview: some View {
         let parsed = NaturalLanguageParser.parse(inputText)
 
-        HStack(spacing: 8) {
+        HStack(spacing: DesignSystem.Spacing.xxs) {
             if let context = parsed.context ?? selectedContext {
                 MetadataBadge(text: context, color: .blue, icon: "mappin.circle.fill")
+                    .transition(.scale.combined(with: .opacity))
             }
 
             if let project = parsed.project ?? selectedProject {
                 MetadataBadge(text: project, color: .purple, icon: "folder.fill")
+                    .transition(.scale.combined(with: .opacity))
             }
 
             if let priority = parsed.priority {
@@ -145,14 +160,17 @@ struct QuickCaptureView: View {
                     color: priority == .high ? .red : .gray,
                     icon: "exclamationmark.circle.fill"
                 )
+                .transition(.scale.combined(with: .opacity))
             }
 
             if parsed.due != nil {
                 MetadataBadge(text: "Due date set", color: .orange, icon: "calendar")
+                    .transition(.scale.combined(with: .opacity))
             }
 
             if let effort = parsed.effort {
                 MetadataBadge(text: "\(effort)m", color: .green, icon: "clock.fill")
+                    .transition(.scale.combined(with: .opacity))
             }
         }
         .font(.caption)
@@ -161,117 +179,150 @@ struct QuickCaptureView: View {
     // MARK: - Suggestions Section
 
     private var suggestionsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xxs) {
             // Recent contexts
             if !recentContexts.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xxxs) {
                     Text("Recent Contexts")
                         .font(.caption)
                         .foregroundColor(.secondary)
+                        .accessibilityAddTraits(.isHeader)
 
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
+                        HStack(spacing: DesignSystem.Spacing.xxs) {
                             ForEach(recentContexts.prefix(5), id: \.name) { context in
                                 contextPill(context)
                             }
                         }
                     }
+                    .accessibilityElement(children: .contain)
                 }
             }
 
             // Recent projects
             if !recentProjects.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xxxs) {
                     Text("Recent Projects")
                         .font(.caption)
                         .foregroundColor(.secondary)
+                        .accessibilityAddTraits(.isHeader)
 
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
+                        HStack(spacing: DesignSystem.Spacing.xxs) {
                             ForEach(recentProjects.prefix(5), id: \.self) { project in
                                 projectPill(project)
                             }
                         }
                     }
+                    .accessibilityElement(children: .contain)
                 }
             }
         }
-        .padding()
+        .padding(DesignSystem.Spacing.sm)
     }
 
     // MARK: - Pills
 
     private func contextPill(_ context: Context) -> some View {
         Button(action: {
-            if selectedContext == context.name {
-                selectedContext = nil
-            } else {
-                selectedContext = context.name
+            withAnimation(DesignSystem.Animation.fast) {
+                if selectedContext == context.name {
+                    selectedContext = nil
+                } else {
+                    selectedContext = context.name
+                }
             }
         }) {
-            HStack(spacing: 4) {
+            HStack(spacing: DesignSystem.Spacing.xxxs) {
                 Text(context.icon)
                 Text(context.displayName)
             }
             .font(.caption)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            .padding(.horizontal, DesignSystem.Spacing.xxs + 2)
+            .padding(.vertical, DesignSystem.Spacing.xxxs + 2)
             .background(
                 Capsule()
-                    .fill(selectedContext == context.name ? Color.blue : Color.secondary.opacity(0.2))
+                    .fill(selectedContext == context.name ? Color.blue : Color.secondary.opacity(DesignSystem.Opacity.medium))
             )
             .foregroundColor(selectedContext == context.name ? .white : .primary)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(context.displayName)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityValue(selectedContext == context.name ? "Selected" : "Not selected")
+        .accessibilityHint("Double-tap to \(selectedContext == context.name ? "deselect" : "select") this context")
     }
 
     private func projectPill(_ project: String) -> some View {
         Button(action: {
-            if selectedProject == project {
-                selectedProject = nil
-            } else {
-                selectedProject = project
+            withAnimation(DesignSystem.Animation.fast) {
+                if selectedProject == project {
+                    selectedProject = nil
+                } else {
+                    selectedProject = project
+                }
             }
         }) {
-            HStack(spacing: 4) {
+            HStack(spacing: DesignSystem.Spacing.xxxs) {
                 Image(systemName: "folder.fill")
                 Text(project)
             }
             .font(.caption)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            .padding(.horizontal, DesignSystem.Spacing.xxs + 2)
+            .padding(.vertical, DesignSystem.Spacing.xxxs + 2)
             .background(
                 Capsule()
-                    .fill(selectedProject == project ? Color.purple : Color.secondary.opacity(0.2))
+                    .fill(selectedProject == project ? Color.purple : Color.secondary.opacity(DesignSystem.Opacity.medium))
             )
             .foregroundColor(selectedProject == project ? .white : .primary)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Project: \(project)")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityValue(selectedProject == project ? "Selected" : "Not selected")
+        .accessibilityHint("Double-tap to \(selectedProject == project ? "deselect" : "select") this project")
     }
 
     // MARK: - Footer
 
     private var footer: some View {
-        HStack {
-            Text("💡 Try: \"Call John @phone #Website !high tomorrow\"")
-                .font(.caption)
-                .foregroundColor(.secondary)
+        HStack(spacing: DesignSystem.Spacing.sm) {
+            HStack(spacing: DesignSystem.Spacing.xxxs) {
+                Image(systemName: "lightbulb.fill")
+                    .font(.caption2)
+                    .foregroundColor(.yellow)
+                    .accessibilityHidden(true)
+
+                Text("Try: \"Call John @phone #Website !high tomorrow\"")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .accessibilityLabel("Tip: You can use @ for context, # for project, ! for priority, and date words like tomorrow")
 
             Spacer()
 
-            HStack(spacing: 12) {
-                Text("⎋ Cancel")
+            HStack(spacing: DesignSystem.Spacing.xs) {
+                Label("Cancel", systemImage: "escape")
+                    .labelStyle(.iconOnly)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                Text("Cancel")
                     .font(.caption2)
                     .foregroundColor(.secondary)
 
-                Text("↵ Create")
+                Label("Create", systemImage: "return")
+                    .labelStyle(.iconOnly)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                Text("Create")
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
+            .accessibilityHidden(true)
         }
-        .padding(.horizontal)
-        .padding(.vertical, 8)
-        .background(Color.secondary.opacity(0.05))
+        .padding(.horizontal, DesignSystem.Spacing.sm)
+        .padding(.vertical, DesignSystem.Spacing.xxs)
+        .background(Color.secondary.opacity(DesignSystem.Opacity.subtle))
     }
 
     // MARK: - Helper Methods

@@ -215,14 +215,40 @@ class CanvasView: NSView {
 
     // MARK: - Mouse Events
 
+    /// Track which note is being dragged
+    private weak var draggingNote: StickyNoteView?
+
     override func mouseDown(with event: NSEvent) {
         let locationInView = convert(event.locationInWindow, from: nil)
 
         // Check if clicking on empty space (not on a note)
         let hitView = hitTest(locationInView)
+        print("🎯 CanvasView mouseDown - hitView: \(String(describing: hitView)), type: \(type(of: hitView))")
+        print("   Location: \(locationInView), noteViews count: \(noteViews.count)")
+
+        // Debug: Find notes near click location
+        let nearbyNotes = noteViews.filter { note in
+            let expanded = note.frame.insetBy(dx: -50, dy: -50)
+            return expanded.contains(locationInView)
+        }
+        print("   Nearby notes (within 50px): \(nearbyNotes.count)")
+        for note in nearbyNotes {
+            print("      Frame: \(note.frame), title: \(note.title)")
+        }
+
+        // Check if any note actually contains the point
+        let directHit = noteViews.first(where: { $0.frame.contains(locationInView) })
+        if let hit = directHit {
+            print("   ✅ Found note at location: \(hit.title), frame: \(hit.frame)")
+        } else {
+            print("   ❌ No note contains this point")
+        }
 
         if hitView == self || hitView == selectionOverlay {
             // Clicking on empty space - start lasso or pan
+            print("📍 Clicking on empty space (hitView matches self or overlay)")
+            draggingNote = nil
+
             if event.modifierFlags.contains(.option) {
                 // Option+drag for panning
                 startPanning(at: event.locationInWindow)
@@ -236,8 +262,20 @@ class CanvasView: NSView {
                 }
             }
         } else {
-            // Clicking on a note - let it handle the event
-            super.mouseDown(with: event)
+            // Hit something else - find the StickyNoteView
+            var view: NSView? = hitView
+            while view != nil && !(view is StickyNoteView) {
+                view = view?.superview
+            }
+
+            if let noteView = view as? StickyNoteView {
+                // Found a note - track it and forward the event
+                print("📝 Found note view, forwarding event")
+                draggingNote = noteView
+                noteView.mouseDown(with: event)
+            } else {
+                print("⚠️ Hit view is not a StickyNoteView: \(type(of: hitView))")
+            }
         }
     }
 
@@ -247,8 +285,12 @@ class CanvasView: NSView {
         } else if isLassoSelecting {
             let locationInView = convert(event.locationInWindow, from: nil)
             continueLassoSelection(to: locationInView)
+        } else if let noteView = draggingNote {
+            // Forward drag to the note
+            print("➡️ Forwarding drag to note")
+            noteView.mouseDragged(with: event)
         } else {
-            super.mouseDragged(with: event)
+            print("❌ No dragging note set!")
         }
     }
 
@@ -257,9 +299,12 @@ class CanvasView: NSView {
             endPanning()
         } else if isLassoSelecting {
             endLassoSelection()
-        } else {
-            super.mouseUp(with: event)
+        } else if let noteView = draggingNote {
+            // Forward mouse up to the note
+            noteView.mouseUp(with: event)
         }
+
+        draggingNote = nil
     }
 
     // MARK: - Panning

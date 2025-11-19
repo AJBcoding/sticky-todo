@@ -18,6 +18,7 @@ struct StickyNoteView: View {
 
     let note: StickyNote
     let isSelected: Bool
+    let dragOffset: CGSize  // Visual offset during drag
     let scale: CGFloat
     let onTap: () -> Void
     let onDragStart: () -> Void
@@ -25,7 +26,6 @@ struct StickyNoteView: View {
     let onDragEnd: () -> Void
 
     @State private var isDragging = false
-    @State private var currentDragOffset: CGSize = .zero
 
     // MARK: - Body
 
@@ -63,10 +63,9 @@ struct StickyNoteView: View {
         .animation(.spring(response: 0.2), value: isDragging)
         .animation(.spring(response: 0.2), value: isSelected)
         .position(
-            x: note.position.x + 100, // Center the note on its position
-            y: note.position.y + 100
+            x: note.position.x + 100 + dragOffset.width, // Center the note on its position + drag offset
+            y: note.position.y + 100 + dragOffset.height
         )
-        .offset(currentDragOffset)
         .gesture(
             // Note: This is a key challenge in SwiftUI - gesture handling
             // We need to handle note dragging while also allowing canvas panning
@@ -78,15 +77,16 @@ struct StickyNoteView: View {
                         onDragStart()
                     }
 
-                    // Store local offset for visual feedback
-                    currentDragOffset = value.translation
-
-                    // Notify parent with translation
-                    onDragChange(value.translation)
+                    // Send dampened translation to parent (40% sensitivity)
+                    // Note: Parent updates note.position, no local offset needed
+                    let dampedTranslation = CGSize(
+                        width: value.translation.width * 0.4,
+                        height: value.translation.height * 0.4
+                    )
+                    onDragChange(dampedTranslation)
                 }
                 .onEnded { _ in
                     isDragging = false
-                    currentDragOffset = .zero
                     onDragEnd()
                 }
         )
@@ -112,6 +112,7 @@ struct StickyNoteView: View {
                 color: .yellow
             ),
             isSelected: false,
+            dragOffset: .zero,
             scale: 1.0,
             onTap: {},
             onDragStart: {},
@@ -133,6 +134,7 @@ struct StickyNoteView: View {
                 color: .pink
             ),
             isSelected: true,
+            dragOffset: .zero,
             scale: 1.0,
             onTap: {},
             onDragStart: {},
@@ -160,6 +162,7 @@ struct StickyNoteView: View {
                     color: color
                 ),
                 isSelected: false,
+                dragOffset: .zero,
                 scale: 1.0,
                 onTap: {},
                 onDragStart: {},

@@ -9,7 +9,7 @@ import Foundation
 import AppIntents
 
 @available(iOS 16.0, macOS 13.0, *)
-struct ShowInboxIntent: AppIntent {
+public struct ShowInboxIntent: AppIntent {
     static var title: LocalizedStringResource = "Show Inbox"
 
     static var description = IntentDescription(
@@ -62,7 +62,7 @@ struct ShowInboxIntent: AppIntent {
 
 /// Snippet view showing inbox summary
 @available(iOS 16.0, macOS 13.0, *)
-struct InboxSummaryView: View {
+public struct InboxSummaryView: View {
     var taskCount: Int
     var tasks: [Task]
 

@@ -10,7 +10,7 @@ import Foundation
 // MARK: - Trigger Types
 
 /// The type of event that triggers a rule
-enum TriggerType: String, Codable, CaseIterable {
+public enum TriggerType: String, Codable, CaseIterable {
     case taskCreated = "task_created"
     case statusChanged = "status_changed"
     case dueDateApproaching = "due_date_approaching"
@@ -61,7 +61,7 @@ extension TriggerType {
 // MARK: - Action Types
 
 /// The type of action to perform when a rule is triggered
-enum ActionType: String, Codable, CaseIterable {
+public enum ActionType: String, Codable, CaseIterable {
     case setStatus = "set_status"
     case setPriority = "set_priority"
     case setContext = "set_context"
@@ -127,13 +127,13 @@ extension ActionType {
 // MARK: - Conditions
 
 /// Condition for filtering which tasks a rule applies to
-struct RuleCondition: Codable, Equatable {
+public struct RuleCondition: Codable, Equatable {
     var property: ConditionProperty
     var operator: ConditionOperator
     var value: String
 }
 
-enum ConditionProperty: String, Codable, CaseIterable {
+public enum ConditionProperty: String, Codable, CaseIterable {
     case status
     case priority
     case project
@@ -165,7 +165,7 @@ extension ConditionProperty {
     }
 }
 
-enum ConditionOperator: String, Codable, CaseIterable {
+public enum ConditionOperator: String, Codable, CaseIterable {
     case equals
     case notEquals = "not_equals"
     case contains
@@ -190,13 +190,13 @@ extension ConditionOperator {
 // MARK: - Rule Action
 
 /// An action to be performed when a rule is triggered
-struct RuleAction: Codable, Equatable, Identifiable {
+public struct RuleAction: Codable, Equatable, Identifiable {
     let id: UUID
     var type: ActionType
     var value: String?
     var relativeDate: RelativeDateValue?
 
-    init(id: UUID = UUID(), type: ActionType, value: String? = nil, relativeDate: RelativeDateValue? = nil) {
+    public init(id: UUID = UUID(), type: ActionType, value: String? = nil, relativeDate: RelativeDateValue? = nil) {
         self.id = id
         self.type = type
         self.value = value
@@ -205,7 +205,7 @@ struct RuleAction: Codable, Equatable, Identifiable {
 }
 
 /// Represents a relative date offset (e.g., +3 days, -1 week)
-struct RelativeDateValue: Codable, Equatable {
+public struct RelativeDateValue: Codable, Equatable {
     var amount: Int
     var unit: DateUnit
 
@@ -239,7 +239,7 @@ extension RelativeDateValue {
 // MARK: - Rule Model
 
 /// An automation rule that triggers actions based on task changes
-struct Rule: Codable, Equatable, Identifiable {
+public struct Rule: Codable, Equatable, Identifiable {
     // MARK: - Core Properties
 
     let id: UUID
@@ -271,7 +271,7 @@ struct Rule: Codable, Equatable, Identifiable {
 
     // MARK: - Initialization
 
-    init(
+    public init(
         id: UUID = UUID(),
         name: String,
         description: String? = nil,
@@ -304,7 +304,7 @@ struct Rule: Codable, Equatable, Identifiable {
     }
 }
 
-enum ConditionLogic: String, Codable, CaseIterable {
+public enum ConditionLogic: String, Codable, CaseIterable {
     case all // AND - all conditions must match
     case any // OR - any condition must match
 }
@@ -533,7 +533,7 @@ extension Rule {
 // MARK: - Task Change Context
 
 /// Context information about what changed in a task
-struct TaskChangeContext {
+public struct TaskChangeContext {
     var changeType: TriggerType
     var oldValue: String?
     var newValue: String?

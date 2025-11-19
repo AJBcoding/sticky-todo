@@ -11,7 +11,7 @@ import Foundation
 ///
 /// The system can auto-detect format in many cases by examining file
 /// extension and content structure.
-enum ImportFormat: String, CaseIterable {
+public enum ImportFormat: String, CaseIterable {
     case nativeMarkdown = "native-markdown"
     case taskpaper = "taskpaper"
     case csv = "csv"
@@ -188,7 +188,7 @@ extension ImportFormat {
 // MARK: - Import Options
 
 /// Configuration options for import operations
-struct ImportOptions {
+public struct ImportOptions {
     /// The format to import from
     var format: ImportFormat
 
@@ -227,7 +227,7 @@ struct ImportOptions {
 
     /// Creates default import options
     /// - Parameter format: Import format
-    init(format: ImportFormat) {
+    public init(format: ImportFormat) {
         self.format = format
         self.autoDetect = true
         self.defaultProject = nil
@@ -289,7 +289,7 @@ struct ImportOptions {
 // MARK: - Import Result
 
 /// Result of an import operation
-struct ImportResult {
+public struct ImportResult {
     /// Number of tasks successfully imported
     var importedCount: Int
 
@@ -309,7 +309,7 @@ struct ImportResult {
     var timestamp: Date
 
     /// Creates an import result
-    init(
+    public init(
         importedCount: Int = 0,
         boardsCreated: Int = 0,
         tasks: [Task] = [],
@@ -355,7 +355,7 @@ struct ImportResult {
 // MARK: - Import Error
 
 /// Error types for import operations
-enum ImportError: Error, CustomStringConvertible {
+public enum ImportError: Error, CustomStringConvertible {
     case fileNotFound(String)
     case invalidFormat(String)
     case unableToDetectFormat
@@ -417,7 +417,7 @@ enum ImportError: Error, CustomStringConvertible {
 // MARK: - Import Preview
 
 /// Preview of data to be imported (for user confirmation)
-struct ImportPreview {
+public struct ImportPreview {
     /// Format detected or specified
     var format: ImportFormat
 
@@ -440,7 +440,7 @@ struct ImportPreview {
     var columnMapping: [String: String]?
 
     /// Creates a preview
-    init(
+    public init(
         format: ImportFormat,
         taskCount: Int,
         sampleTasks: [Task] = [],

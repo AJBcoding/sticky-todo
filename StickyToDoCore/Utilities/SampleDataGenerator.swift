@@ -11,7 +11,7 @@ import Foundation
 ///
 /// This generator creates a comprehensive set of realistic data that demonstrates
 /// GTD workflows, different contexts, projects, and board configurations.
-struct SampleDataGenerator {
+public struct SampleDataGenerator {
 
     // MARK: - Main Generation Methods
 

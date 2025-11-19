@@ -11,7 +11,7 @@ import Foundation
 ///
 /// Time entries are stored as markdown files with YAML frontmatter in the time-entries/ directory.
 /// The file system organization is: time-entries/YYYY/MM/uuid.md
-struct TimeEntry: Identifiable, Codable, Equatable {
+public struct TimeEntry: Identifiable, Codable, Equatable {
     // MARK: - Core Properties
 
     /// Unique identifier for the time entry
@@ -58,7 +58,7 @@ struct TimeEntry: Identifiable, Codable, Equatable {
     ///   - notes: Optional notes about the session
     ///   - created: Creation timestamp (defaults to now)
     ///   - modified: Modification timestamp (defaults to now)
-    init(
+    public init(
         id: UUID = UUID(),
         taskId: UUID,
         startTime: Date = Date(),

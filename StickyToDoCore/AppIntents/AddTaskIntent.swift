@@ -9,7 +9,7 @@ import Foundation
 import AppIntents
 
 @available(iOS 16.0, macOS 13.0, *)
-struct AddTaskIntent: AppIntent {
+public struct AddTaskIntent: AppIntent {
     static var title: LocalizedStringResource = "Add Task"
 
     static var description = IntentDescription(
@@ -98,7 +98,7 @@ struct AddTaskIntent: AppIntent {
 
 /// Result view shown after adding a task
 @available(iOS 16.0, macOS 13.0, *)
-struct AddTaskResultView: View {
+public struct AddTaskResultView: View {
     var title: String
     var project: String?
     var context: String?
@@ -155,7 +155,7 @@ struct AddTaskResultView: View {
 
 /// Errors that can occur when working with tasks
 @available(iOS 16.0, macOS 13.0, *)
-enum TaskError: Error, CustomLocalizedStringResourceConvertible {
+public enum TaskError: Error, CustomLocalizedStringResourceConvertible {
     case storeUnavailable
     case taskNotFound
     case invalidInput

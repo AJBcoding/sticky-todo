@@ -24,7 +24,7 @@ class CanvasController: NSViewController {
     // MARK: - Properties
 
     /// Main canvas view
-    private var canvasView: CanvasView!
+    internal var canvasView: CanvasView!
 
     /// Scroll view wrapping the canvas
     private var scrollView: NSScrollView!
@@ -102,12 +102,26 @@ class CanvasController: NSViewController {
 
         scrollView.documentView = canvasView
 
-        // Center the initial view
-        let centerPoint = NSPoint(
-            x: (canvasView.frame.width - scrollView.contentSize.width) / 2,
-            y: (canvasView.frame.height - scrollView.contentSize.height) / 2
+        // Scroll to show the notes area (notes start around 200,200)
+        // This will be called after the view is laid out
+        DispatchQueue.main.async {
+            self.scrollToNotesArea()
+        }
+    }
+
+    private func scrollToNotesArea() {
+        // Center view on the notes area (approximately 200-2500 x, 200-2000 y)
+        let notesCenter = NSPoint(x: 1350, y: 1100)
+
+        // Calculate visible rect center
+        let visibleRect = scrollView.contentView.bounds
+        let scrollPoint = NSPoint(
+            x: notesCenter.x - visibleRect.width / 2,
+            y: notesCenter.y - visibleRect.height / 2
         )
-        canvasView.scroll(centerPoint)
+
+        canvasView.scroll(scrollPoint)
+        scrollView.reflectScrolledClipView(scrollView.contentView)
     }
 
     private func setupStatusBar() {

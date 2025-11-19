@@ -93,8 +93,8 @@ struct AppMenuCommands: Commands {
             .keyboardShortcut("i", modifiers: [.command, .option])
 
             Toggle("Sidebar", isOn: Binding(
-                get: { true }, // TODO: Connect to actual sidebar state
-                set: { _ in NotificationCenter.default.post(name: .toggleSidebar, object: nil) }
+                get: { WindowStateManager.shared.sidebarIsOpen },
+                set: { WindowStateManager.shared.sidebarIsOpen = $0 }
             ))
             .keyboardShortcut("s", modifiers: [.command, .option])
 

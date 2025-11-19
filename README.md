@@ -17,114 +17,152 @@ StickyToDo provides two complementary modes of working with your tasks:
 
 ## Features
 
-### Two-Tier Task System
+### 🎯 30+ Powerful Features
 
-- **Notes**: Lightweight items for brainstorming with minimal friction
-- **Tasks**: Full GTD items with complete metadata (project, context, priority, due dates, effort, etc.)
-- Seamlessly promote notes to tasks by applying metadata
+StickyToDo combines the best of GTD methodology with visual planning tools, all built on a plain-text foundation.
+
+### Core GTD & Task Management
+
+**Two-Tier Task System**
+- **Notes**: Lightweight items for quick capture and brainstorming
+- **Tasks**: Full GTD items with 12+ metadata fields
+- Seamlessly promote notes to tasks as they become actionable
+
+**Five-Status GTD Workflow**
+- **Inbox** → Capture everything
+- **Next Actions** → Ready to work
+- **Waiting For** → Blocked or delegated
+- **Someday/Maybe** → Future possibilities
+- **Completed** → Auto-archived with history
+
+**Smart Perspectives** (7 Built-in + Custom)
+- Inbox, Next Actions, Flagged, Due Soon, Waiting, Someday, All Active
+- Create unlimited custom perspectives
+- Filter by any combination: status, project, context, priority, dates, effort, tags
+- Keyboard shortcuts for instant access (⌘1-7)
+
+**Advanced Task Features**
+- 📝 **Rich Metadata**: Projects, contexts, priority, due/defer dates, effort, flags, tags, notes
+- 🔄 **Recurring Tasks**: Daily, weekly, monthly, yearly with complex patterns
+- 📊 **Subtasks & Hierarchies**: Break down complex projects
+- 📎 **Attachments**: Files, images, PDFs, documents
+- 🎨 **Task Templates**: Reusable blueprints for standard workflows
+- ⏱️ **Time Tracking**: Track actual time vs. estimates
+
+### Visual Boards (3 Layouts)
+
+**Freeform Canvas**
+- Infinite canvas for mind mapping and spatial planning
+- 60 FPS performance (AppKit-powered)
+- Pan (Option+drag), Zoom (⌘+/-), Lasso selection
+- Perfect for brainstorming and visual thinking
+
+**Kanban Boards**
+- Drag-and-drop workflow management
+- Customizable columns with metadata rules
+- Auto-update task status when moving between lanes
+- Great for agile/scrum and process tracking
+
+**Grid Boards**
+- Organized sections with auto-arrange
+- Compact, scannable task view
+- Group by any field (context, project, priority)
+- Ideal for categorized lists
+
+**Dynamic Filtering**
+- Boards filter tasks, they don't contain them
+- Single source of truth (no duplication)
+- Tasks appear on multiple boards simultaneously
+- Moving to board updates task metadata automatically
 
 ### Plain Text Foundation
 
-- **Markdown Storage**: Tasks stored as markdown files with YAML frontmatter
-- **Human-Readable**: Edit in VS Code, Obsidian, or any text editor
-- **Version Control**: Use git to track changes, collaborate, and maintain history
-- **Future-Proof**: Standard formats ensure long-term accessibility
+**Markdown Storage** (Your Data, Your Control)
+- Tasks stored as markdown files with YAML frontmatter
+- **Human-Readable**: Edit in VS Code, Obsidian, vim, or any text editor
+- **Version Control**: Use git to track changes and collaborate
+- **Future-Proof**: Standard formats, no vendor lock-in
 - **Sync-Friendly**: Works with Dropbox, iCloud Drive, or any file sync service
+- **Script-Friendly**: Automate with bash, Python, Node.js, etc.
 
-### Visual Board Layouts
-
-**Freeform Canvas**
-- Infinite canvas for brainstorming
-- Drag tasks anywhere
-- Zoom and pan
-- Spatial organization
-- Perfect for mind mapping and planning
-
-**Kanban Boards**
-- Vertical swim lanes for workflows
-- Drag tasks between columns
-- Auto-update task metadata
-- Customizable columns
-- Great for process management
-
-**Grid Boards**
-- Organized sections
-- Auto-arrange layout
-- Compact task view
-- Category-based organization
-- Ideal for structured lists
-
-### GTD Workflow
-
-**Five Core Statuses**
-- **Inbox**: Unprocessed items awaiting clarification
-- **Next Actions**: Ready-to-work tasks
-- **Waiting For**: Blocked or delegated items
-- **Someday/Maybe**: Future possibilities
-- **Completed**: Finished tasks (auto-archived)
-
-**Smart Perspectives**
-- Inbox - Process new items
-- Next Actions - Grouped by context
-- Flagged - Starred for attention
-- Due Soon - Upcoming deadlines
-- Waiting For - Blocked items
-- Someday/Maybe - Future ideas
-- All Active - Complete overview
-- Create custom perspectives
-
-### Quick Capture
-
-Global hotkey (⌘⇧Space) for instant task capture from anywhere on macOS.
-
-**Natural Language Parsing:**
-```
-Call John @phone #Website !high tomorrow //30m
-```
-
-Automatically extracts:
-- Title: "Call John"
-- Context: @phone
-- Project: Website
-- Priority: High
-- Due: Tomorrow
-- Effort: 30 minutes
-
-**Supported Patterns:**
-- `@context` - Work context (@phone, @computer, @office, etc.)
-- `#project` - Project assignment
-- `!priority` - Priority level (!high, !medium, !low)
-- `tomorrow`, `friday`, `nov 20` - Due dates
-- `^defer:date` - Defer/start dates
-- `//30m`, `//2h` - Effort estimates
-
-### Boards as Filters
-
-- Boards don't contain tasks; they filter and display them
-- Tasks appear when they match filter criteria
-- Moving tasks to boards updates their metadata
-- Tasks can appear on multiple boards simultaneously
-- Dynamic board creation for contexts and projects
-
-### File Watching
-
-- Detects external file changes
-- Auto-reloads modified tasks
+**File Watching**
+- Real-time detection of external changes
+- Auto-reload modified tasks
 - Conflict detection and resolution
-- Edit files in your favorite editor
-- Changes sync immediately
+- Edit anywhere, sync everywhere
 
-### Rich Metadata
+### Quick Capture & Search
 
-- **Projects**: Group related tasks
-- **Contexts**: Where/how tasks are done
-- **Priority**: High, Medium, Low
-- **Due Dates**: Hard deadlines
-- **Defer Dates**: Hide until start date
-- **Effort Estimates**: Time in minutes/hours
-- **Flags**: Star important items
-- **Notes**: Full markdown support
-- **Positions**: Task placement on boards
+**Global Hotkey Capture** (⌘⇧Space)
+- Capture from anywhere on macOS
+- Floating quick-entry window
+- Multi-task rapid entry (⌘Return to chain)
+
+**Natural Language Parsing**
+```
+Call John @phone #Sales !high tomorrow //30m
+```
+Automatically extracts: Title, Context, Project, Priority, Due date, Effort
+
+**Supported Syntax:**
+- `@context` - Where/how (@phone, @computer, @office, @home, @errands)
+- `#project` - Project assignment
+- `!priority` - !high, !medium, !low
+- Smart dates - tomorrow, friday, nov 20, next week
+- `^defer:date` - Hide until date
+- `//30m`, `//2h` - Time estimates
+- `tag:value` - Custom tags
+
+**Full-Text Search**
+- Search across all fields (title, notes, project, context, tags)
+- **Boolean operators**: AND, OR, NOT
+- **Exact phrases**: "code review"
+- **Field-specific**: project:Website, context:@office
+- Relevance scoring and match highlighting
+- Save searches as perspectives
+
+### Automation & Intelligence
+
+**Automation Rules Engine**
+- 11 triggers (created, completed, status changed, overdue, etc.)
+- 13 actions (set status, project, context, priority, tags, notify, etc.)
+- Build complex workflows
+- Example: Auto-flag overdue tasks, auto-assign contexts by project
+
+**Smart Features**
+- Task suggestions based on context, time, and patterns
+- Activity log and history
+- Time tracking with analytics
+- Weekly review interface with guided workflow
+
+### Integration & Export
+
+**macOS Integration**
+- 🎙️ **Siri Shortcuts**: 12+ voice commands ("Add task", "Show inbox", "What should I work on?")
+- 📅 **Calendar Integration**: Sync tasks with Calendar.app
+- 🔔 **Notifications**: Smart reminders with actionable buttons
+- 🔍 **Spotlight**: Search tasks system-wide (⌘Space)
+
+**Export & Import** (7 Formats)
+- Markdown (native), JSON, CSV, HTML
+- iCalendar (.ics)
+- Things import/export
+- OmniFocus import/export
+
+### Analytics & Insights
+
+**Analytics Dashboard**
+- Tasks completed (daily/weekly/monthly)
+- Time by project and context
+- Completion rate and trends
+- Productivity scoring
+- Estimation accuracy
+
+**Weekly Review Tools**
+- Guided review workflow
+- Stats summary and insights
+- Quick access to all perspectives
+- Reflection notes
 
 ## Screenshots
 
@@ -229,6 +267,20 @@ Automatically extracts:
 - **[Assessment Reports](docs/assessments/)** - Code reviews and quality assessments
 - **[Pull Requests](docs/pull-requests/)** - Pull request documentation
 - **[Handoff Documentation](docs/handoff/)** - Project handoff and knowledge transfer
+**Getting Started**
+- **[Quick Start Guide](docs/QUICK_START.md)** - Get up and running in 5 minutes
+- **[User Guide](docs/USER_GUIDE.md)** - Complete usage documentation
+- **[FAQ](docs/FAQ.md)** - Common questions and troubleshooting
+
+**Reference**
+- **[Features](docs/FEATURES.md)** - All 30+ features explained with examples
+- **[Keyboard Shortcuts](docs/KEYBOARD_SHORTCUTS.md)** - Complete shortcuts reference
+- **[File Format](docs/FILE_FORMAT.md)** - Technical specification for plain-text format
+
+**Advanced**
+- **[Development Guide](docs/DEVELOPMENT.md)** - Contributing and architecture
+- **[Siri Shortcuts Guide](docs/SIRI_SHORTCUTS_GUIDE.md)** - Voice control setup
+- **[Search Quick Reference](docs/SEARCH_QUICK_REFERENCE.md)** - Advanced search operators
 
 ## Building from Source
 

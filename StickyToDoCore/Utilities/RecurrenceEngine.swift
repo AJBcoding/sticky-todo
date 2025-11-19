@@ -8,7 +8,7 @@
 import Foundation
 
 /// Engine for managing recurring task logic
-enum RecurrenceEngine {
+public enum RecurrenceEngine {
 
     // MARK: - Next Occurrence Calculation
 

@@ -11,7 +11,7 @@ import Foundation
 ///
 /// All filter properties are optional. A nil value means no filtering on that criterion.
 /// Multiple criteria are combined with AND logic (all must match).
-struct Filter: Codable, Equatable {
+public struct Filter: Codable, Equatable {
     /// Filter by task type (note or task)
     var type: TaskType?
 
@@ -50,10 +50,10 @@ struct Filter: Codable, Equatable {
     var expression: String?
 
     /// Creates an empty filter (matches all tasks)
-    init() {}
+    public init() {}
 
     /// Creates a filter with the specified criteria
-    init(
+    public init(
         type: TaskType? = nil,
         status: Status? = nil,
         project: String? = nil,

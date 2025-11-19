@@ -25,6 +25,7 @@ public class WindowStateManager: ObservableObject {
     private enum Keys {
         static let windowFrames = "windowFrames"
         static let inspectorState = "inspectorState"
+        static let sidebarState = "sidebarState"
         static let sidebarWidth = "sidebarWidth"
         static let viewMode = "viewMode"
         static let selectedPerspective = "selectedPerspective"
@@ -39,6 +40,7 @@ public class WindowStateManager: ObservableObject {
 
     // MARK: - Published Properties
     @Published public var inspectorIsOpen: Bool = true
+    @Published public var sidebarIsOpen: Bool = true
     @Published public var sidebarWidth: CGFloat = 200
     @Published public var viewMode: ViewMode = .list
     @Published public var selectedPerspective: String = "inbox"
@@ -63,6 +65,11 @@ public class WindowStateManager: ObservableObject {
         inspectorIsOpen = defaults.bool(forKey: Keys.inspectorState)
         if inspectorIsOpen == false && !defaults.bool(forKey: Keys.inspectorState + "_set") {
             inspectorIsOpen = true // Default to true on first launch
+        }
+
+        sidebarIsOpen = defaults.bool(forKey: Keys.sidebarState)
+        if sidebarIsOpen == false && !defaults.bool(forKey: Keys.sidebarState + "_set") {
+            sidebarIsOpen = true // Default to true on first launch
         }
 
         sidebarWidth = CGFloat(defaults.double(forKey: Keys.sidebarWidth))
@@ -95,6 +102,8 @@ public class WindowStateManager: ObservableObject {
     public func saveState() {
         defaults.set(inspectorIsOpen, forKey: Keys.inspectorState)
         defaults.set(true, forKey: Keys.inspectorState + "_set")
+        defaults.set(sidebarIsOpen, forKey: Keys.sidebarState)
+        defaults.set(true, forKey: Keys.sidebarState + "_set")
         defaults.set(Double(sidebarWidth), forKey: Keys.sidebarWidth)
         defaults.set(viewMode.rawValue, forKey: Keys.viewMode)
         defaults.set(selectedPerspective, forKey: Keys.selectedPerspective)
@@ -111,10 +120,13 @@ public class WindowStateManager: ObservableObject {
     /// Setup observers to auto-save on changes
     private func setupObservers() {
         // Auto-save when properties change
-        Publishers.Merge4(
-            $inspectorIsOpen.dropFirst(),
-            $sidebarWidth.dropFirst().map { _ in true },
-            $viewMode.dropFirst().map { _ in true },
+        Publishers.Merge(
+            Publishers.Merge4(
+                $inspectorIsOpen.dropFirst(),
+                $sidebarIsOpen.dropFirst(),
+                $sidebarWidth.dropFirst().map { _ in true },
+                $viewMode.dropFirst().map { _ in true }
+            ),
             $selectedPerspective.dropFirst().map { _ in true }
         )
         .debounce(for: 0.5, scheduler: DispatchQueue.main)
@@ -214,6 +226,8 @@ public class WindowStateManager: ObservableObject {
     public func resetToDefaults() {
         defaults.removeObject(forKey: Keys.inspectorState)
         defaults.removeObject(forKey: Keys.inspectorState + "_set")
+        defaults.removeObject(forKey: Keys.sidebarState)
+        defaults.removeObject(forKey: Keys.sidebarState + "_set")
         defaults.removeObject(forKey: Keys.sidebarWidth)
         defaults.removeObject(forKey: Keys.viewMode)
         defaults.removeObject(forKey: Keys.selectedPerspective)

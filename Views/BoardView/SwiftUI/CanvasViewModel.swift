@@ -55,6 +55,9 @@ class CanvasViewModel: ObservableObject {
     /// Active lasso selection (if any)
     @Published var lassoSelection: LassoSelection?
 
+    /// Current drag offset (for visual feedback only, doesn't update actual positions)
+    @Published var currentDragOffset: CGSize = .zero
+
     /// Performance metrics
     @Published var fps: Double = 0
     @Published var renderTime: Double = 0
@@ -168,6 +171,9 @@ class CanvasViewModel: ObservableObject {
 
     // MARK: - Note Manipulation
 
+    /// Store starting positions for drag operation
+    private var dragStartPositions: [UUID: CGPoint] = [:]
+
     /// Start dragging a specific note
     func startDraggingNote(_ noteId: UUID) {
         draggedNoteId = noteId
@@ -176,35 +182,42 @@ class CanvasViewModel: ObservableObject {
         if !selectedNoteIds.contains(noteId) {
             selectedNoteIds = [noteId]
         }
-    }
 
-    /// Update position of dragged note(s)
-    func dragNote(delta: CGSize) {
-        guard let noteId = draggedNoteId else { return }
-
-        // Adjust delta for current scale
-        let scaledDelta = CGSize(width: delta.width / scale, height: delta.height / scale)
-
-        // If multiple notes are selected, move them all
-        if selectedNoteIds.count > 1 {
-            for id in selectedNoteIds {
-                if let index = notes.firstIndex(where: { $0.id == id }) {
-                    notes[index].position.x += scaledDelta.width
-                    notes[index].position.y += scaledDelta.height
-                }
-            }
-        } else {
-            // Move single note
-            if let index = notes.firstIndex(where: { $0.id == noteId }) {
-                notes[index].position.x += scaledDelta.width
-                notes[index].position.y += scaledDelta.height
+        // Store starting positions for all selected notes
+        dragStartPositions.removeAll()
+        for id in selectedNoteIds {
+            if let note = notes.first(where: { $0.id == id }) {
+                dragStartPositions[id] = note.position
             }
         }
     }
 
-    /// End dragging
+    /// Update drag offset (visual only, doesn't change actual positions)
+    func dragNote(delta: CGSize) {
+        guard draggedNoteId != nil else { return }
+
+        // Adjust delta for current scale and store for visual feedback
+        currentDragOffset = CGSize(width: delta.width / scale, height: delta.height / scale)
+    }
+
+    /// End dragging and apply final positions
     func endDraggingNote() {
+        guard draggedNoteId != nil else { return }
+
+        // Apply the drag offset to actual positions
+        for id in selectedNoteIds {
+            guard let startPos = dragStartPositions[id],
+                  let index = notes.firstIndex(where: { $0.id == id }) else { continue }
+
+            // Set final position = start + offset
+            notes[index].position.x = startPos.x + currentDragOffset.width
+            notes[index].position.y = startPos.y + currentDragOffset.height
+        }
+
+        // Clear drag state
         draggedNoteId = nil
+        dragStartPositions.removeAll()
+        currentDragOffset = .zero
     }
 
     /// Add a new note at the given position

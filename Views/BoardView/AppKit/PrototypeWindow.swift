@@ -115,6 +115,13 @@ class PrototypeApp: NSObject, NSApplicationDelegate {
     private var window: NSWindow!
     private var controller: CanvasController!
 
+    static func main() {
+        let app = NSApplication.shared
+        let delegate = PrototypeApp()
+        app.delegate = delegate
+        app.run()
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupWindow()
         showInstructions()
@@ -154,32 +161,18 @@ class PrototypeApp: NSObject, NSApplicationDelegate {
         let alert = NSAlert()
         alert.messageText = "AppKit Canvas Prototype"
         alert.informativeText = """
-        Welcome! This prototype demonstrates AppKit's capabilities for a freeform canvas.
-
-        🖱️ Interactions:
-        • Click+drag notes to move them
-        • Option+drag empty space to pan
+        🖱️ Controls:
+        • Drag notes to move them
+        • Option+drag to pan canvas
         • Command+scroll to zoom
-        • Click+drag empty space for lasso selection
-        • Command+click notes to multi-select
-        • Delete key to remove selected notes
+        • Drag on empty space for lasso selection
+        • Delete key to remove notes
 
-        🔧 Toolbar:
-        • Add Note - Add sticky notes
-        • Zoom controls - Test different zoom levels
-        • Performance - View current stats
-        • Clear All - Remove all notes
-
-        ⚡ Performance Test:
-        • 75 notes are loaded by default
-        • Add more to test with 100+
-        • Everything should stay buttery smooth
-
-        Try all interactions and compare with SwiftUI!
+        75 notes loaded. Try dragging, panning, and zooming!
         """
 
         alert.addButton(withTitle: "Start Testing")
-        alert.addButton(withTitle: "Show Help Again")
+        alert.addButton(withTitle: "More Help")
 
         if alert.runModal() == .alertSecondButtonReturn {
             // Show help again

@@ -9,7 +9,7 @@ import Foundation
 import AppIntents
 
 @available(iOS 16.0, macOS 13.0, *)
-struct ShowWeeklyReviewIntent: AppIntent {
+public struct ShowWeeklyReviewIntent: AppIntent {
     static var title: LocalizedStringResource = "Show Weekly Review"
 
     static var description = IntentDescription(
@@ -51,7 +51,7 @@ struct ShowWeeklyReviewIntent: AppIntent {
 
 /// Statistics for weekly review
 @available(iOS 16.0, macOS 13.0, *)
-struct WeeklyReviewStats {
+public struct WeeklyReviewStats {
     let inboxCount: Int
     let nextActionsCount: Int
     let completedThisWeek: Int
@@ -78,7 +78,7 @@ struct WeeklyReviewStats {
 
 /// Snippet view showing weekly review summary
 @available(iOS 16.0, macOS 13.0, *)
-struct WeeklyReviewSummaryView: View {
+public struct WeeklyReviewSummaryView: View {
     var stats: WeeklyReviewStats
 
     var body: some View {
@@ -162,7 +162,7 @@ struct WeeklyReviewSummaryView: View {
 
 /// Small stat badge
 @available(iOS 16.0, macOS 13.0, *)
-struct StatBadge: View {
+public struct StatBadge: View {
     let label: String
     let value: Int
     let color: Color

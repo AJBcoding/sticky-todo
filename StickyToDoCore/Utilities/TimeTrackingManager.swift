@@ -16,7 +16,7 @@ import Combine
 /// - Creating and managing time entries
 /// - Calculating time statistics
 /// - Persisting time entries to disk
-class TimeTrackingManager: ObservableObject {
+public class TimeTrackingManager: ObservableObject {
 
     // MARK: - Published Properties
 
@@ -36,7 +36,7 @@ class TimeTrackingManager: ObservableObject {
 
     // MARK: - Initialization
 
-    init() {
+    public init() {
         // Start the update timer to refresh running timer displays
         startUpdateTimer()
     }
