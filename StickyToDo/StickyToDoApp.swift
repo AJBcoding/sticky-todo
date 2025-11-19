@@ -35,13 +35,35 @@ struct StickyToDoApp: App {
         // Main application window
         WindowGroup {
             Group {
-                if isInitialized {
+                if isInitialized,
+                   let taskStore = dataManager.taskStore,
+                   let boardStore = dataManager.boardStore {
                     ContentView()
-                        .environmentObject(dataManager.taskStore!)
-                        .environmentObject(dataManager.boardStore!)
+                        .environmentObject(taskStore)
+                        .environmentObject(boardStore)
                         .environmentObject(dataManager)
                         .environmentObject(configManager)
                         .frame(minWidth: 900, minHeight: 600)
+                } else if isInitialized {
+                    // Initialization completed but stores not ready - show error
+                    VStack(spacing: 20) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 48))
+                            .foregroundColor(.red)
+
+                        Text("Initialization Error")
+                            .font(.title)
+
+                        Text("Data stores failed to initialize properly. Please restart the application.")
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(.secondary)
+
+                        Button("Quit") {
+                            NSApplication.shared.terminate(nil)
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .frame(width: 400, height: 300)
                 } else {
                     VStack(spacing: 20) {
                         ProgressView("Loading StickyToDo...")
@@ -77,10 +99,11 @@ struct StickyToDoApp: App {
 
         // Quick Capture window
         WindowGroup("Quick Capture", id: "quick-capture", for: Bool.self) { $showing in
-            if isInitialized {
+            if isInitialized,
+               let taskStore = dataManager.taskStore {
                 QuickCaptureView(
-                    recentProjects: Array(dataManager.taskStore.projects.prefix(5)),
-                    recentContexts: Array(dataManager.taskStore.contexts.prefix(5)).map {
+                    recentProjects: Array(taskStore.projects.prefix(5)),
+                    recentContexts: Array(taskStore.contexts.prefix(5)).map {
                         Context.defaults.first(where: { $0.name == $0 }) ?? Context(name: $0, icon: "📍", color: "blue")
                     },
                     onCreateTask: { task in
@@ -90,7 +113,7 @@ struct StickyToDoApp: App {
                         closeQuickCaptureWindow()
                     }
                 )
-                .environmentObject(dataManager.taskStore!)
+                .environmentObject(taskStore)
                 .environmentObject(dataManager)
             } else {
                 ProgressView("Loading...")

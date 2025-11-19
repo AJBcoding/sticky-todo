@@ -9,7 +9,7 @@ import Foundation
 import AppIntents
 
 @available(iOS 16.0, macOS 13.0, *)
-struct ShowTodayTasksIntent: AppIntent {
+public struct ShowTodayTasksIntent: AppIntent {
     static var title: LocalizedStringResource = "Show Today's Tasks"
 
     static var description = IntentDescription(
@@ -90,7 +90,7 @@ struct ShowTodayTasksIntent: AppIntent {
 
 /// Snippet view showing today's tasks
 @available(iOS 16.0, macOS 13.0, *)
-struct TodayTasksView: View {
+public struct TodayTasksView: View {
     var todayCount: Int
     var overdueCount: Int
     var tasks: [Task]

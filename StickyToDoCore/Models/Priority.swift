@@ -12,7 +12,7 @@ import Foundation
 /// - high: High priority, urgent or important
 /// - medium: Medium priority, default
 /// - low: Low priority, can be deferred
-enum Priority: String, Codable, CaseIterable {
+public enum Priority: String, Codable, CaseIterable {
     case high
     case medium
     case low

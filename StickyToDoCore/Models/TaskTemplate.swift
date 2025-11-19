@@ -11,7 +11,7 @@ import Foundation
 ///
 /// Templates allow users to quickly create tasks with predefined properties,
 /// saving time on repetitive task creation workflows.
-struct TaskTemplate: Identifiable, Codable, Equatable {
+public struct TaskTemplate: Identifiable, Codable, Equatable {
     // MARK: - Core Properties
 
     /// Unique identifier for the template
@@ -82,7 +82,7 @@ struct TaskTemplate: Identifiable, Codable, Equatable {
     ///   - created: Creation timestamp (defaults to now)
     ///   - modified: Modification timestamp (defaults to now)
     ///   - useCount: Usage counter (defaults to 0)
-    init(
+    public init(
         id: UUID = UUID(),
         name: String,
         title: String,

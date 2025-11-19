@@ -9,7 +9,7 @@
 import Foundation
 
 /// Predefined color palette for tasks and boards
-struct ColorPalette {
+public struct ColorPalette {
 
     // MARK: - Color Definition
 
@@ -234,7 +234,7 @@ extension ColorPalette.PaletteColor {
 extension Color {
     /// Creates SwiftUI Color from hex string
     /// - Parameter hexString: Hex color string (with or without #)
-    init(hexString: String) {
+    public init(hexString: String) {
         let hex = hexString.hasPrefix("#") ? String(hexString.dropFirst()) : hexString
 
         var rgb: UInt64 = 0

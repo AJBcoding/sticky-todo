@@ -9,7 +9,7 @@ import Foundation
 import AppIntents
 
 @available(iOS 16.0, macOS 13.0, *)
-struct ShowNextActionsIntent: AppIntent {
+public struct ShowNextActionsIntent: AppIntent {
     static var title: LocalizedStringResource = "Show Next Actions"
 
     static var description = IntentDescription(
@@ -87,7 +87,7 @@ struct ShowNextActionsIntent: AppIntent {
 
 /// Snippet view showing next actions summary
 @available(iOS 16.0, macOS 13.0, *)
-struct NextActionsSummaryView: View {
+public struct NextActionsSummaryView: View {
     var taskCount: Int
     var tasks: [Task]
     var context: String?

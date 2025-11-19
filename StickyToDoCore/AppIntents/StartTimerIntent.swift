@@ -9,7 +9,7 @@ import Foundation
 import AppIntents
 
 @available(iOS 16.0, macOS 13.0, *)
-struct StartTimerIntent: AppIntent {
+public struct StartTimerIntent: AppIntent {
     static var title: LocalizedStringResource = "Start Timer"
 
     static var description = IntentDescription(
@@ -105,7 +105,7 @@ struct StartTimerIntent: AppIntent {
 
 /// Snippet view showing timer status
 @available(iOS 16.0, macOS 13.0, *)
-struct TimerStatusView: View {
+public struct TimerStatusView: View {
     var title: String
     var isRunning: Bool
     var duration: String

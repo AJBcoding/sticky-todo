@@ -9,7 +9,7 @@ import Foundation
 import AppIntents
 
 @available(iOS 16.0, macOS 13.0, *)
-struct FlagTaskIntent: AppIntent {
+public struct FlagTaskIntent: AppIntent {
     static var title: LocalizedStringResource = "Flag Task"
 
     static var description = IntentDescription(
@@ -108,7 +108,7 @@ struct FlagTaskIntent: AppIntent {
 
 /// Result view shown after flagging a task
 @available(iOS 16.0, macOS 13.0, *)
-struct FlagTaskResultView: View {
+public struct FlagTaskResultView: View {
     var title: String
     var flagged: Bool
     var project: String?

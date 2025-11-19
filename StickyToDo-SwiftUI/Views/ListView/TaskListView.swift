@@ -78,7 +78,7 @@ struct TaskListView: View {
                                     .id(task.id)
 
                                     Divider()
-                                        .padding(.leading, 52)
+                                        .padding(.leading, DesignSystem.Spacing.xxl + DesignSystem.Spacing.sm)
                                 }
                             } header: {
                                 sectionHeader("Active", count: activeTasks.count)
@@ -102,14 +102,14 @@ struct TaskListView: View {
                                     .id(task.id)
 
                                     Divider()
-                                        .padding(.leading, 52)
+                                        .padding(.leading, DesignSystem.Spacing.xxl + DesignSystem.Spacing.sm)
                                 }
                             } header: {
                                 sectionHeader("Completed", count: completedTasks.count)
                             }
                         }
                     }
-                    .padding(.vertical, 8)
+                    .padding(.vertical, DesignSystem.Spacing.xxs)
                 }
             }
         }
@@ -118,7 +118,7 @@ struct TaskListView: View {
     // MARK: - Toolbar
 
     private var toolbar: some View {
-        HStack {
+        HStack(spacing: DesignSystem.Spacing.sm) {
             Text(title)
                 .font(.headline)
                 .accessibilityAddTraits(.isHeader)
@@ -137,18 +137,19 @@ struct TaskListView: View {
                 Label("Add Task", systemImage: "plus.circle.fill")
             }
             .buttonStyle(.borderedProminent)
+            .controlSize(.regular)
             .accessibilityLabel("Add new task")
             .accessibilityHint("Double-tap to create a new task in this list")
         }
-        .padding(.horizontal)
-        .padding(.vertical, 8)
+        .padding(.horizontal, DesignSystem.Spacing.sm)
+        .padding(.vertical, DesignSystem.Spacing.xxs)
         .background(Color(NSColor.windowBackgroundColor))
     }
 
     // MARK: - Section Header
 
     private func sectionHeader(_ title: String, count: Int) -> some View {
-        HStack {
+        HStack(spacing: DesignSystem.Spacing.xxs) {
             Text(title)
                 .font(.subheadline)
                 .fontWeight(.semibold)
@@ -160,8 +161,8 @@ struct TaskListView: View {
 
             Spacer()
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.horizontal, DesignSystem.Spacing.xs)
+        .padding(.vertical, DesignSystem.Spacing.xxs)
         .background(Color(NSColor.controlBackgroundColor))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(title) section, \(count) task\(count == 1 ? "" : "s")")
@@ -171,26 +172,37 @@ struct TaskListView: View {
     // MARK: - Empty State
 
     private var emptyState: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "checkmark.circle")
-                .font(.system(size: 48))
+        VStack(spacing: DesignSystem.Spacing.sm) {
+            Image(systemName: searchText.isEmpty ? "checkmark.circle" : "magnifyingglass")
+                .font(.system(size: DesignSystem.IconSize.xxxl))
                 .foregroundColor(.secondary)
+                .symbolRenderingMode(.hierarchical)
                 .accessibilityHidden(true)
 
-            Text("No tasks found")
-                .font(.headline)
-                .accessibilityAddTraits(.isHeader)
+            VStack(spacing: DesignSystem.Spacing.xxs) {
+                Text(searchText.isEmpty ? "No tasks found" : "No matching tasks")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .accessibilityAddTraits(.isHeader)
 
-            Text("Add a task to get started")
-                .font(.caption)
-                .foregroundColor(.secondary)
-
-            Button("Add Task") {
-                addNewTask()
+                Text(searchText.isEmpty ? "Add a task to get started" : "Try adjusting your search")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
             }
-            .buttonStyle(.borderedProminent)
-            .accessibilityLabel("Add first task")
-            .accessibilityHint("Double-tap to create your first task")
+
+            if searchText.isEmpty {
+                Button {
+                    addNewTask()
+                } label: {
+                    Label("Add Task", systemImage: "plus.circle.fill")
+                        .font(.body.weight(.medium))
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .padding(.top, DesignSystem.Spacing.xxs)
+                .accessibilityLabel("Add first task")
+                .accessibilityHint("Double-tap to create your first task")
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .contain)

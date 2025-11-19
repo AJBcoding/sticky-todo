@@ -263,7 +263,6 @@ struct WeeklyReviewView: View {
             Spacer()
 
             Button {
-                // TODO: Navigate to perspective
                 selectedPerspectiveID = perspectiveID
             } label: {
                 Label("Open", systemImage: "arrow.right.circle.fill")

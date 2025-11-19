@@ -11,7 +11,7 @@ import Foundation
 ///
 /// Used to store task positions on freeform boards. Each task can have
 /// different positions on different boards, stored in the Task's positions dictionary.
-struct Position: Codable, Equatable, Hashable {
+public struct Position: Codable, Equatable, Hashable {
     /// Horizontal coordinate
     var x: Double
 
@@ -22,7 +22,7 @@ struct Position: Codable, Equatable, Hashable {
     /// - Parameters:
     ///   - x: Horizontal coordinate
     ///   - y: Vertical coordinate
-    init(x: Double, y: Double) {
+    public init(x: Double, y: Double) {
         self.x = x
         self.y = y
     }

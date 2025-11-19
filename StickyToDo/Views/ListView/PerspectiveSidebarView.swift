@@ -52,6 +52,8 @@ struct PerspectiveSidebarView: View {
     @State private var showProjects = true
     @State private var showCustomBoards = true
     @State private var showSmartPerspectives = true
+    @State private var perspectiveToEdit: SmartPerspective?
+    @State private var showingPerspectiveEditor = false
 
     // MARK: - Computed Properties
 
@@ -193,7 +195,8 @@ struct PerspectiveSidebarView: View {
                         .tag(SidebarItem.smartPerspective(smartPerspective.id.uuidString))
                         .contextMenu {
                             Button("Edit") {
-                                // TODO: Edit perspective
+                                perspectiveToEdit = smartPerspective
+                                showingPerspectiveEditor = true
                             }
                             Button("Duplicate") {
                                 var duplicated = smartPerspective
@@ -243,6 +246,22 @@ struct PerspectiveSidebarView: View {
         }
         .listStyle(.sidebar)
         .frame(minWidth: 180, idealWidth: 220, maxWidth: 300)
+        .sheet(isPresented: $showingPerspectiveEditor) {
+            if let perspective = perspectiveToEdit {
+                PerspectiveEditorView(
+                    perspective: perspective,
+                    onSave: { updatedPerspective in
+                        perspectiveStore.update(updatedPerspective)
+                        showingPerspectiveEditor = false
+                        perspectiveToEdit = nil
+                    },
+                    onCancel: {
+                        showingPerspectiveEditor = false
+                        perspectiveToEdit = nil
+                    }
+                )
+            }
+        }
     }
 
     // MARK: - Selection Binding

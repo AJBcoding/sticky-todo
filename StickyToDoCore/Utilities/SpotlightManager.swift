@@ -16,7 +16,7 @@ import AppKit
 #endif
 
 /// Manages Spotlight indexing for tasks
-class SpotlightManager {
+public class SpotlightManager {
     static let shared = SpotlightManager()
 
     private let searchableIndex = CSSearchableIndex.default()
