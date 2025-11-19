@@ -11,6 +11,7 @@ import UserNotifications
 @main
 struct StickyToDoApp: App {
 
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var notificationManager = NotificationManager.shared
 
     init() {

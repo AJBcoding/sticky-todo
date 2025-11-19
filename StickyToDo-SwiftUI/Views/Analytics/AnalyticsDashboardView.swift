@@ -96,6 +96,8 @@ struct AnalyticsDashboardView: View {
                 } label: {
                     Label("Export Report", systemImage: "square.and.arrow.up")
                 }
+                .accessibilityLabel("Export analytics report")
+                .accessibilityHint("Export analytics data as HTML or CSV")
             }
         }
         .onAppear {
@@ -118,6 +120,7 @@ struct AnalyticsDashboardView: View {
             Text("Analytics Dashboard")
                 .font(.largeTitle)
                 .bold()
+                .accessibilityAddTraits(.isHeader)
 
             Text("Comprehensive insights into your task management and productivity")
                 .font(.subheadline)
@@ -134,6 +137,9 @@ struct AnalyticsDashboardView: View {
             }
         }
         .pickerStyle(.segmented)
+        .accessibilityLabel("Time period filter")
+        .accessibilityHint("Select time range for analytics data")
+        .accessibilityValue(selectedPeriod.rawValue)
     }
 
     // MARK: - Summary Cards
@@ -354,19 +360,26 @@ struct AnalyticsDashboardView: View {
         VStack(spacing: 20) {
             Text("Export Analytics Report")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
 
             Button("Export as HTML") {
                 exportAsHTML(analytics: analytics)
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityLabel("Export as HTML")
+            .accessibilityHint("Save analytics report as an HTML file")
 
             Button("Export as CSV") {
                 exportAsCSV(analytics: analytics)
             }
+            .accessibilityLabel("Export as CSV")
+            .accessibilityHint("Save analytics data as a CSV file")
 
             Button("Cancel") {
                 showExportSheet = false
             }
+            .accessibilityLabel("Cancel export")
+            .accessibilityHint("Close export dialog without saving")
         }
         .padding()
         .frame(width: 400, height: 250)
@@ -450,6 +463,7 @@ struct SummaryCard: View {
                 Image(systemName: icon)
                     .font(.title2)
                     .foregroundColor(color)
+                    .accessibilityHidden(true)
 
                 Spacer()
             }
@@ -474,6 +488,16 @@ struct SummaryCard: View {
         .padding()
         .background(Color(.controlBackgroundColor))
         .cornerRadius(12)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private var accessibilityLabel: String {
+        var label = "\(title): \(value)"
+        if let subtitle = subtitle {
+            label += ", \(subtitle)"
+        }
+        return label
     }
 }
 
@@ -489,6 +513,7 @@ struct ChartCard<Content: View>: View {
             HStack {
                 Label(title, systemImage: icon)
                     .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
                 Spacer()
             }
 
@@ -497,6 +522,8 @@ struct ChartCard<Content: View>: View {
         .padding()
         .background(Color(.controlBackgroundColor))
         .cornerRadius(12)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Chart: \(title)")
     }
 }
 
@@ -516,6 +543,8 @@ struct StatRow: View {
                 .bold()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
     }
 }
 

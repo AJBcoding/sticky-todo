@@ -136,6 +136,8 @@ struct QuickTourView: View {
                 }
                 .buttonStyle(.bordered)
                 .keyboardShortcut(.leftArrow, modifiers: [])
+                .accessibilityLabel("Back to previous tour page")
+                .accessibilityHint("Return to previous feature highlight")
             }
 
             Spacer()
@@ -154,6 +156,8 @@ struct QuickTourView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.rightArrow, modifiers: [])
+                .accessibilityLabel("Next tour page")
+                .accessibilityHint("Continue to next feature highlight")
             } else {
                 Button(action: {
                     viewModel.complete()
@@ -171,6 +175,8 @@ struct QuickTourView: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .keyboardShortcut(.defaultAction)
+                .accessibilityLabel("Start using StickyToDo")
+                .accessibilityHint("Complete quick tour and begin using the app")
             }
         }
     }
@@ -197,6 +203,9 @@ struct QuickTourView: View {
         .background(.ultraThinMaterial)
         .cornerRadius(20)
         .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Quick tour progress: page \(viewModel.currentPage + 1) of \(TourPage.allPages.count)")
+    }
 
     // MARK: - Skip Button
 
@@ -209,6 +218,8 @@ struct QuickTourView: View {
         .buttonStyle(.plain)
         .foregroundColor(.secondary)
         .font(.callout)
+        .accessibilityLabel("Skip tour")
+        .accessibilityHint("Skip the quick tour and start using the app")
     }
 }
 

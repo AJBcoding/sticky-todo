@@ -52,6 +52,10 @@ struct TaskInspectorView: View {
     /// All available tags in the system
     var availableTags: [Tag]
 
+    /// Task store for fetching related tasks (subtasks, etc.)
+    /// Optional for backward compatibility
+    var taskStore: TaskStore?
+
     // MARK: - State
 
     @State private var editedTitle: String = ""
@@ -62,6 +66,9 @@ struct TaskInspectorView: View {
     // Subtask state
     @State private var showingAddSubtask = false
     @State private var newSubtaskTitle = ""
+
+    // Complete series state
+    @State private var showingCompleteSeriesConfirmation = false
 
     // Attachment state
     @State private var showingAddLinkAttachment = false
@@ -150,12 +157,15 @@ struct TaskInspectorView: View {
             Text("Title")
                 .font(.caption)
                 .foregroundColor(.secondary)
+                .accessibilityHidden(true)
 
             TextField("Task title", text: binding(for: \.title))
                 .textFieldStyle(.roundedBorder)
                 .onChange(of: task.title) { _ in
                     onTaskModified()
                 }
+                .accessibilityLabel("Task title")
+                .accessibilityHint("Enter or edit the task title")
         }
     }
 
@@ -168,6 +178,7 @@ struct TaskInspectorView: View {
                 Text("Status")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .accessibilityHidden(true)
 
                 Picker("Status", selection: binding(for: \.status)) {
                     Text("Inbox").tag(Status.inbox)
@@ -180,6 +191,9 @@ struct TaskInspectorView: View {
                 .onChange(of: task.status) { _ in
                     onTaskModified()
                 }
+                .accessibilityLabel("Task status")
+                .accessibilityValue(task.status.displayName)
+                .accessibilityHint("Select the task status")
             }
 
             // Priority
@@ -187,6 +201,7 @@ struct TaskInspectorView: View {
                 Text("Priority")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .accessibilityHidden(true)
 
                 Picker("Priority", selection: binding(for: \.priority)) {
                     Text("Low").tag(Priority.low)
@@ -197,6 +212,9 @@ struct TaskInspectorView: View {
                 .onChange(of: task.priority) { _ in
                     onTaskModified()
                 }
+                .accessibilityLabel("Task priority")
+                .accessibilityValue(task.priority.displayName)
+                .accessibilityHint("Select the task priority level")
             }
 
             // Flagged toggle
@@ -204,6 +222,9 @@ struct TaskInspectorView: View {
                 .onChange(of: task.flagged) { _ in
                     onTaskModified()
                 }
+                .accessibilityLabel("Flagged")
+                .accessibilityValue(task.flagged ? "On" : "Off")
+                .accessibilityHint("Toggle whether this task is flagged for attention")
         }
     }
 
@@ -217,6 +238,7 @@ struct TaskInspectorView: View {
                     Text("Due Date")
                         .font(.caption)
                         .foregroundColor(.secondary)
+                        .accessibilityHidden(true)
 
                     Spacer()
 
@@ -227,6 +249,8 @@ struct TaskInspectorView: View {
                         .font(.caption2)
                         .buttonStyle(.plain)
                         .foregroundColor(.accentColor)
+                        .accessibilityLabel("Clear due date")
+                        .accessibilityHint("Double tap to remove the due date")
                     }
                 }
 
@@ -243,11 +267,15 @@ struct TaskInspectorView: View {
                     )
                     .datePickerStyle(.graphical)
                     .labelsHidden()
+                    .accessibilityLabel("Due date")
+                    .accessibilityHint("Select when this task is due")
                 } else {
                     Button("Set Due Date") {
                         updateDueDate(Date())
                     }
                     .buttonStyle(.bordered)
+                    .accessibilityLabel("Set due date")
+                    .accessibilityHint("Double tap to add a due date to this task")
                 }
             }
 
@@ -257,6 +285,7 @@ struct TaskInspectorView: View {
                     Text("Defer Until")
                         .font(.caption)
                         .foregroundColor(.secondary)
+                        .accessibilityHidden(true)
 
                     Spacer()
 
@@ -267,6 +296,8 @@ struct TaskInspectorView: View {
                         .font(.caption2)
                         .buttonStyle(.plain)
                         .foregroundColor(.accentColor)
+                        .accessibilityLabel("Clear defer date")
+                        .accessibilityHint("Double tap to remove the defer date")
                     }
                 }
 
@@ -283,11 +314,15 @@ struct TaskInspectorView: View {
                     )
                     .datePickerStyle(.graphical)
                     .labelsHidden()
+                    .accessibilityLabel("Defer until date")
+                    .accessibilityHint("Select when this task should become visible")
                 } else {
                     Button("Set Defer Date") {
                         updateDeferDate(Date())
                     }
                     .buttonStyle(.bordered)
+                    .accessibilityLabel("Set defer date")
+                    .accessibilityHint("Double tap to add a defer date to hide this task until later")
                 }
             }
         }
@@ -302,6 +337,7 @@ struct TaskInspectorView: View {
                 Text("Context")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .accessibilityHidden(true)
 
                 Picker("Context", selection: binding(for: \.context)) {
                     Text("None").tag(nil as String?)
@@ -316,6 +352,9 @@ struct TaskInspectorView: View {
                 .onChange(of: task.context) { _ in
                     onTaskModified()
                 }
+                .accessibilityLabel("Task context")
+                .accessibilityValue(task.context ?? "None")
+                .accessibilityHint("Select where or how this task can be done")
             }
 
             // Project
@@ -323,12 +362,15 @@ struct TaskInspectorView: View {
                 Text("Project")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .accessibilityHidden(true)
 
                 TextField("Project name", text: binding(for: \.project, default: ""))
                     .textFieldStyle(.roundedBorder)
                     .onChange(of: task.project) { _ in
                         onTaskModified()
                     }
+                    .accessibilityLabel("Project name")
+                    .accessibilityHint("Enter the project this task belongs to")
             }
         }
     }
@@ -340,6 +382,7 @@ struct TaskInspectorView: View {
             Text("Effort Estimate")
                 .font(.caption)
                 .foregroundColor(.secondary)
+                .accessibilityHidden(true)
 
             HStack {
                 TextField(
@@ -354,15 +397,19 @@ struct TaskInspectorView: View {
                 )
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 80)
+                .accessibilityLabel("Effort estimate in minutes")
+                .accessibilityHint("Enter the estimated time needed for this task")
 
                 Text("minutes")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .accessibilityHidden(true)
 
                 if let effortDesc = task.effortDescription {
                     Text("(\(effortDesc))")
                         .font(.caption)
                         .foregroundColor(.secondary)
+                        .accessibilityLabel(effortDesc)
                 }
             }
         }
@@ -438,6 +485,31 @@ struct TaskInspectorView: View {
                             .fill(Color.blue.opacity(0.1))
                     )
                 }
+
+                // Complete Series button for recurring templates
+                if task.isRecurring {
+                    Button(action: {
+                        showingCompleteSeriesConfirmation = true
+                    }) {
+                        Label("Complete Series", systemImage: "checkmark.circle.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .foregroundColor(.orange)
+                    .accessibilityLabel("Complete entire recurring series")
+                    .confirmationDialog(
+                        "Complete Entire Series?",
+                        isPresented: $showingCompleteSeriesConfirmation,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Complete Series", role: .destructive) {
+                            completeSeries()
+                        }
+                        Button("Cancel", role: .cancel) { }
+                    } message: {
+                        Text("This will mark the template as completed and delete all future uncompleted instances. This action cannot be undone.")
+                    }
+                }
             }
         }
     }
@@ -485,26 +557,42 @@ struct TaskInspectorView: View {
                         .italic()
                 } else {
                     VStack(alignment: .leading, spacing: 4) {
-                        ForEach(task.subtaskIds, id: \.self) { subtaskId in
-                            HStack {
-                                Image(systemName: "circle")
+                        ForEach(subtasks) { subtask in
+                            HStack(spacing: 6) {
+                                // Status indicator
+                                Image(systemName: subtask.status == .completed ? "checkmark.circle.fill" : "circle")
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(subtask.status == .completed ? .green : .secondary)
 
-                                Text("Subtask")
+                                // Subtask title
+                                Text(subtask.title)
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(subtask.status == .completed ? .secondary : .primary)
+                                    .strikethrough(subtask.status == .completed)
+                                    .lineLimit(1)
 
                                 Spacer()
+
+                                // Priority indicator
+                                if subtask.priority == .high {
+                                    Image(systemName: "exclamationmark.circle.fill")
+                                        .font(.caption2)
+                                        .foregroundColor(.red)
+                                }
+
+                                // Flagged indicator
+                                if subtask.flagged {
+                                    Image(systemName: "flag.fill")
+                                        .font(.caption2)
+                                        .foregroundColor(.orange)
+                                }
                             }
-                            .padding(.vertical, 2)
+                            .padding(.vertical, 4)
+                            .padding(.horizontal, 8)
+                            .background(Color.secondary.opacity(0.05))
+                            .cornerRadius(4)
                         }
                     }
-                    .padding(8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.secondary.opacity(0.1))
-                    )
                 }
 
                 // Add subtask button
@@ -692,6 +780,7 @@ struct TaskInspectorView: View {
             Text("Notes")
                 .font(.caption)
                 .foregroundColor(.secondary)
+                .accessibilityHidden(true)
 
             TextEditor(text: binding(for: \.notes))
                 .font(.body)
@@ -700,6 +789,8 @@ struct TaskInspectorView: View {
                 .onChange(of: task.notes) { _ in
                     onTaskModified()
                 }
+                .accessibilityLabel("Task notes")
+                .accessibilityHint("Enter additional details and notes for this task")
         }
     }
 
@@ -758,6 +849,8 @@ struct TaskInspectorView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
+            .accessibilityLabel("Duplicate task")
+            .accessibilityHint("Double tap to create a copy of this task")
 
             Button(action: {
                 showingSaveTemplateDialog = true
@@ -766,6 +859,8 @@ struct TaskInspectorView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
+            .accessibilityLabel("Save as template")
+            .accessibilityHint("Double tap to save this task as a reusable template")
             .sheet(isPresented: $showingSaveTemplateDialog) {
                 if let task = task {
                     SaveAsTemplateView(
@@ -801,6 +896,8 @@ struct TaskInspectorView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
+            .accessibilityLabel("Delete task")
+            .accessibilityHint("Double tap to permanently delete this task")
             .alert("Delete Task?", isPresented: $showingDeleteAlert) {
                 Button("Cancel", role: .cancel) {}
                 Button("Delete", role: .destructive) {
@@ -823,16 +920,29 @@ struct TaskInspectorView: View {
             Image(systemName: "sidebar.right")
                 .font(.system(size: 48))
                 .foregroundColor(.secondary)
+                .accessibilityHidden(true)
 
             Text("No Selection")
                 .font(.title3)
                 .foregroundColor(.secondary)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityLabel("No task selected")
 
             Text("Select a task to view details")
                 .font(.caption)
                 .foregroundColor(.secondary)
+                .accessibilityLabel("Select a task from the list to view and edit its details")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
+    }
+
+    // MARK: - Computed Properties
+
+    /// Returns the actual subtask objects for the current task
+    private var subtasks: [Task] {
+        guard let task = task, let store = taskStore else { return [] }
+        return task.subtaskIds.compactMap { store.task(withID: $0) }
     }
 
     // MARK: - Helper Methods
@@ -878,6 +988,11 @@ struct TaskInspectorView: View {
     private func updateEffort(_ minutes: Int?) {
         task?.effort = minutes
         onTaskModified()
+    }
+
+    private func completeSeries() {
+        guard let currentTask = task else { return }
+        onCompleteSeries?(currentTask)
     }
 }
 

@@ -352,6 +352,8 @@ struct PermissionRequestView: View {
             .buttonStyle(.plain)
             .foregroundColor(.secondary)
             .keyboardShortcut(.cancelAction)
+            .accessibilityLabel("Skip all permissions")
+            .accessibilityHint("Skip permission requests and continue to quick tour")
 
             Spacer()
 
@@ -362,6 +364,8 @@ struct PermissionRequestView: View {
                     Text("Skip")
                 }
                 .buttonStyle(.bordered)
+                .accessibilityLabel("Skip current permission")
+                .accessibilityHint("Skip this permission and continue to next step")
             }
 
             if viewModel.currentStep == .spotlight {
@@ -381,6 +385,8 @@ struct PermissionRequestView: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .keyboardShortcut(.defaultAction)
+                .accessibilityLabel("Continue to quick tour")
+                .accessibilityHint("Complete permission setup and view quick tour")
             } else {
                 if viewModel.canRequestCurrentPermission {
                     Button(action: {
@@ -390,6 +396,7 @@ struct PermissionRequestView: View {
                             if viewModel.isRequesting {
                                 ProgressView()
                                     .scaleEffect(0.7)
+                                    .accessibilityHidden(true)
                             } else {
                                 Image(systemName: "hand.raised.fill")
                                     .font(.caption)
@@ -399,6 +406,8 @@ struct PermissionRequestView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(viewModel.isRequesting)
+                    .accessibilityLabel(viewModel.currentPermissionButtonTitle)
+                    .accessibilityHint(viewModel.isRequesting ? "Requesting permission" : "Request permission from system")
                 } else {
                     Button(action: {
                         viewModel.nextStep()
@@ -411,6 +420,8 @@ struct PermissionRequestView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
+                    .accessibilityLabel("Next permission")
+                    .accessibilityHint("Continue to next permission request")
                 }
             }
         }
@@ -438,6 +449,8 @@ struct PermissionRequestView: View {
         .background(.ultraThinMaterial)
         .cornerRadius(20)
         .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Permission request progress: step \(PermissionStep.allCases.firstIndex(of: viewModel.currentStep).map { $0 + 1 } ?? 1) of \(PermissionStep.allCases.count)")
     }
 }
 
@@ -454,6 +467,7 @@ struct PermissionBenefitRow: View {
                 .font(.title2)
                 .foregroundColor(.accentColor)
                 .frame(width: 30)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
@@ -466,6 +480,8 @@ struct PermissionBenefitRow: View {
 
             Spacer()
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(description)")
     }
 }
 
@@ -480,6 +496,7 @@ struct SiriCommandExample: View {
                 .font(.caption)
                 .foregroundColor(.purple)
                 .symbolEffect(.variableColor, options: .repeating.speed(0.3), isActive: isHovered)
+                .accessibilityHidden(true)
 
             Text(command)
                 .font(.body)
@@ -503,6 +520,8 @@ struct SiriCommandExample: View {
         .onHover { hovering in
             isHovered = hovering
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Example Siri command: \(command)")
     }
 }
 

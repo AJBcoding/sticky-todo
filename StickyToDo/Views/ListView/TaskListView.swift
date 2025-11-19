@@ -100,17 +100,21 @@ struct TaskListView: View {
             Text(!searchQuery.isEmpty ? "Search Results" : perspective.displayTitle)
                 .font(.title2)
                 .fontWeight(.bold)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityLabel(!searchQuery.isEmpty ? "Search Results" : perspective.displayTitle)
 
             Spacer()
 
             Text("\(taskCount) task\(taskCount == 1 ? "" : "s")")
                 .font(.caption)
                 .foregroundColor(.secondary)
+                .accessibilityLabel("\(taskCount) \(taskCount == 1 ? "task" : "tasks")")
 
             if !selectedTaskIds.isEmpty {
                 Text("(\(selectedTaskIds.count) selected)")
                     .font(.caption)
                     .foregroundColor(.accentColor)
+                    .accessibilityLabel("\(selectedTaskIds.count) tasks selected")
             }
 
             if !searchQuery.isEmpty {
@@ -118,10 +122,12 @@ struct TaskListView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
+                    .accessibilityLabel("Search query: \(searchQuery)")
             }
         }
         .padding()
         .background(Color(NSColor.windowBackgroundColor))
+        .accessibilityElement(children: .contain)
     }
 
     // MARK: - Task List
@@ -149,6 +155,8 @@ struct TaskListView: View {
                 Text(name)
                     .font(.headline)
                     .foregroundColor(.primary)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityLabel("Group: \(name)")
             }
         }
         .padding(.vertical, 4)
@@ -188,6 +196,8 @@ struct TaskListView: View {
             } label: {
                 Label("Delete", systemImage: "trash")
             }
+            .accessibilityLabel("Delete task")
+            .accessibilityHint("Double tap to delete this task")
 
             Button {
                 toggleComplete(task: task)
@@ -198,6 +208,8 @@ struct TaskListView: View {
                 )
             }
             .tint(.green)
+            .accessibilityLabel(task.status == .completed ? "Mark as incomplete" : "Mark as complete")
+            .accessibilityHint("Double tap to change completion status")
         }
         .swipeActions(edge: .leading) {
             Button {
@@ -209,6 +221,8 @@ struct TaskListView: View {
                 )
             }
             .tint(.yellow)
+            .accessibilityLabel(task.flagged ? "Unflag task" : "Flag task")
+            .accessibilityHint("Double tap to toggle flagged status")
         }
     }
 
@@ -219,23 +233,30 @@ struct TaskListView: View {
             Image(systemName: perspective.icon ?? "tray")
                 .font(.system(size: 48))
                 .foregroundColor(.secondary)
+                .accessibilityHidden(true)
 
             Text(searchQuery.isEmpty ? "No tasks" : "No matching tasks")
                 .font(.title3)
                 .foregroundColor(.secondary)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityLabel(searchQuery.isEmpty ? "No tasks" : "No matching tasks found")
 
             if searchQuery.isEmpty {
                 Text("Create a new task to get started")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .accessibilityLabel("Create a new task to get started")
 
                 Button(action: onAddTask) {
                     Label("Add Task", systemImage: "plus.circle.fill")
                 }
                 .buttonStyle(.borderedProminent)
+                .accessibilityLabel("Add new task")
+                .accessibilityHint("Double tap to create a new task")
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
     }
 
     // MARK: - Helper Methods

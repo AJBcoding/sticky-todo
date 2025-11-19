@@ -228,6 +228,8 @@ struct PerspectiveSidebarView: View {
                             .foregroundColor(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Create new perspective")
+                    .accessibilityHint("Double tap to create a custom smart perspective")
                 } header: {
                     HStack {
                         Text("CUSTOM PERSPECTIVES")
@@ -251,6 +253,8 @@ struct PerspectiveSidebarView: View {
                             .foregroundColor(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Create new perspective")
+                    .accessibilityHint("Double tap to create a custom smart perspective")
                 }
             }
         }
@@ -482,6 +486,7 @@ struct PerspectiveRow: View {
             if let icon = perspective.icon {
                 Text(icon)
                     .font(.body)
+                    .accessibilityHidden(true)
             }
 
             // Name
@@ -501,8 +506,13 @@ struct PerspectiveRow: View {
                         Capsule()
                             .fill(Color.secondary.opacity(0.2))
                     )
+                    .accessibilityLabel("\(count) tasks")
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(perspective.name), \(count) tasks")
+        .accessibilityHint("Double tap to view tasks in this perspective")
+        .accessibilityValue(isSelected ? "Selected" : "")
     }
 }
 
@@ -519,6 +529,7 @@ struct BoardRow: View {
             if let icon = board.icon {
                 Text(icon)
                     .font(.body)
+                    .accessibilityHidden(true)
             }
 
             // Name
@@ -539,8 +550,13 @@ struct BoardRow: View {
                         Capsule()
                             .fill(Color.secondary.opacity(0.2))
                     )
+                    .accessibilityLabel("\(count) tasks")
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(board.displayTitle), \(count) tasks")
+        .accessibilityHint("Double tap to view tasks on this board")
+        .accessibilityValue(isSelected ? "Selected" : "")
     }
 }
 
@@ -557,6 +573,7 @@ struct SmartPerspectiveRow: View {
             if let icon = perspective.icon {
                 Text(icon)
                     .font(.body)
+                    .accessibilityHidden(true)
             }
 
             // Name
@@ -576,8 +593,13 @@ struct SmartPerspectiveRow: View {
                         Capsule()
                             .fill(Color.secondary.opacity(0.2))
                     )
+                    .accessibilityLabel("\(count) tasks")
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(perspective.name), \(count) tasks")
+        .accessibilityHint("Double tap to view tasks in this smart perspective")
+        .accessibilityValue(isSelected ? "Selected" : "")
     }
 }
 

@@ -507,6 +507,8 @@ struct WelcomeView: View {
                 }
                 .buttonStyle(.bordered)
                 .keyboardShortcut(.leftArrow, modifiers: [])
+                .accessibilityLabel("Back to previous page")
+                .accessibilityHint("Return to the previous onboarding page")
             }
 
             Spacer()
@@ -525,6 +527,8 @@ struct WelcomeView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.rightArrow, modifiers: [])
+                .accessibilityLabel("Next page")
+                .accessibilityHint("Continue to the next onboarding page")
             } else {
                 Button(action: {
                     viewModel.celebrateCompletion()
@@ -548,6 +552,8 @@ struct WelcomeView: View {
                 .keyboardShortcut(.defaultAction)
                 .scaleEffect(viewModel.getStartedButtonScale)
                 .shadow(color: .accentColor.opacity(0.3), radius: viewModel.getStartedButtonScale > 1.0 ? 12 : 4, x: 0, y: viewModel.getStartedButtonScale > 1.0 ? 6 : 2)
+                .accessibilityLabel("Get started with StickyToDo")
+                .accessibilityHint("Complete onboarding and start using the app")
             }
 
             if viewModel.currentPage < 3 {
@@ -557,6 +563,8 @@ struct WelcomeView: View {
                 .buttonStyle(.plain)
                 .foregroundColor(.secondary)
                 .keyboardShortcut(.cancelAction)
+                .accessibilityLabel("Skip onboarding")
+                .accessibilityHint("Skip the rest of onboarding and start using the app")
             }
         }
     }

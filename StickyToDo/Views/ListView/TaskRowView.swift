@@ -104,6 +104,8 @@ struct TaskRowView: View {
                         .frame(width: 12, height: 12)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(isExpanded ? "Collapse subtasks" : "Expand subtasks")
+                .accessibilityHint("Double tap to \(isExpanded ? "hide" : "show") subtasks")
             } else if indentationLevel > 0 {
                 // Placeholder for alignment
                 Spacer()
@@ -119,6 +121,9 @@ struct TaskRowView: View {
                     .foregroundColor(task.status == .completed ? .green : .secondary)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(task.status == .completed ? "Completed" : "Not completed")
+            .accessibilityHint("Double tap to \(task.status == .completed ? "mark as incomplete" : "mark as complete")")
+            .accessibilityAddTraits(.isButton)
 
             VStack(alignment: .leading, spacing: 4) {
                 // Title (with inline editing)
@@ -158,11 +163,31 @@ struct TaskRowView: View {
                                     onTap()
                                 }
                             }
+                            .accessibilityLabel("Task: \(task.title)")
+                            .accessibilityHint("Double tap to view task details")
                     }
                 }
 
                 // Metadata badges
                 HStack(spacing: 6) {
+                    // Recurring task badge
+                    if task.isRecurring {
+                        MetadataBadge(
+                            text: "Recurring",
+                            color: .blue,
+                            icon: "repeat"
+                        )
+                    }
+
+                    // Recurring instance badge
+                    if task.isRecurringInstance {
+                        MetadataBadge(
+                            text: "Instance",
+                            color: .cyan,
+                            icon: "arrow.clockwise"
+                        )
+                    }
+
                     // Subtask progress badge (only if has subtasks)
                     if let progress = subtaskProgress, progress.total > 0 {
                         MetadataBadge(
@@ -240,6 +265,7 @@ struct TaskRowView: View {
                         Image(systemName: "star.fill")
                             .font(.caption)
                             .foregroundColor(.yellow)
+                            .accessibilityLabel("Flagged")
                     }
 
                     // Time spent badge (if any time has been tracked)
@@ -286,6 +312,9 @@ struct TaskRowView: View {
                 }
                 .buttonStyle(.plain)
                 .help(task.isTimerRunning ? "Stop timer" : "Start timer")
+                .accessibilityLabel(task.isTimerRunning ? "Stop timer" : "Start timer")
+                .accessibilityHint("Double tap to \(task.isTimerRunning ? "pause" : "start") tracking time on this task")
+                .accessibilityValue(task.isTimerRunning ? (task.currentTimerDescription ?? "Running") : "")
             }
 
             // Original spacer removed, now timer button or spacer
@@ -298,6 +327,8 @@ struct TaskRowView: View {
                             .font(.caption)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Edit task")
+                    .accessibilityHint("Double tap to edit task title inline")
 
                     Button(action: onDelete) {
                         Image(systemName: "trash")
@@ -305,6 +336,8 @@ struct TaskRowView: View {
                             .foregroundColor(.red)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Delete task")
+                    .accessibilityHint("Double tap to delete this task")
                 }
             }
         }
@@ -853,6 +886,7 @@ struct MetadataBadge: View {
             if let icon = icon {
                 Image(systemName: icon)
                     .font(.system(size: 9))
+                    .accessibilityHidden(true)
             }
             Text(text)
                 .font(.caption2)
@@ -864,6 +898,8 @@ struct MetadataBadge: View {
                 .fill(color.opacity(0.2))
         )
         .foregroundColor(color)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(text)
     }
 }
 

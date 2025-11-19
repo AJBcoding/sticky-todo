@@ -83,11 +83,15 @@ struct CanvasContainerView: View {
                 if let icon = board.icon {
                     Text(icon)
                         .font(.title2)
+                        .accessibilityHidden(true)
                 }
 
                 Text(board.displayTitle)
                     .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Board: \(board.displayTitle)")
 
             Spacer()
 
@@ -95,16 +99,19 @@ struct CanvasContainerView: View {
             Text("\(boardTaskCount) task\(boardTaskCount == 1 ? "" : "s")")
                 .font(.caption)
                 .foregroundColor(.secondary)
+                .accessibilityLabel("\(boardTaskCount) task\(boardTaskCount == 1 ? "" : "s") on this board")
 
             // Selection info
             if !selectedTaskIds.isEmpty {
                 Text("(\(selectedTaskIds.count) selected)")
                     .font(.caption)
                     .foregroundColor(.accentColor)
+                    .accessibilityLabel("\(selectedTaskIds.count) task\(selectedTaskIds.count == 1 ? "" : "s") selected")
             }
 
             Divider()
                 .frame(height: 20)
+                .accessibilityHidden(true)
 
             // Zoom controls
             HStack(spacing: 8) {
@@ -113,27 +120,36 @@ struct CanvasContainerView: View {
                 }
                 .help("Zoom Out")
                 .disabled(zoomLevel <= 0.25)
+                .accessibilityLabel("Zoom out")
+                .accessibilityHint("Decrease canvas zoom level")
 
                 Text("\(Int(zoomLevel * 100))%")
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .frame(width: 40)
+                    .accessibilityLabel("Zoom level: \(Int(zoomLevel * 100)) percent")
 
                 Button(action: { zoomIn() }) {
                     Image(systemName: "plus.magnifyingglass")
                 }
                 .help("Zoom In")
                 .disabled(zoomLevel >= 4.0)
+                .accessibilityLabel("Zoom in")
+                .accessibilityHint("Increase canvas zoom level")
 
                 Button(action: { resetZoom() }) {
                     Image(systemName: "arrow.up.left.and.down.right.magnifyingglass")
                 }
                 .help("Reset Zoom")
+                .accessibilityLabel("Reset zoom")
+                .accessibilityHint("Reset canvas zoom to 100 percent")
             }
             .buttonStyle(.borderless)
+            .accessibilityElement(children: .contain)
 
             Divider()
                 .frame(height: 20)
+                .accessibilityHidden(true)
 
             // Grid toggle
             Button(action: { showGrid.toggle() }) {
@@ -141,6 +157,8 @@ struct CanvasContainerView: View {
             }
             .help("Toggle Grid")
             .buttonStyle(.borderless)
+            .accessibilityLabel(showGrid ? "Hide grid" : "Show grid")
+            .accessibilityHint("Toggle canvas grid visibility")
 
             // Stats toggle
             Button(action: { showStats.toggle() }) {
@@ -148,15 +166,20 @@ struct CanvasContainerView: View {
             }
             .help("Toggle Stats")
             .buttonStyle(.borderless)
+            .accessibilityLabel(showStats ? "Hide stats" : "Show stats")
+            .accessibilityHint("Toggle statistics panel visibility")
 
             Divider()
                 .frame(height: 20)
+                .accessibilityHidden(true)
 
             // Add task button
             Button(action: { addTaskAtCenter() }) {
                 Label("Add Task", systemImage: "plus.circle.fill")
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityLabel("Add new task to board")
+            .accessibilityHint("Create a new task at the center of the canvas")
 
             // Board settings
             Button(action: onBoardSettingsRequested) {
@@ -164,6 +187,8 @@ struct CanvasContainerView: View {
             }
             .help("Board Settings")
             .buttonStyle(.borderless)
+            .accessibilityLabel("Board settings")
+            .accessibilityHint("Open board configuration settings")
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
@@ -189,26 +214,34 @@ struct CanvasContainerView: View {
                 Image(systemName: layoutIcon)
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .accessibilityHidden(true)
 
                 Text(board.layout.displayName)
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Layout: \(board.layout.displayName)")
 
             // Board type info
             HStack(spacing: 8) {
                 Image(systemName: boardTypeIcon)
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .accessibilityHidden(true)
 
                 Text(board.type.displayName)
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Board type: \(board.type.displayName)")
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
         .background(Color(NSColor.controlBackgroundColor))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Board statistics")
     }
 
     private func statItem(_ label: String, value: String) -> some View {
@@ -220,6 +253,8 @@ struct CanvasContainerView: View {
                 .font(.caption)
                 .fontWeight(.medium)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
     }
 
     private var layoutIcon: String {

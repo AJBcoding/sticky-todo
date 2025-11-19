@@ -71,6 +71,9 @@ struct GridLayoutView: View {
             .padding(LayoutEngine.gridSpacing)
         }
         .background(Color(NSColor.windowBackgroundColor))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Grid layout with \(sections.count) sections")
+        .accessibilityHint("Scroll to view all sections, drag tasks between sections")
     }
 
     // MARK: - Section View
@@ -120,6 +123,7 @@ struct GridLayoutView: View {
             Text(section.title)
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(.primary)
+                .accessibilityAddTraits(.isHeader)
 
             Text("\(taskCount)")
                 .font(.system(size: 12, weight: .medium))
@@ -130,6 +134,7 @@ struct GridLayoutView: View {
                     Capsule()
                         .fill(Color.secondary.opacity(0.1))
                 )
+                .accessibilityLabel("\(taskCount) task\(taskCount == 1 ? "" : "s")")
 
             Spacer()
 
@@ -140,7 +145,11 @@ struct GridLayoutView: View {
                     .font(.system(size: 12, weight: .medium))
             }
             .buttonStyle(.bordered)
+            .accessibilityLabel("Add task to \(section.title)")
+            .accessibilityHint("Create a new task in the \(section.title) section")
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Section: \(section.title), \(taskCount) task\(taskCount == 1 ? "" : "s")")
     }
 
     // MARK: - Task Card
@@ -163,22 +172,27 @@ struct GridLayoutView: View {
                     Image(systemName: "exclamationmark.circle.fill")
                         .font(.system(size: 14))
                         .foregroundColor(.red)
+                        .accessibilityLabel("High priority")
                 }
 
                 if task.flagged {
                     Image(systemName: "star.fill")
                         .font(.system(size: 14))
                         .foregroundColor(.yellow)
+                        .accessibilityLabel("Flagged")
                 }
 
                 if let context = task.context {
                     metadataBadge(text: context, color: .blue)
+                        .accessibilityLabel("Context: \(context)")
                 }
 
                 if task.isOverdue {
                     metadataBadge(text: "Overdue", color: .red)
+                        .accessibilityLabel("Overdue")
                 } else if task.isDueToday {
                     metadataBadge(text: "Today", color: .orange)
+                        .accessibilityLabel("Due today")
                 }
 
                 Spacer()
@@ -202,6 +216,38 @@ struct GridLayoutView: View {
             self.draggedTask = task
             return NSItemProvider(object: task.id.uuidString as NSString)
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(gridTaskAccessibilityLabel(task: task, section: section))
+        .accessibilityHint("Double-tap to select, drag to move between sections")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private func gridTaskAccessibilityLabel(task: Task, section: LayoutEngine.GridSection) -> String {
+        var label = "Task: \(task.title), in \(section.title) section"
+
+        if task.status == .completed {
+            label += ", completed"
+        }
+
+        if task.priority == .high {
+            label += ", high priority"
+        }
+
+        if task.flagged {
+            label += ", flagged"
+        }
+
+        if let context = task.context {
+            label += ", context: \(context)"
+        }
+
+        if task.isOverdue {
+            label += ", overdue"
+        } else if task.isDueToday {
+            label += ", due today"
+        }
+
+        return label
     }
 
     // MARK: - Metadata Badge

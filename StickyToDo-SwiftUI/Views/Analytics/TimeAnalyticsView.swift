@@ -105,6 +105,7 @@ struct TimeAnalyticsView: View {
             Text("Time Tracking Analytics")
                 .font(.largeTitle)
                 .bold()
+                .accessibilityAddTraits(.isHeader)
 
             Text("Insights into your productivity and time allocation")
                 .font(.subheadline)
@@ -121,6 +122,9 @@ struct TimeAnalyticsView: View {
             }
         }
         .pickerStyle(.segmented)
+        .accessibilityLabel("Time period filter")
+        .accessibilityHint("Select time range for time tracking analytics")
+        .accessibilityValue(selectedPeriod.rawValue)
     }
 
     // MARK: - Summary Cards
@@ -258,6 +262,8 @@ struct TimeAnalyticsView: View {
                     .cornerRadius(8)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Export time entries to CSV")
+            .accessibilityHint("Export time tracking data for the selected period as a CSV file")
 
             Text("Export time entries for the selected period")
                 .font(.caption)
@@ -271,27 +277,36 @@ struct TimeAnalyticsView: View {
         VStack(spacing: 16) {
             Text("Exported Time Entries")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
 
             TextEditor(text: .constant(exportedCSV))
                 .font(.system(.body, design: .monospaced))
                 .frame(minHeight: 300)
                 .border(Color.gray.opacity(0.3))
+                .accessibilityLabel("Exported CSV data")
+                .accessibilityHint("Time entries in CSV format")
 
             HStack {
                 Button("Copy to Clipboard") {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(exportedCSV, forType: .string)
                 }
+                .accessibilityLabel("Copy to clipboard")
+                .accessibilityHint("Copy CSV data to clipboard")
 
                 Button("Save to File") {
                     saveCSVToFile()
                 }
+                .accessibilityLabel("Save to file")
+                .accessibilityHint("Save CSV data to a file")
 
                 Spacer()
 
                 Button("Done") {
                     showExportSheet = false
                 }
+                .accessibilityLabel("Done")
+                .accessibilityHint("Close export dialog")
             }
         }
         .padding()
@@ -371,6 +386,7 @@ struct SummaryCard: View {
             HStack {
                 Image(systemName: icon)
                     .foregroundColor(color)
+                    .accessibilityHidden(true)
                 Text(title)
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -384,6 +400,8 @@ struct SummaryCard: View {
         .padding()
         .background(Color(.textBackgroundColor).opacity(0.5))
         .cornerRadius(8)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(value)")
     }
 }
 
@@ -419,6 +437,8 @@ struct BarChartRow: View {
             }
             .frame(height: 20)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(TimeTrackingManager.formatDuration(value))")
     }
 }
 
@@ -439,12 +459,14 @@ struct TaskTimeRow: View {
                         Label(project, systemImage: "folder.fill")
                             .font(.caption)
                             .foregroundColor(.purple)
+                            .accessibilityLabel("Project: \(project)")
                     }
 
                     if let context = task.context {
                         Label(context, systemImage: "mappin.circle.fill")
                             .font(.caption)
                             .foregroundColor(.blue)
+                            .accessibilityLabel("Context: \(context)")
                     }
                 }
             }
@@ -459,6 +481,19 @@ struct TaskTimeRow: View {
         .padding(.horizontal, 12)
         .background(Color(.controlBackgroundColor))
         .cornerRadius(6)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private var accessibilityLabel: String {
+        var label = "Task: \(task.title), time spent: \(TimeTrackingManager.formatDuration(duration))"
+        if let project = task.project {
+            label += ", project: \(project)"
+        }
+        if let context = task.context {
+            label += ", context: \(context)"
+        }
+        return label
     }
 }
 
