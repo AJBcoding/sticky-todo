@@ -26,8 +26,11 @@ struct RulesEditorView: View {
                 HStack {
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(.secondary)
+                        .accessibilityHidden(true)
                     TextField("Search rules...", text: $searchText)
                         .textFieldStyle(.plain)
+                        .accessibilityLabel("Search rules")
+                        .accessibilityHint("Type to filter automation rules by name or description")
                 }
                 .padding(8)
                 .background(Color(NSColor.controlBackgroundColor))
@@ -118,6 +121,8 @@ struct RulesEditorView: View {
                 Button(action: createNewRule) {
                     Label("New Rule", systemImage: "plus")
                 }
+                .accessibilityLabel("Create new automation rule")
+                .accessibilityHint("Open rule builder to create a new automation rule")
             }
         }
         .sheet(isPresented: $showingRuleBuilder) {
@@ -245,8 +250,22 @@ struct RuleRowView: View {
             ))
             .toggleStyle(.switch)
             .labelsHidden()
+            .accessibilityLabel(rule.isEnabled ? "Disable rule" : "Enable rule")
+            .accessibilityHint("Toggle rule activation")
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(ruleAccessibilityLabel)
+    }
+
+    private var ruleAccessibilityLabel: String {
+        var label = "Rule: \(rule.name), trigger: \(rule.triggerType.displayName)"
+        label += ", \(rule.actions.count) action\(rule.actions.count == 1 ? "" : "s")"
+        label += rule.isEnabled ? ", enabled" : ", disabled"
+        if rule.isBuiltIn {
+            label += ", built-in template"
+        }
+        return label
     }
 }
 

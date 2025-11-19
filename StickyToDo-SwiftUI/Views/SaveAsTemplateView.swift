@@ -30,6 +30,7 @@ struct SaveAsTemplateView: View {
                 Text("Save as Template")
                     .font(.headline)
                     .fontWeight(.semibold)
+                    .accessibilityAddTraits(.isHeader)
 
                 Spacer()
 
@@ -37,12 +38,16 @@ struct SaveAsTemplateView: View {
                     onCancel()
                 }
                 .keyboardShortcut(.cancelAction)
+                .accessibilityLabel("Cancel template creation")
+                .accessibilityHint("Close without saving template")
 
                 Button("Save") {
                     saveTemplate()
                 }
                 .keyboardShortcut(.defaultAction)
                 .disabled(templateName.isEmpty)
+                .accessibilityLabel("Save template")
+                .accessibilityHint("Create template from this task")
             }
             .padding()
 
@@ -53,9 +58,13 @@ struct SaveAsTemplateView: View {
                 Section("Template Information") {
                     TextField("Template Name", text: $templateName)
                         .textFieldStyle(.roundedBorder)
+                        .accessibilityLabel("Template name")
+                        .accessibilityHint("Enter a name for this template")
 
                     TextField("Category (optional)", text: $category)
                         .textFieldStyle(.roundedBorder)
+                        .accessibilityLabel("Template category")
+                        .accessibilityHint("Optional category to organize templates")
                 }
 
                 Section("Task Preview") {
@@ -95,16 +104,23 @@ struct SaveAsTemplateView: View {
 
                 Section("Include in Template") {
                     Toggle("Notes", isOn: $includeNotes)
+                        .accessibilityLabel("Include notes in template")
                     Toggle("Project", isOn: $includeProject)
                         .disabled(task.project == nil)
+                        .accessibilityLabel("Include project in template")
                     Toggle("Context", isOn: $includeContext)
                         .disabled(task.context == nil)
+                        .accessibilityLabel("Include context in template")
                     Toggle("Priority", isOn: $includePriority)
+                        .accessibilityLabel("Include priority in template")
                     Toggle("Effort Estimate", isOn: $includeEffort)
                         .disabled(task.effort == nil)
+                        .accessibilityLabel("Include effort estimate in template")
                     Toggle("Tags", isOn: $includeTags)
                         .disabled(task.tags.isEmpty)
+                        .accessibilityLabel("Include tags in template")
                     Toggle("Flagged Status", isOn: $includeFlagged)
+                        .accessibilityLabel("Include flagged status in template")
                 }
             }
             .formStyle(.grouped)

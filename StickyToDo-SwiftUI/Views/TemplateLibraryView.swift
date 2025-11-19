@@ -48,12 +48,16 @@ struct TemplateLibraryView: View {
                     Button("Done") {
                         dismiss()
                     }
+                    .accessibilityLabel("Close template library")
+                    .accessibilityHint("Return to main view")
                 }
 
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: { showingNewTemplateSheet = true }) {
                         Label("New Template", systemImage: "plus")
                     }
+                    .accessibilityLabel("Create new template")
+                    .accessibilityHint("Open form to create a new task template")
                 }
             }
             .sheet(isPresented: $showingNewTemplateSheet) {
@@ -77,9 +81,12 @@ struct TemplateLibraryView: View {
         HStack {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.secondary)
+                .accessibilityHidden(true)
 
             TextField("Search templates...", text: $searchText)
                 .textFieldStyle(.plain)
+                .accessibilityLabel("Search templates")
+                .accessibilityHint("Type to filter templates by name or title")
 
             if !searchText.isEmpty {
                 Button(action: { searchText = "" }) {
@@ -87,6 +94,8 @@ struct TemplateLibraryView: View {
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Clear search")
+                .accessibilityHint("Clear search text")
             }
         }
         .padding()
@@ -238,6 +247,7 @@ struct CategoryRow: View {
                 Text("\(count)")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .accessibilityLabel("\(count) template\(count == 1 ? "" : "s")")
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
@@ -245,6 +255,9 @@ struct CategoryRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Category: \(name), \(count) template\(count == 1 ? "" : "s")")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
@@ -339,6 +352,8 @@ struct TemplateCard: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityLabel("Use template: \(template.name)")
+            .accessibilityHint("Create a new task from this template")
         }
         .padding()
         .background(Color(.controlBackgroundColor))
@@ -350,6 +365,19 @@ struct TemplateCard: View {
         .onHover { hovering in
             isHovering = hovering
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(templateAccessibilityLabel)
+    }
+
+    private var templateAccessibilityLabel: String {
+        var label = "Template: \(template.name), creates task: \(template.title)"
+        if let category = template.category {
+            label += ", category: \(category)"
+        }
+        if template.hasBeenUsed {
+            label += ", used \(template.useCount) times"
+        }
+        return label
     }
 }
 
