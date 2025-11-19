@@ -52,10 +52,10 @@ Project maintainers are responsible for clarifying standards and will take appro
 
 ### Quick Links
 
-- **Documentation**: See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for detailed architecture and implementation guidance
-- **User Guide**: [docs/USER_GUIDE.md](docs/USER_GUIDE.md) explains features from a user perspective
-- **File Format**: [docs/FILE_FORMAT.md](docs/FILE_FORMAT.md) documents the markdown format used for data storage
-- **Keyboard Shortcuts**: [docs/KEYBOARD_SHORTCUTS.md](docs/KEYBOARD_SHORTCUTS.md) lists all keyboard shortcuts
+- **Documentation**: See [docs/developer/DEVELOPMENT.md](docs/developer/DEVELOPMENT.md) for detailed architecture and implementation guidance
+- **User Guide**: [docs/user/USER_GUIDE.md](docs/user/USER_GUIDE.md) explains features from a user perspective
+- **File Format**: [docs/technical/FILE_FORMAT.md](docs/technical/FILE_FORMAT.md) documents the markdown format used for data storage
+- **Keyboard Shortcuts**: [docs/user/KEYBOARD_SHORTCUTS.md](docs/user/KEYBOARD_SHORTCUTS.md) lists all keyboard shortcuts
 
 ### Ways to Contribute
 
@@ -367,8 +367,8 @@ StickyToDo/
 ### Detailed Setup
 
 For detailed development environment setup, build configuration, and troubleshooting:
-- See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for comprehensive development guide
-- See [docs/BUILD_CONFIGURATION.md](docs/BUILD_CONFIGURATION.md) for build settings
+- See [docs/developer/DEVELOPMENT.md](docs/developer/DEVELOPMENT.md) for comprehensive development guide
+- See [docs/developer/BUILD_CONFIGURATION.md](docs/developer/BUILD_CONFIGURATION.md) for build settings
 
 ## Code Style Guidelines
 
@@ -671,10 +671,10 @@ Update documentation when you:
 ### Documentation Files
 
 - **README.md**: Overview, installation, quick start
-- **docs/DEVELOPMENT.md**: Architecture, development guide
-- **docs/USER_GUIDE.md**: User-facing features and usage
-- **docs/FILE_FORMAT.md**: Data format specification
-- **docs/KEYBOARD_SHORTCUTS.md**: Keyboard shortcuts reference
+- **docs/developer/DEVELOPMENT.md**: Architecture, development guide
+- **docs/user/USER_GUIDE.md**: User-facing features and usage
+- **docs/technical/FILE_FORMAT.md**: Data format specification
+- **docs/user/KEYBOARD_SHORTCUTS.md**: Keyboard shortcuts reference
 
 ### Code Comments
 

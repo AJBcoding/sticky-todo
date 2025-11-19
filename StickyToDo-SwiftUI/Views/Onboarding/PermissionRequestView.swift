@@ -60,19 +60,38 @@ struct PermissionRequestView: View {
             // Icon
             Image(systemName: "bell.badge")
                 .font(.system(size: 80))
-                .foregroundColor(.orange)
-                .symbolEffect(.bounce, value: viewModel.currentStep == .notifications)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [.orange, .yellow],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .shadow(color: .orange.opacity(0.3), radius: 15, x: 0, y: 8)
+                .symbolEffect(.bounce, options: .nonRepeating, value: viewModel.currentStep == .notifications)
+                .symbolEffect(.wiggle, options: .speed(0.5).repeat(viewModel.notificationStatus == .granted ? 3 : 0), value: viewModel.notificationStatus)
+                .scaleEffect(viewModel.notificationStatus == .granted ? 1.1 : 1.0)
+                .animation(.spring(response: 0.4, dampingFraction: 0.6), value: viewModel.notificationStatus)
+                .accessibilityHidden(true)
 
             // Title
             Text("Stay on Track")
-                .font(.system(size: 32, weight: .bold))
+                .font(.system(size: 36, weight: .bold))
+                .tracking(0.3)
+                .accessibilityAddTraits(.isHeader)
 
             // Description
-            Text("Get notified about due dates, weekly reviews, and important tasks.")
-                .font(.title3)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 500)
+            VStack(spacing: 8) {
+                Text("Never miss what matters")
+                    .font(.title3)
+                    .fontWeight(.medium)
+
+                Text("Get timely reminders for due dates, weekly reviews, and timer completions")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 500)
+            }
 
             // Benefits
             VStack(alignment: .leading, spacing: 16) {
@@ -113,19 +132,38 @@ struct PermissionRequestView: View {
             // Icon
             Image(systemName: "calendar.badge.plus")
                 .font(.system(size: 80))
-                .foregroundColor(.blue)
-                .symbolEffect(.bounce, value: viewModel.currentStep == .calendar)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [.blue, .cyan],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .shadow(color: .blue.opacity(0.3), radius: 15, x: 0, y: 8)
+                .symbolEffect(.bounce, options: .nonRepeating, value: viewModel.currentStep == .calendar)
+                .symbolEffect(.pulse, options: .speed(0.5).repeat(viewModel.calendarStatus == .granted ? 2 : 0), value: viewModel.calendarStatus)
+                .scaleEffect(viewModel.calendarStatus == .granted ? 1.1 : 1.0)
+                .animation(.spring(response: 0.4, dampingFraction: 0.6), value: viewModel.calendarStatus)
+                .accessibilityHidden(true)
 
             // Title
-            Text("Two-Way Calendar Sync")
-                .font(.system(size: 32, weight: .bold))
+            Text("Calendar Integration")
+                .font(.system(size: 36, weight: .bold))
+                .tracking(0.3)
+                .accessibilityAddTraits(.isHeader)
 
             // Description
-            Text("Sync tasks with your calendar for a unified view of your schedule.")
-                .font(.title3)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 500)
+            VStack(spacing: 8) {
+                Text("Your tasks and calendar, unified")
+                    .font(.title3)
+                    .fontWeight(.medium)
+
+                Text("Two-way sync keeps your tasks and calendar events perfectly aligned")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 500)
+            }
 
             // Benefits
             VStack(alignment: .leading, spacing: 16) {
@@ -166,19 +204,38 @@ struct PermissionRequestView: View {
             // Icon
             Image(systemName: "waveform.circle")
                 .font(.system(size: 80))
-                .foregroundColor(.purple)
-                .symbolEffect(.bounce, value: viewModel.currentStep == .siri)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [.purple, .pink],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .shadow(color: .purple.opacity(0.3), radius: 15, x: 0, y: 8)
+                .symbolEffect(.bounce, options: .nonRepeating, value: viewModel.currentStep == .siri)
+                .symbolEffect(.variableColor, options: .speed(0.5).repeat(viewModel.siriStatus == .granted ? 3 : 0), value: viewModel.siriStatus)
+                .scaleEffect(viewModel.siriStatus == .granted ? 1.15 : 1.0)
+                .animation(.spring(response: 0.4, dampingFraction: 0.5), value: viewModel.siriStatus)
+                .accessibilityHidden(true)
 
             // Title
             Text("Siri Integration")
-                .font(.system(size: 32, weight: .bold))
+                .font(.system(size: 36, weight: .bold))
+                .tracking(0.3)
+                .accessibilityAddTraits(.isHeader)
 
             // Description
-            Text("Capture tasks hands-free with Siri voice commands.")
-                .font(.title3)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 500)
+            VStack(spacing: 8) {
+                Text("Your productivity assistant")
+                    .font(.title3)
+                    .fontWeight(.medium)
+
+                Text("Manage tasks hands-free with natural voice commands on all your devices")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 500)
+            }
 
             // Example commands
             VStack(alignment: .leading, spacing: 12) {
@@ -213,19 +270,36 @@ struct PermissionRequestView: View {
             // Icon
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 80))
-                .foregroundColor(.green)
-                .symbolEffect(.bounce, value: viewModel.currentStep == .spotlight)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [.green, .mint],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .shadow(color: .green.opacity(0.3), radius: 15, x: 0, y: 8)
+                .symbolEffect(.bounce, options: .nonRepeating, value: viewModel.currentStep == .spotlight)
+                .symbolEffect(.pulse, options: .speed(0.5).repeating, value: viewModel.currentStep == .spotlight)
+                .accessibilityHidden(true)
 
             // Title
             Text("Spotlight Search")
-                .font(.system(size: 32, weight: .bold))
+                .font(.system(size: 36, weight: .bold))
+                .tracking(0.3)
+                .accessibilityAddTraits(.isHeader)
 
             // Description
-            Text("Find your tasks instantly from anywhere on your Mac with Spotlight.")
-                .font(.title3)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 500)
+            VStack(spacing: 8) {
+                Text("Find anything, instantly")
+                    .font(.title3)
+                    .fontWeight(.medium)
+
+                Text("Search your entire task library from anywhere on your Mac with ⌘Space")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 500)
+            }
 
             // Benefits
             VStack(alignment: .leading, spacing: 16) {
@@ -269,7 +343,7 @@ struct PermissionRequestView: View {
     // MARK: - Bottom Bar
 
     private var bottomBar: some View {
-        HStack {
+        HStack(spacing: 16) {
             Button("Skip All") {
                 viewModel.skipAll()
                 onComplete?()
@@ -277,36 +351,66 @@ struct PermissionRequestView: View {
             }
             .buttonStyle(.plain)
             .foregroundColor(.secondary)
+            .keyboardShortcut(.cancelAction)
 
             Spacer()
 
             if viewModel.currentStep != .spotlight {
-                Button("Skip") {
+                Button(action: {
                     viewModel.skipCurrent()
+                }) {
+                    Text("Skip")
                 }
                 .buttonStyle(.bordered)
             }
 
             if viewModel.currentStep == .spotlight {
-                Button("Get Started") {
+                Button(action: {
                     viewModel.complete()
                     onComplete?()
                     dismiss()
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.caption)
+                        Text("Continue to Quick Tour")
+                            .fontWeight(.semibold)
+                    }
+                    .padding(.horizontal, 8)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
+                .keyboardShortcut(.defaultAction)
             } else {
                 if viewModel.canRequestCurrentPermission {
-                    Button(viewModel.currentPermissionButtonTitle) {
+                    Button(action: {
                         viewModel.requestCurrentPermission()
+                    }) {
+                        HStack(spacing: 6) {
+                            if viewModel.isRequesting {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                            } else {
+                                Image(systemName: "hand.raised.fill")
+                                    .font(.caption)
+                            }
+                            Text(viewModel.currentPermissionButtonTitle)
+                        }
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(viewModel.isRequesting)
                 } else {
-                    Button("Next") {
+                    Button(action: {
                         viewModel.nextStep()
+                    }) {
+                        HStack(spacing: 6) {
+                            Text("Next")
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                        }
                     }
                     .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
                 }
             }
         }
@@ -315,17 +419,25 @@ struct PermissionRequestView: View {
     // MARK: - Progress Indicator
 
     private var progressIndicator: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             ForEach(PermissionStep.allCases, id: \.self) { step in
-                Circle()
+                RoundedRectangle(cornerRadius: 4)
                     .fill(step == viewModel.currentStep ? Color.accentColor : Color.gray.opacity(0.3))
-                    .frame(width: 8, height: 8)
-                    .animation(.spring(), value: viewModel.currentStep)
+                    .frame(width: step == viewModel.currentStep ? 24 : 6, height: 6)
+                    .animation(.spring(response: 0.4, dampingFraction: 0.75), value: viewModel.currentStep)
+                    .shadow(
+                        color: step == viewModel.currentStep ? Color.accentColor.opacity(0.3) : .clear,
+                        radius: 4,
+                        x: 0,
+                        y: 2
+                    )
             }
         }
-        .padding(10)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .background(.ultraThinMaterial)
         .cornerRadius(20)
+        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
     }
 }
 
@@ -360,40 +472,90 @@ struct PermissionBenefitRow: View {
 struct SiriCommandExample: View {
     let command: String
 
+    @State private var isHovered = false
+
     var body: some View {
-        HStack {
-            Image(systemName: "quote.opening")
+        HStack(spacing: 10) {
+            Image(systemName: "waveform")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(.purple)
+                .symbolEffect(.variableColor, options: .repeating.speed(0.3), isActive: isHovered)
 
             Text(command)
                 .font(.body)
                 .foregroundColor(.primary)
+                .fontWeight(.medium)
 
             Spacer()
-
-            Image(systemName: "quote.closing")
-                .font(.caption)
-                .foregroundColor(.secondary)
         }
-        .padding(.vertical, 4)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.purple.opacity(isHovered ? 0.1 : 0.05))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.purple.opacity(isHovered ? 0.3 : 0.1), lineWidth: 1)
+        )
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovered)
+        .onHover { hovering in
+            isHovered = hovering
+        }
     }
 }
 
 struct PermissionStatusBadge: View {
     let status: PermissionStatus
 
+    @State private var appeared = false
+
     var body: some View {
-        HStack {
+        HStack(spacing: 10) {
             Image(systemName: status.icon)
                 .foregroundColor(status.color)
+                .font(.title3)
+                .symbolEffect(.bounce, options: .nonRepeating, value: status)
+                .symbolEffect(.pulse, options: .speed(0.5).repeat(status == .granted ? 2 : 0), value: status)
+                .accessibilityHidden(true)
+
             Text(status.message)
                 .font(.callout)
+                .fontWeight(.medium)
                 .foregroundColor(status.color)
         }
-        .padding(12)
-        .background(status.color.opacity(0.1))
-        .cornerRadius(8)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(status.color.opacity(0.15))
+                .shadow(
+                    color: status.color.opacity(0.2),
+                    radius: status == .granted ? 8 : 4,
+                    x: 0,
+                    y: status == .granted ? 4 : 2
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(status.color.opacity(0.3), lineWidth: 1)
+        )
+        .scaleEffect(appeared ? 1.0 : 0.8)
+        .opacity(appeared ? 1 : 0)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(status.message)
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                appeared = true
+            }
+        }
+        .onChange(of: status) { _, _ in
+            appeared = false
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.1)) {
+                appeared = true
+            }
+        }
     }
 }
 

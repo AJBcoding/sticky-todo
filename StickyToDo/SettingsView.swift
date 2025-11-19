@@ -21,11 +21,19 @@ struct SettingsView: View {
 
     var body: some View {
         TabView {
+            AppearanceSettingsView()
+                .tabItem {
+                    Label("Appearance", systemImage: "paintbrush.fill")
+                }
+                .tag(0)
+                .accessibilityLabel("Appearance settings")
+                .accessibilityHint("Customize theme, colors, and dark mode")
+
             GeneralSettingsView()
                 .tabItem {
                     Label("General", systemImage: "gear")
                 }
-                .tag(0)
+                .tag(1)
                 .accessibilityLabel("General settings")
                 .accessibilityHint("Configure general application settings")
 
@@ -33,7 +41,7 @@ struct SettingsView: View {
                 .tabItem {
                     Label("Quick Capture", systemImage: "bolt.fill")
                 }
-                .tag(1)
+                .tag(2)
                 .accessibilityLabel("Quick Capture settings")
                 .accessibilityHint("Configure quick task capture and hotkeys")
 
@@ -41,7 +49,7 @@ struct SettingsView: View {
                 .tabItem {
                     Label("Contexts", systemImage: "mappin.circle")
                 }
-                .tag(2)
+                .tag(3)
                 .accessibilityLabel("Contexts settings")
                 .accessibilityHint("Manage task contexts")
 
@@ -49,7 +57,7 @@ struct SettingsView: View {
                 .tabItem {
                     Label("Boards", systemImage: "square.grid.3x2")
                 }
-                .tag(3)
+                .tag(4)
                 .accessibilityLabel("Boards settings")
                 .accessibilityHint("Configure board visibility and defaults")
 
@@ -57,11 +65,11 @@ struct SettingsView: View {
                 .tabItem {
                     Label("Advanced", systemImage: "wrench.and.screwdriver")
                 }
-                .tag(4)
+                .tag(5)
                 .accessibilityLabel("Advanced settings")
                 .accessibilityHint("Configure advanced options and debug settings")
         }
-        .frame(width: 600, height: 500)
+        .frame(width: 600, height: 700)
     }
 }
 

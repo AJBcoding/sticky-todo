@@ -254,6 +254,57 @@ public class KeyboardShortcutManager: ObservableObject {
                 modifiers: [.command, .shift],
                 category: .board
             ),
+
+            // Batch Edit Operations
+            AppShortcut(
+                id: "batchEditMode",
+                title: "Batch Edit Mode",
+                key: "e",
+                modifiers: [.command, .shift],
+                category: .edit
+            ),
+            AppShortcut(
+                id: "selectAllTasks",
+                title: "Select All Tasks",
+                key: "a",
+                modifiers: [.command],
+                category: .edit
+            ),
+            AppShortcut(
+                id: "batchComplete",
+                title: "Complete Selected Tasks",
+                key: "\r",
+                modifiers: [.command],
+                category: .edit
+            ),
+            AppShortcut(
+                id: "batchDelete",
+                title: "Delete Selected Tasks",
+                key: "\u{7F}",
+                modifiers: [.command],
+                category: .edit
+            ),
+            AppShortcut(
+                id: "batchSetProject",
+                title: "Set Project for Selected",
+                key: "p",
+                modifiers: [.command, .shift],
+                category: .edit
+            ),
+            AppShortcut(
+                id: "batchSetContext",
+                title: "Set Context for Selected",
+                key: "c",
+                modifiers: [.command, .shift],
+                category: .edit
+            ),
+            AppShortcut(
+                id: "batchFlag",
+                title: "Flag Selected Tasks",
+                key: "f",
+                modifiers: [.command, .shift],
+                category: .edit
+            ),
         ]
     }
 

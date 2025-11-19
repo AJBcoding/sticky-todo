@@ -43,6 +43,7 @@ struct StickyToDoApp: App {
                         .environmentObject(boardStore)
                         .environmentObject(dataManager)
                         .environmentObject(configManager)
+                        .colorTheme(configManager.colorTheme)
                         .frame(minWidth: 900, minHeight: 600)
                 } else if isInitialized {
                     // Initialization completed but stores not ready - show error
@@ -81,6 +82,7 @@ struct StickyToDoApp: App {
             .onAppear {
                 initializeApp()
                 setupHotkeys()
+                setupThemeMonitoring()
             }
             .alert("Initialization Error", isPresented: $showInitializationError) {
                 Button("OK") {}
@@ -115,6 +117,7 @@ struct StickyToDoApp: App {
                 )
                 .environmentObject(taskStore)
                 .environmentObject(dataManager)
+                .colorTheme(configManager.colorTheme)
             } else {
                 ProgressView("Loading...")
                     .frame(width: 200, height: 100)
@@ -131,6 +134,7 @@ struct StickyToDoApp: App {
             SettingsView()
                 .environmentObject(configManager)
                 .environmentObject(dataManager)
+                .colorTheme(configManager.colorTheme)
         }
         #endif
     }
@@ -284,6 +288,21 @@ struct StickyToDoApp: App {
                 // Show about window
                 showAbout()
             }
+        }
+    }
+
+    // MARK: - Theme Monitoring
+
+    /// Sets up theme change monitoring
+    private func setupThemeMonitoring() {
+        NotificationCenter.default.addObserver(
+            forName: .themeChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            // Theme has changed - SwiftUI will automatically update views
+            // due to @Published properties in ConfigurationManager
+            print("🎨 Theme changed to: \(self?.configManager.themeMode.displayName ?? "Unknown")")
         }
     }
 

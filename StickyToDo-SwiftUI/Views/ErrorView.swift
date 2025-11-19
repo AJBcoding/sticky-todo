@@ -78,6 +78,9 @@ struct ErrorView: View {
     let onRetry: (() -> Void)?
     let onDismiss: (() -> Void)?
 
+    @State private var shakeOffset: CGFloat = 0
+    @State private var appeared = false
+
     init(error: Error, onRetry: (() -> Void)? = nil, onDismiss: (() -> Void)? = nil) {
         self.error = error
         self.onRetry = onRetry
@@ -89,8 +92,18 @@ struct ErrorView: View {
             // Error icon
             Image(systemName: errorIcon)
                 .font(.system(size: 64))
-                .foregroundColor(errorColor)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [errorColor, errorColor.opacity(0.7)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .shadow(color: errorColor.opacity(0.3), radius: 15, x: 0, y: 8)
                 .symbolRenderingMode(.hierarchical)
+                .symbolEffect(.bounce, options: .nonRepeating, value: appeared)
+                .offset(x: shakeOffset)
+                .scaleEffect(appeared ? 1.0 : 0.8)
                 .accessibilityLabel("Error icon")
                 .accessibilityHidden(true)
 
@@ -99,6 +112,9 @@ struct ErrorView: View {
                 Text(errorTitle)
                     .font(.title2)
                     .fontWeight(.semibold)
+                    .opacity(appeared ? 1 : 0)
+                    .offset(y: appeared ? 0 : 10)
+                    .animation(.easeOut(duration: 0.4).delay(0.2), value: appeared)
                     .accessibilityAddTraits(.isHeader)
 
                 if let description = errorDescription {
@@ -106,6 +122,9 @@ struct ErrorView: View {
                         .font(.body)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
+                        .opacity(appeared ? 1 : 0)
+                        .offset(y: appeared ? 0 : 10)
+                        .animation(.easeOut(duration: 0.4).delay(0.3), value: appeared)
                 }
             }
             .accessibilityElement(children: .combine)
@@ -119,8 +138,14 @@ struct ErrorView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
                     .padding(.vertical, 12)
-                    .background(Color(NSColor.controlBackgroundColor))
-                    .cornerRadius(8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color(NSColor.controlBackgroundColor))
+                            .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                    )
+                    .opacity(appeared ? 1 : 0)
+                    .scaleEffect(appeared ? 1.0 : 0.95)
+                    .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.4), value: appeared)
                     .accessibilityLabel("Recovery suggestion: \(suggestion)")
             }
 
@@ -134,6 +159,8 @@ struct ErrorView: View {
                         .padding()
                 }
                 .padding(.horizontal)
+                .opacity(appeared ? 1 : 0)
+                .animation(.easeOut(duration: 0.3).delay(0.5), value: appeared)
                 .accessibilityLabel("Technical details")
                 .accessibilityHint("Expand to view detailed error information")
             }
@@ -147,6 +174,9 @@ struct ErrorView: View {
                         Label("Retry", systemImage: "arrow.clockwise")
                     }
                     .buttonStyle(.borderedProminent)
+                    .opacity(appeared ? 1 : 0)
+                    .scaleEffect(appeared ? 1.0 : 0.9)
+                    .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.6), value: appeared)
                     .accessibilityLabel("Retry operation")
                     .accessibilityHint("Double-tap to retry the failed operation")
                 }
@@ -154,6 +184,9 @@ struct ErrorView: View {
                 if let onDismiss = onDismiss {
                     Button("Dismiss", action: onDismiss)
                         .buttonStyle(.bordered)
+                        .opacity(appeared ? 1 : 0)
+                        .scaleEffect(appeared ? 1.0 : 0.9)
+                        .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.65), value: appeared)
                         .accessibilityLabel("Dismiss error")
                         .accessibilityHint("Double-tap to close this error message")
                 }
@@ -161,6 +194,29 @@ struct ErrorView: View {
         }
         .padding(40)
         .frame(maxWidth: 500)
+        .onAppear {
+            // Trigger entrance animations
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+                appeared = true
+            }
+
+            // Shake animation for error icon
+            performShakeAnimation()
+        }
+    }
+
+    // MARK: - Shake Animation
+
+    private func performShakeAnimation() {
+        let shakeSequence: [CGFloat] = [0, -8, 8, -6, 6, -4, 4, -2, 2, 0]
+
+        for (index, offset) in shakeSequence.enumerated() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.05) {
+                withAnimation(.linear(duration: 0.05)) {
+                    shakeOffset = offset
+                }
+            }
+        }
     }
 
     // MARK: - Computed Properties
@@ -232,10 +288,22 @@ struct ErrorBanner: View {
     let error: Error
     let onDismiss: () -> Void
 
+    @State private var appeared = false
+    @State private var shakeOffset: CGFloat = 0
+
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(.orange)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [.orange, .yellow],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .font(.title3)
+                .symbolEffect(.bounce, options: .nonRepeating, value: appeared)
+                .offset(x: shakeOffset)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -253,7 +321,12 @@ struct ErrorBanner: View {
             Spacer()
 
             Button {
-                onDismiss()
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    appeared = false
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    onDismiss()
+                }
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundColor(.secondary)
@@ -262,13 +335,33 @@ struct ErrorBanner: View {
             .accessibilityLabel("Dismiss error")
             .accessibilityHint("Double-tap to dismiss this error message")
         }
-        .padding()
-        .background(Color.orange.opacity(0.1))
-        .cornerRadius(8)
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.orange.opacity(0.1))
+                .shadow(color: .orange.opacity(0.1), radius: 6, x: 0, y: 3)
+        )
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: 10)
                 .stroke(Color.orange.opacity(0.3), lineWidth: 1)
         )
+        .scaleEffect(appeared ? 1.0 : 0.95)
+        .opacity(appeared ? 1 : 0)
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                appeared = true
+            }
+
+            // Subtle shake
+            let shakeSequence: [CGFloat] = [0, -4, 4, -2, 2, 0]
+            for (index, offset) in shakeSequence.enumerated() {
+                DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.05) {
+                    withAnimation(.linear(duration: 0.05)) {
+                        shakeOffset = offset
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -280,6 +373,9 @@ struct EmptyStateView: View {
     let message: String
     let actionTitle: String?
     let action: (() -> Void)?
+
+    @State private var appeared = false
+    @State private var iconBounce = false
 
     init(icon: String,
          title: String,
@@ -294,23 +390,40 @@ struct EmptyStateView: View {
     }
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 24) {
             Image(systemName: icon)
-                .font(.system(size: 64))
-                .foregroundColor(.secondary)
+                .font(.system(size: 72))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [Color.secondary, Color.secondary.opacity(0.6)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
                 .symbolRenderingMode(.hierarchical)
+                .symbolEffect(.bounce, options: .nonRepeating, value: appeared)
+                .symbolEffect(.pulse, options: .speed(0.5).repeating, value: iconBounce)
+                .scaleEffect(appeared ? 1.0 : 0.8)
+                .opacity(appeared ? 1 : 0)
+                .animation(.spring(response: 0.6, dampingFraction: 0.7), value: appeared)
                 .accessibilityHidden(true)
 
-            VStack(spacing: 8) {
+            VStack(spacing: 10) {
                 Text(title)
                     .font(.title2)
                     .fontWeight(.semibold)
+                    .opacity(appeared ? 1 : 0)
+                    .offset(y: appeared ? 0 : 10)
+                    .animation(.easeOut(duration: 0.4).delay(0.2), value: appeared)
                     .accessibilityAddTraits(.isHeader)
 
                 Text(message)
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
+                    .opacity(appeared ? 1 : 0)
+                    .offset(y: appeared ? 0 : 10)
+                    .animation(.easeOut(duration: 0.4).delay(0.3), value: appeared)
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(title). \(message)")
@@ -320,11 +433,19 @@ struct EmptyStateView: View {
                     Text(actionTitle)
                 }
                 .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .opacity(appeared ? 1 : 0)
+                .scaleEffect(appeared ? 1.0 : 0.9)
+                .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.4), value: appeared)
                 .accessibilityHint("Double-tap to \(actionTitle.lowercased())")
             }
         }
         .padding(40)
-        .frame(maxWidth: 400)
+        .frame(maxWidth: 450)
+        .onAppear {
+            appeared = true
+            iconBounce = true
+        }
     }
 }
 

@@ -68,30 +68,49 @@ struct QuickTourView: View {
                     )
                 )
                 .shadow(color: page.gradientColors.first?.opacity(0.3) ?? .clear, radius: 20, x: 0, y: 10)
-                .symbolEffect(.bounce, value: viewModel.currentPage == page.id)
+                .symbolEffect(.bounce, options: .nonRepeating, value: viewModel.currentPage == page.id)
+                .symbolEffect(.pulse, options: .speed(0.5).repeat(2), value: viewModel.currentPage == page.id)
+                .scaleEffect(viewModel.currentPage == page.id ? 1.0 : 0.9)
+                .animation(.spring(response: 0.6, dampingFraction: 0.7), value: viewModel.currentPage)
+                .accessibilityHidden(true)
 
             // Title
             Text(page.title)
-                .font(.system(size: 32, weight: .bold))
+                .font(.system(size: 34, weight: .bold))
+                .tracking(0.3)
+                .opacity(viewModel.currentPage == page.id ? 1 : 0.5)
+                .scaleEffect(viewModel.currentPage == page.id ? 1.0 : 0.95)
+                .animation(.spring(response: 0.5, dampingFraction: 0.75), value: viewModel.currentPage)
+                .accessibilityAddTraits(.isHeader)
 
             // Description
             Text(page.description)
                 .font(.title3)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
-                .frame(maxWidth: 500)
+                .frame(maxWidth: 520)
+                .opacity(viewModel.currentPage == page.id ? 1 : 0.5)
+                .offset(y: viewModel.currentPage == page.id ? 0 : 10)
+                .animation(.spring(response: 0.5, dampingFraction: 0.75).delay(0.1), value: viewModel.currentPage)
 
             // Feature highlights
             VStack(alignment: .leading, spacing: 12) {
-                ForEach(page.highlights, id: \.self) { highlight in
-                    TourHighlight(text: highlight)
+                ForEach(Array(page.highlights.enumerated()), id: \.offset) { index, highlight in
+                    TourHighlight(
+                        text: highlight,
+                        index: index,
+                        isVisible: viewModel.currentPage == page.id
+                    )
                 }
             }
             .padding(.horizontal, 60)
 
             // Keyboard shortcut (if applicable)
             if let shortcut = page.keyboardShortcut {
-                KeyboardShortcutBadge(shortcut: shortcut)
+                KeyboardShortcutBadge(
+                    shortcut: shortcut,
+                    isVisible: viewModel.currentPage == page.id
+                )
             }
 
             Spacer()
@@ -102,33 +121,56 @@ struct QuickTourView: View {
     // MARK: - Bottom Bar
 
     private var bottomBar: some View {
-        HStack {
+        HStack(spacing: 16) {
             if viewModel.currentPage > 0 {
-                Button("Back") {
-                    withAnimation {
+                Button(action: {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                         viewModel.currentPage -= 1
+                    }
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.left")
+                            .font(.caption)
+                        Text("Back")
                     }
                 }
                 .buttonStyle(.bordered)
+                .keyboardShortcut(.leftArrow, modifiers: [])
             }
 
             Spacer()
 
             if viewModel.currentPage < TourPage.allPages.count - 1 {
-                Button("Next") {
-                    withAnimation {
+                Button(action: {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                         viewModel.currentPage += 1
+                    }
+                }) {
+                    HStack(spacing: 6) {
+                        Text("Next")
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
                     }
                 }
                 .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.rightArrow, modifiers: [])
             } else {
-                Button("Get Started") {
+                Button(action: {
                     viewModel.complete()
                     onComplete?()
                     dismiss()
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.caption)
+                        Text("Start Using StickyToDo")
+                            .fontWeight(.semibold)
+                    }
+                    .padding(.horizontal, 8)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
+                .keyboardShortcut(.defaultAction)
             }
         }
     }
@@ -136,18 +178,25 @@ struct QuickTourView: View {
     // MARK: - Progress Indicator
 
     private var progressIndicator: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             ForEach(0..<TourPage.allPages.count, id: \.self) { index in
-                Circle()
+                RoundedRectangle(cornerRadius: 4)
                     .fill(index == viewModel.currentPage ? Color.accentColor : Color.gray.opacity(0.3))
-                    .frame(width: 8, height: 8)
-                    .animation(.spring(), value: viewModel.currentPage)
+                    .frame(width: index == viewModel.currentPage ? 24 : 6, height: 6)
+                    .animation(.spring(response: 0.4, dampingFraction: 0.75), value: viewModel.currentPage)
+                    .shadow(
+                        color: index == viewModel.currentPage ? Color.accentColor.opacity(0.3) : .clear,
+                        radius: 4,
+                        x: 0,
+                        y: 2
+                    )
             }
         }
-        .padding(10)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .background(.ultraThinMaterial)
         .cornerRadius(20)
-    }
+        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
 
     // MARK: - Skip Button
 
@@ -167,12 +216,24 @@ struct QuickTourView: View {
 
 struct TourHighlight: View {
     let text: String
+    let index: Int
+    let isVisible: Bool
+
+    @State private var appeared = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "checkmark.circle.fill")
-                .foregroundColor(.green)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [.green, .mint],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
                 .font(.title3)
+                .symbolEffect(.bounce, options: .nonRepeating, value: appeared)
+                .accessibilityHidden(true)
 
             Text(text)
                 .font(.body)
@@ -180,26 +241,87 @@ struct TourHighlight: View {
 
             Spacer()
         }
+        .opacity(appeared ? 1 : 0)
+        .offset(x: appeared ? 0 : -15)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(text)
+        .onAppear {
+            if isVisible {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.75).delay(Double(index) * 0.08)) {
+                    appeared = true
+                }
+            }
+        }
+        .onChange(of: isVisible) { _, newValue in
+            if newValue && !appeared {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.75).delay(Double(index) * 0.08)) {
+                    appeared = true
+                }
+            } else if !newValue {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    appeared = false
+                }
+            }
+        }
     }
 }
 
 struct KeyboardShortcutBadge: View {
     let shortcut: String
+    let isVisible: Bool
+
+    @State private var appeared = false
+    @State private var isHovered = false
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             Image(systemName: "keyboard")
                 .foregroundColor(.secondary)
+                .symbolEffect(.wiggle, options: .repeat(1), value: appeared)
 
             Text(shortcut)
                 .font(.system(.body, design: .monospaced))
                 .foregroundColor(.primary)
                 .bold()
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(8)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(NSColor.controlBackgroundColor))
+                .shadow(
+                    color: .accentColor.opacity(isHovered ? 0.2 : 0.05),
+                    radius: isHovered ? 6 : 3,
+                    x: 0,
+                    y: isHovered ? 3 : 1
+                )
+        )
+        .scaleEffect(appeared ? 1.0 : 0.8)
+        .opacity(appeared ? 1 : 0)
+        .scaleEffect(isHovered ? 1.05 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovered)
+        .onHover { hovering in
+            isHovered = hovering
+        }
+        .accessibilityLabel("Keyboard shortcut: \(shortcut)")
+        .onAppear {
+            if isVisible {
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.5)) {
+                    appeared = true
+                }
+            }
+        }
+        .onChange(of: isVisible) { _, newValue in
+            if newValue && !appeared {
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.5)) {
+                    appeared = true
+                }
+            } else if !newValue {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    appeared = false
+                }
+            }
+        }
     }
 }
 
@@ -231,13 +353,13 @@ struct TourPage: Identifiable {
             id: 0,
             icon: "plus.circle.fill",
             gradientColors: [.blue, .cyan],
-            title: "Quick Capture",
-            description: "Capture tasks instantly from anywhere on your Mac",
+            title: "Lightning-Fast Capture",
+            description: "Never lose a thought again - capture tasks instantly from anywhere",
             highlights: [
-                "Use ⌘N or the global hotkey to create tasks",
-                "Natural language parsing: \"Call John tomorrow @phone\"",
-                "Tasks land in Inbox for later processing",
-                "Capture first, organize later - true GTD workflow"
+                "Global hotkey works even when the app isn't open",
+                "Smart parsing: \"Call dentist tomorrow @phone\" becomes a complete task",
+                "Everything goes to Inbox - organize later when you're ready",
+                "Friction-free capture means your brain can relax"
             ],
             keyboardShortcut: "⌘N or ⌘⇧Space"
         ),
@@ -246,14 +368,14 @@ struct TourPage: Identifiable {
             id: 1,
             icon: "tray.and.arrow.down",
             gradientColors: [.orange, .red],
-            title: "Inbox Processing",
-            description: "Turn captured items into actionable tasks",
+            title: "Inbox Zero Made Easy",
+            description: "Transform captured thoughts into organized, actionable tasks",
             highlights: [
-                "Process inbox items one by one",
-                "Clarify: Is it actionable?",
-                "Organize: Add context, project, due date",
+                "Process one item at a time without overwhelm",
+                "Ask: Is it actionable? What's the next action?",
+                "Add context (@computer), project, and due dates",
                 "Move to Next Actions, Waiting, or Someday/Maybe",
-                "Archive or delete what's not needed"
+                "Achieve clarity and peace of mind daily"
             ],
             keyboardShortcut: nil
         ),
@@ -262,14 +384,14 @@ struct TourPage: Identifiable {
             id: 2,
             icon: "square.grid.2x2",
             gradientColors: [.purple, .pink],
-            title: "Board Canvas",
-            description: "Visualize tasks with flexible board layouts",
+            title: "Visual Board Canvas",
+            description: "See your work in the way that makes sense to you",
             highlights: [
-                "Switch between List, Kanban, Grid, and Freeform layouts",
-                "Drag and drop tasks to organize visually",
-                "Context boards (@computer, @home, @office)",
-                "Project boards with automatic organization",
-                "Create custom boards for any workflow"
+                "Four layouts: List, Kanban, Grid, and Freeform sticky notes",
+                "Drag and drop tasks for satisfying visual organization",
+                "Create boards by context: @computer, @home, @errands",
+                "Project boards automatically gather related tasks",
+                "Your workspace adapts to your thinking style"
             ],
             keyboardShortcut: "⌘B"
         ),

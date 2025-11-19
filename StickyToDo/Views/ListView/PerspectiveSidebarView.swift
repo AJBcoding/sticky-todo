@@ -137,6 +137,9 @@ struct PerspectiveSidebarView: View {
                             isSelected: selectedBoardId == board.id
                         )
                         .tag(SidebarItem.board(board.id))
+                        .contextMenu {
+                            boardContextMenu(for: board)
+                        }
                     }
                 }
             }
@@ -151,6 +154,9 @@ struct PerspectiveSidebarView: View {
                             isSelected: selectedBoardId == board.id
                         )
                         .tag(SidebarItem.board(board.id))
+                        .contextMenu {
+                            boardContextMenu(for: board)
+                        }
                     }
                 }
             }
@@ -165,6 +171,9 @@ struct PerspectiveSidebarView: View {
                             isSelected: selectedBoardId == board.id
                         )
                         .tag(SidebarItem.board(board.id))
+                        .contextMenu {
+                            boardContextMenu(for: board)
+                        }
                     }
                 }
             }
@@ -194,6 +203,7 @@ struct PerspectiveSidebarView: View {
                         )
                         .tag(SidebarItem.smartPerspective(smartPerspective.id.uuidString))
                         .contextMenu {
+                            perspectiveContextMenu(for: smartPerspective)
                             Button("Edit") {
                                 perspectiveToEdit = smartPerspective
                                 showingPerspectiveEditor = true
@@ -292,6 +302,153 @@ struct PerspectiveSidebarView: View {
                 }
             }
         )
+    }
+
+    // MARK: - Context Menus
+
+    /// Context menu for board items
+    @ViewBuilder
+    private func boardContextMenu(for board: Board) -> some View {
+        Button("Open in New Window", systemImage: "rectangle.badge.plus") {
+            NotificationCenter.default.post(
+                name: NSNotification.Name("OpenBoardInNewWindow"),
+                object: board.id
+            )
+        }
+        .keyboardShortcut("o", modifiers: [.command, .shift])
+        .accessibilityLabel("Open board in a new window")
+
+        Divider()
+
+        Button("Rename Board...", systemImage: "pencil") {
+            NotificationCenter.default.post(
+                name: NSNotification.Name("RenameBoard"),
+                object: board.id
+            )
+        }
+        .keyboardShortcut("r", modifiers: .command)
+        .accessibilityLabel("Rename this board")
+
+        Button("Duplicate Board", systemImage: "doc.on.doc") {
+            NotificationCenter.default.post(
+                name: NSNotification.Name("DuplicateBoard"),
+                object: board.id
+            )
+        }
+        .keyboardShortcut("d", modifiers: [.command, .shift])
+        .accessibilityLabel("Create a duplicate of this board")
+
+        Divider()
+
+        Button("Export Board...", systemImage: "square.and.arrow.up.on.square") {
+            NotificationCenter.default.post(
+                name: NSNotification.Name("ExportBoard"),
+                object: board.id
+            )
+        }
+        .accessibilityLabel("Export board and its tasks")
+
+        Button("Share Board...", systemImage: "square.and.arrow.up") {
+            #if os(macOS)
+            NotificationCenter.default.post(
+                name: NSNotification.Name("ShareBoard"),
+                object: board.id
+            )
+            #endif
+        }
+        .accessibilityLabel("Share board using system share sheet")
+
+        Divider()
+
+        if board.isVisible {
+            Button("Hide from Sidebar", systemImage: "eye.slash") {
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("ToggleBoardVisibility"),
+                    object: board.id
+                )
+            }
+            .accessibilityLabel("Hide this board from sidebar")
+        } else {
+            Button("Show in Sidebar", systemImage: "eye") {
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("ToggleBoardVisibility"),
+                    object: board.id
+                )
+            }
+            .accessibilityLabel("Show this board in sidebar")
+        }
+
+        if !board.isBuiltIn {
+            Divider()
+
+            Button("Delete Board", systemImage: "trash", role: .destructive) {
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("DeleteBoard"),
+                    object: board.id
+                )
+            }
+            .accessibilityLabel("Delete this board")
+        }
+    }
+
+    /// Context menu for perspective items
+    @ViewBuilder
+    private func perspectiveContextMenu(for perspective: SmartPerspective) -> some View {
+        Button("Open in New Window", systemImage: "rectangle.badge.plus") {
+            NotificationCenter.default.post(
+                name: NSNotification.Name("OpenPerspectiveInNewWindow"),
+                object: perspective.id
+            )
+        }
+        .keyboardShortcut("o", modifiers: [.command, .shift])
+        .accessibilityLabel("Open perspective in a new window")
+
+        Divider()
+
+        Button("Edit Perspective...", systemImage: "pencil") {
+            NotificationCenter.default.post(
+                name: NSNotification.Name("EditPerspective"),
+                object: perspective.id
+            )
+        }
+        .keyboardShortcut("e", modifiers: .command)
+        .accessibilityLabel("Edit this perspective")
+
+        Button("Duplicate Perspective", systemImage: "doc.on.doc") {
+            var duplicated = perspective
+            duplicated.name = "\(perspective.name) Copy"
+            perspectiveStore.create(duplicated)
+        }
+        .keyboardShortcut("d", modifiers: [.command, .shift])
+        .accessibilityLabel("Create a duplicate of this perspective")
+
+        Divider()
+
+        Button("Export Perspective...", systemImage: "square.and.arrow.up.on.square") {
+            NotificationCenter.default.post(
+                name: NSNotification.Name("ExportPerspective"),
+                object: perspective.id
+            )
+        }
+        .accessibilityLabel("Export perspective configuration")
+
+        Button("Share Perspective...", systemImage: "square.and.arrow.up") {
+            #if os(macOS)
+            NotificationCenter.default.post(
+                name: NSNotification.Name("SharePerspective"),
+                object: perspective.id
+            )
+            #endif
+        }
+        .accessibilityLabel("Share perspective using system share sheet")
+
+        Divider()
+
+        Button("Delete Perspective", systemImage: "trash", role: .destructive) {
+            perspectiveStore.delete(perspective)
+        }
+        .keyboardShortcut(.delete, modifiers: .command)
+        .accessibilityLabel("Delete this perspective")
     }
 
     // MARK: - Helper Methods

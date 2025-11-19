@@ -50,6 +50,10 @@ final class ConfigurationManager: ObservableObject {
         static let sortBy = "sortBy"
         static let defaultContext = "defaultContext"
         static let lastReviewDate = "lastReviewDate"
+        // Theme settings
+        static let themeMode = "themeMode"
+        static let accentColor = "accentColor"
+        static let enableTrueBlackMode = "enableTrueBlackMode"
     }
 
     // MARK: - Published Properties
@@ -234,6 +238,29 @@ final class ConfigurationManager: ObservableObject {
         }
     }
 
+    // MARK: - Theme Settings
+
+    /// App theme mode (system, light, dark, true black)
+    @Published var themeMode: ThemeMode {
+        didSet {
+            UserDefaults.standard.set(themeMode.rawValue, forKey: Keys.themeMode)
+            NotificationCenter.default.post(name: .themeChanged, object: nil)
+        }
+    }
+
+    /// App accent color
+    @Published var accentColor: AccentColorOption {
+        didSet {
+            UserDefaults.standard.set(accentColor.rawValue, forKey: Keys.accentColor)
+            NotificationCenter.default.post(name: .themeChanged, object: nil)
+        }
+    }
+
+    /// Current color theme (computed from themeMode and accentColor)
+    var colorTheme: ColorTheme {
+        return ColorTheme(mode: themeMode, accentColor: accentColor)
+    }
+
     // MARK: - Initialization
 
     private init() {
@@ -330,6 +357,13 @@ final class ConfigurationManager: ObservableObject {
         } else {
             self.lastReviewDate = nil
         }
+
+        // Theme Settings
+        let themeModeString = UserDefaults.standard.string(forKey: Keys.themeMode) ?? ThemeMode.system.rawValue
+        self.themeMode = ThemeMode(rawValue: themeModeString) ?? .system
+
+        let accentColorString = UserDefaults.standard.string(forKey: Keys.accentColor) ?? AccentColorOption.blue.rawValue
+        self.accentColor = AccentColorOption(rawValue: accentColorString) ?? .blue
     }
 
     // MARK: - Public Methods
@@ -381,6 +415,9 @@ final class ConfigurationManager: ObservableObject {
         groupBy = .none
         sortBy = .created
         lastReviewDate = nil
+
+        themeMode = .system
+        accentColor = .blue
 
         save()
     }
@@ -469,4 +506,7 @@ extension Notification.Name {
 
     /// Posted when data directory changes
     static let dataDirectoryChanged = Notification.Name("dataDirectoryChanged")
+
+    /// Posted when theme changes
+    static let themeChanged = Notification.Name("themeChanged")
 }

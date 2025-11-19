@@ -229,6 +229,57 @@ extension ColorPalette.PaletteColor {
     var color: Color {
         return Color(hexString: hex)
     }
+
+    /// Returns a dark mode adapted version of this color
+    /// Adjusts brightness and saturation for better visibility on dark backgrounds
+    var darkModeColor: Color {
+        // These are hand-tuned colors optimized for dark mode visibility
+        switch self.id {
+        case "FF3B30": // Red
+            return Color(hexString: "#FF453A")
+        case "FF9500": // Orange
+            return Color(hexString: "#FF9F0A")
+        case "FFCC00": // Yellow
+            return Color(hexString: "#FFD60A")
+        case "34C759": // Green
+            return Color(hexString: "#30D158")
+        case "00C7BE": // Mint
+            return Color(hexString: "#66D4CF")
+        case "30B0C7": // Teal
+            return Color(hexString: "#6AC4DC")
+        case "32ADE6": // Cyan
+            return Color(hexString: "#5AC8FA")
+        case "007AFF": // Blue
+            return Color(hexString: "#0A84FF")
+        case "5856D6": // Indigo
+            return Color(hexString: "#5E5CE6")
+        case "AF52DE": // Purple
+            return Color(hexString: "#BF5AF2")
+        case "FF2D55": // Pink
+            return Color(hexString: "#FF375F")
+        case "A2845E": // Brown
+            return Color(hexString: "#AC8E68")
+        case "8E8E93": // Gray
+            return Color(hexString: "#98989D")
+        default:
+            return color
+        }
+    }
+
+    /// Returns an adaptive color that changes based on color scheme
+    @available(iOS 13.0, macOS 10.15, *)
+    func adaptiveColor(for colorScheme: ColorScheme) -> Color {
+        return colorScheme == .dark ? darkModeColor : color
+    }
+
+    /// Returns an adaptive color that changes based on true black mode
+    func adaptiveColor(for theme: ColorTheme) -> Color {
+        if theme.isDark {
+            return darkModeColor
+        } else {
+            return color
+        }
+    }
 }
 
 extension Color {
@@ -254,6 +305,66 @@ extension Color {
         return NSColor(self).hexString
         #else
         return nil
+        #endif
+    }
+
+    /// Brightens the color by the specified percentage (0.0 to 1.0)
+    func brighten(by percentage: Double) -> Color {
+        #if canImport(AppKit)
+        let nsColor = NSColor(self)
+        guard let rgbColor = nsColor.usingColorSpace(.deviceRGB) else { return self }
+
+        let r = min(rgbColor.redComponent + percentage, 1.0)
+        let g = min(rgbColor.greenComponent + percentage, 1.0)
+        let b = min(rgbColor.blueComponent + percentage, 1.0)
+
+        return Color(red: r, green: g, blue: b, opacity: Double(rgbColor.alphaComponent))
+        #else
+        return self
+        #endif
+    }
+
+    /// Darkens the color by the specified percentage (0.0 to 1.0)
+    func darken(by percentage: Double) -> Color {
+        #if canImport(AppKit)
+        let nsColor = NSColor(self)
+        guard let rgbColor = nsColor.usingColorSpace(.deviceRGB) else { return self }
+
+        let r = max(rgbColor.redComponent - percentage, 0.0)
+        let g = max(rgbColor.greenComponent - percentage, 0.0)
+        let b = max(rgbColor.blueComponent - percentage, 0.0)
+
+        return Color(red: r, green: g, blue: b, opacity: Double(rgbColor.alphaComponent))
+        #else
+        return self
+        #endif
+    }
+
+    /// Adjusts saturation by the specified factor (< 1.0 desaturates, > 1.0 saturates)
+    func adjustSaturation(by factor: Double) -> Color {
+        #if canImport(AppKit)
+        let nsColor = NSColor(self)
+        guard let rgbColor = nsColor.usingColorSpace(.deviceRGB) else { return self }
+
+        var hue: CGFloat = 0
+        var saturation: CGFloat = 0
+        var brightness: CGFloat = 0
+        var alpha: CGFloat = 0
+
+        NSColor(red: rgbColor.redComponent,
+               green: rgbColor.greenComponent,
+               blue: rgbColor.blueComponent,
+               alpha: rgbColor.alphaComponent)
+            .getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha)
+
+        let newSaturation = min(max(saturation * factor, 0.0), 1.0)
+
+        return Color(hue: Double(hue),
+                    saturation: Double(newSaturation),
+                    brightness: Double(brightness),
+                    opacity: Double(alpha))
+        #else
+        return self
         #endif
     }
 }

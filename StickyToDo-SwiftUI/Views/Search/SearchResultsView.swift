@@ -98,6 +98,16 @@ struct SearchResultRow: View {
     let isSelected: Bool
     let onSelect: () -> Void
 
+    @State private var task: Task
+
+    init(result: SearchResult, query: String, isSelected: Bool, onSelect: @escaping () -> Void) {
+        self.result = result
+        self.query = query
+        self.isSelected = isSelected
+        self.onSelect = onSelect
+        self._task = State(initialValue: result.task)
+    }
+
     var body: some View {
         Button(action: onSelect) {
             VStack(alignment: .leading, spacing: 8) {
@@ -230,6 +240,160 @@ struct SearchResultRow: View {
             )
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            searchResultContextMenu
+        }
+    }
+
+    // MARK: - Context Menu
+
+    @ViewBuilder
+    private var searchResultContextMenu: some View {
+        // SECTION 1: Quick Actions
+        if task.status != .completed {
+            Button("Complete", systemImage: "checkmark.circle.fill") {
+                task.status = .completed
+                updateTask()
+            }
+        } else {
+            Button("Reopen", systemImage: "arrow.uturn.backward.circle") {
+                task.status = .nextAction
+                updateTask()
+            }
+        }
+
+        Button(task.flagged ? "Unflag" : "Flag", systemImage: task.flagged ? "star.slash.fill" : "star.fill") {
+            task.flagged.toggle()
+            updateTask()
+        }
+
+        Button("Edit", systemImage: "pencil") {
+            onSelect()
+        }
+
+        Divider()
+
+        // SECTION 2: Status & Priority
+        Menu("Status", systemImage: "text.badge.checkmark") {
+            Button("Inbox", systemImage: task.status == .inbox ? "checkmark" : "") {
+                task.status = .inbox
+                updateTask()
+            }
+
+            Button("Next Action", systemImage: task.status == .nextAction ? "checkmark" : "") {
+                task.status = .nextAction
+                updateTask()
+            }
+
+            Button("Waiting", systemImage: task.status == .waiting ? "checkmark" : "") {
+                task.status = .waiting
+                updateTask()
+            }
+
+            Button("Someday", systemImage: task.status == .someday ? "checkmark" : "") {
+                task.status = .someday
+                updateTask()
+            }
+        }
+
+        Menu("Priority", systemImage: priorityIcon) {
+            Button("High", systemImage: task.priority == .high ? "checkmark" : "") {
+                task.priority = .high
+                updateTask()
+            }
+
+            Button("Medium", systemImage: task.priority == .medium ? "checkmark" : "") {
+                task.priority = .medium
+                updateTask()
+            }
+
+            Button("Low", systemImage: task.priority == .low ? "checkmark" : "") {
+                task.priority = .low
+                updateTask()
+            }
+        }
+
+        Divider()
+
+        // SECTION 3: Copy & Share Actions
+        Menu("Copy", systemImage: "doc.on.doc") {
+            Button("Copy Title", systemImage: "text.quote") {
+                #if os(macOS)
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(task.title, forType: .string)
+                #endif
+            }
+            .accessibilityLabel("Copy task title to clipboard")
+
+            Button("Copy Link", systemImage: "link") {
+                let link = "stickytodo://task/\(task.id.uuidString)"
+                #if os(macOS)
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(link, forType: .string)
+                #endif
+            }
+            .accessibilityLabel("Copy task link to clipboard")
+        }
+        .accessibilityLabel("Copy task in various formats")
+
+        Button("Share...", systemImage: "square.and.arrow.up") {
+            #if os(macOS)
+            NotificationCenter.default.post(
+                name: NSNotification.Name("ShareTask"),
+                object: ["taskId": task.id, "items": [task.title]]
+            )
+            #endif
+        }
+        .accessibilityLabel("Share task using system share sheet")
+
+        Divider()
+
+        // SECTION 4: Task Actions
+        Button("Open in New Window", systemImage: "rectangle.badge.plus") {
+            #if os(macOS)
+            NotificationCenter.default.post(
+                name: NSNotification.Name("OpenTaskInNewWindow"),
+                object: task.id
+            )
+            #endif
+        }
+        .accessibilityLabel("Open task in a new window")
+
+        Button("Duplicate", systemImage: "doc.on.doc.fill") {
+            NotificationCenter.default.post(
+                name: NSNotification.Name("DuplicateTask"),
+                object: task.id
+            )
+        }
+        .accessibilityLabel("Duplicate this task")
+
+        Button("Delete", systemImage: "trash", role: .destructive) {
+            NotificationCenter.default.post(
+                name: NSNotification.Name("DeleteTask"),
+                object: task.id
+            )
+        }
+        .accessibilityLabel("Delete this task")
+    }
+
+    // MARK: - Helpers
+
+    private var priorityIcon: String {
+        switch task.priority {
+        case .high:
+            return "exclamationmark.3"
+        case .medium:
+            return "exclamationmark.2"
+        case .low:
+            return "exclamationmark"
+        }
+    }
+
+    private func updateTask() {
+        NotificationCenter.default.post(
+            name: NSNotification.Name("UpdateTask"),
+            object: task
+        )
     }
 
     private var statusIcon: String {

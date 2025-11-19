@@ -343,7 +343,7 @@ rm -rf ~/Library/Developer/Xcode/DerivedData
 **Solution**:
 1. Verify `Assets.xcassets` exists in both app targets
 2. Check it's included in **Build Phases > Copy Bundle Resources**
-3. See [ASSETS.md](docs/ASSETS.md) for asset creation instructions
+3. See [ASSETS.md](ASSETS.md) for asset creation instructions
 
 #### 5. Build Errors in Swift Files
 
@@ -506,17 +506,17 @@ time xcodebuild -scheme StickyToDo-SwiftUI clean build
 ## Next Steps
 
 - Review [XCODE_SETUP.md](XCODE_SETUP.md) for comprehensive Xcode configuration
-- Review [DEVELOPMENT.md](docs/DEVELOPMENT.md) for coding guidelines
-- Check [ASSETS.md](docs/ASSETS.md) for creating app icons (if file exists)
+- Review [DEVELOPMENT.md](DEVELOPMENT.md) for coding guidelines
+- Check [ASSETS.md](ASSETS.md) for creating app icons (if file exists)
 - Run `scripts/configure-xcode.sh` to verify configuration
-- See [NEXT_STEPS.md](NEXT_STEPS.md) for development roadmap
+- See [NEXT_STEPS.md](../status/NEXT_STEPS.md) for development roadmap
 
 ## Support
 
 For issues or questions:
 
 1. Check this documentation
-2. Review [HANDOFF.md](HANDOFF.md) for project context
+2. Review [HANDOFF.md](../handoff/HANDOFF.md) for project context
 3. Check Xcode build logs for specific errors
 4. Review Apple's Xcode documentation
 

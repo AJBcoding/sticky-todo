@@ -330,35 +330,239 @@ struct TaskRowView: View {
 
     @ViewBuilder
     private var contextMenuContent: some View {
-        Button("Edit") {
-            startEditing()
+        // SECTION 1: Quick Actions
+        if task.status != .completed {
+            Button("Complete", systemImage: "checkmark.circle.fill") {
+                onToggleComplete()
+            }
+            .keyboardShortcut(.return, modifiers: .command)
+        } else {
+            Button("Reopen", systemImage: "arrow.uturn.backward.circle") {
+                onToggleComplete()
+            }
         }
 
-        Button(task.status == .completed ? "Mark Incomplete" : "Mark Complete") {
-            onToggleComplete()
+        Button(task.flagged ? "Unflag" : "Flag", systemImage: task.flagged ? "star.slash.fill" : "star.fill") {
+            task.flagged.toggle()
+        }
+        .keyboardShortcut("f", modifiers: [.command, .shift])
+
+        Button("Edit", systemImage: "pencil") {
+            startEditing()
+        }
+        .keyboardShortcut("e", modifiers: .command)
+
+        Divider()
+
+        // SECTION 2: Status & Priority
+        Menu("Status", systemImage: "text.badge.checkmark") {
+            Button("Inbox", systemImage: task.status == .inbox ? "checkmark" : "") {
+                task.status = .inbox
+            }
+            .keyboardShortcut("1", modifiers: [.command, .shift])
+
+            Button("Next Action", systemImage: task.status == .nextAction ? "checkmark" : "") {
+                task.status = .nextAction
+            }
+            .keyboardShortcut("2", modifiers: [.command, .shift])
+
+            Button("Waiting", systemImage: task.status == .waiting ? "checkmark" : "") {
+                task.status = .waiting
+            }
+            .keyboardShortcut("3", modifiers: [.command, .shift])
+
+            Button("Someday", systemImage: task.status == .someday ? "checkmark" : "") {
+                task.status = .someday
+            }
+            .keyboardShortcut("4", modifiers: [.command, .shift])
+
+            if task.status != .completed {
+                Divider()
+
+                Button("Completed", systemImage: task.status == .completed ? "checkmark" : "") {
+                    onToggleComplete()
+                }
+            }
+        }
+
+        Menu("Priority", systemImage: priorityIcon) {
+            Button("High", systemImage: task.priority == .high ? "checkmark" : "") {
+                task.priority = .high
+            }
+            .keyboardShortcut("h", modifiers: [.command, .shift])
+
+            Button("Medium", systemImage: task.priority == .medium ? "checkmark" : "") {
+                task.priority = .medium
+            }
+            .keyboardShortcut("m", modifiers: [.command, .shift])
+
+            Button("Low", systemImage: task.priority == .low ? "checkmark" : "") {
+                task.priority = .low
+            }
+            .keyboardShortcut("l", modifiers: [.command, .shift])
         }
 
         Divider()
 
-        // Subtask menu
-        if let addSubtask = onAddSubtask {
-            Button("Add Subtask", systemImage: "plus.circle") {
-                addSubtask()
+        // SECTION 3: Time Management
+        Menu("Due Date", systemImage: "calendar") {
+            Button("Today", systemImage: "calendar.badge.clock") {
+                task.due = Calendar.current.startOfDay(for: Date())
+            }
+            .keyboardShortcut("t", modifiers: [.command, .option])
+
+            Button("Tomorrow", systemImage: "calendar") {
+                task.due = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date()))
+            }
+            .keyboardShortcut("y", modifiers: [.command, .option])
+
+            Button("This Week", systemImage: "calendar.badge.plus") {
+                // Set to end of current week (Sunday)
+                let calendar = Calendar.current
+                let today = Date()
+                let weekday = calendar.component(.weekday, from: today)
+                let daysUntilSunday = (8 - weekday) % 7
+                task.due = calendar.date(byAdding: .day, value: daysUntilSunday, to: calendar.startOfDay(for: today))
+            }
+
+            Button("Next Week", systemImage: "calendar.badge.plus") {
+                let calendar = Calendar.current
+                task.due = calendar.date(byAdding: .weekOfYear, value: 1, to: calendar.startOfDay(for: Date()))
             }
 
             Divider()
-        }
 
-        Button("Flag", systemImage: task.flagged ? "star.slash" : "star") {
-            task.flagged.toggle()
+            Button("Choose Date...", systemImage: "calendar.circle") {
+                // This would open a date picker - handled by parent view
+            }
+
+            if task.due != nil {
+                Divider()
+
+                Button("Clear Due Date", systemImage: "calendar.badge.minus") {
+                    task.due = nil
+                }
+            }
         }
 
         // Timer option
         if let toggleTimer = onToggleTimer {
             Button(task.isTimerRunning ? "Stop Timer" : "Start Timer",
-                   systemImage: task.isTimerRunning ? "pause.circle" : "play.circle") {
+                   systemImage: task.isTimerRunning ? "pause.circle.fill" : "play.circle.fill") {
                 toggleTimer()
             }
+            .keyboardShortcut("t", modifiers: [.command, .shift])
+        }
+
+        Divider()
+
+        // SECTION 4: Organization
+        Menu("Move to Project", systemImage: "folder") {
+            Button("No Project", systemImage: task.project == nil ? "checkmark" : "") {
+                task.project = nil
+            }
+
+            Divider()
+
+            // This would show actual projects from the data store
+            // For now, showing placeholder options
+            Button("Website Redesign", systemImage: task.project == "Website Redesign" ? "checkmark" : "") {
+                task.project = "Website Redesign"
+            }
+
+            Button("Marketing Campaign", systemImage: task.project == "Marketing Campaign" ? "checkmark" : "") {
+                task.project = "Marketing Campaign"
+            }
+
+            Button("Q4 Planning", systemImage: task.project == "Q4 Planning" ? "checkmark" : "") {
+                task.project = "Q4 Planning"
+            }
+
+            Divider()
+
+            Button("New Project...", systemImage: "folder.badge.plus") {
+                // This would open a project creation dialog
+            }
+        }
+
+        Menu("Change Context", systemImage: "mappin.circle") {
+            Button("No Context", systemImage: task.context == nil ? "checkmark" : "") {
+                task.context = nil
+            }
+
+            Divider()
+
+            // This would show actual contexts from the data store
+            // For now, showing placeholder options
+            Button("@computer", systemImage: task.context == "@computer" ? "checkmark" : "") {
+                task.context = "@computer"
+            }
+
+            Button("@phone", systemImage: task.context == "@phone" ? "checkmark" : "") {
+                task.context = "@phone"
+            }
+
+            Button("@home", systemImage: task.context == "@home" ? "checkmark" : "") {
+                task.context = "@home"
+            }
+
+            Button("@office", systemImage: task.context == "@office" ? "checkmark" : "") {
+                task.context = "@office"
+            }
+
+            Button("@errands", systemImage: task.context == "@errands" ? "checkmark" : "") {
+                task.context = "@errands"
+            }
+
+            Divider()
+
+            Button("New Context...", systemImage: "plus.circle") {
+                // This would open a context creation dialog
+            }
+        }
+
+        Menu("Set Color", systemImage: "paintpalette") {
+            // Quick color options
+            Button("Red", systemImage: task.color == ColorPalette.red.hex ? "checkmark" : "") {
+                task.color = ColorPalette.red.hex
+            }
+
+            Button("Orange", systemImage: task.color == ColorPalette.orange.hex ? "checkmark" : "") {
+                task.color = ColorPalette.orange.hex
+            }
+
+            Button("Yellow", systemImage: task.color == ColorPalette.yellow.hex ? "checkmark" : "") {
+                task.color = ColorPalette.yellow.hex
+            }
+
+            Button("Green", systemImage: task.color == ColorPalette.green.hex ? "checkmark" : "") {
+                task.color = ColorPalette.green.hex
+            }
+
+            Button("Blue", systemImage: task.color == ColorPalette.blue.hex ? "checkmark" : "") {
+                task.color = ColorPalette.blue.hex
+            }
+
+            Button("Purple", systemImage: task.color == ColorPalette.purple.hex ? "checkmark" : "") {
+                task.color = ColorPalette.purple.hex
+            }
+
+            Divider()
+
+            Button("No Color", systemImage: "xmark.circle") {
+                task.color = nil
+            }
+        }
+
+        Divider()
+
+        // SECTION 5: Subtasks & Integration
+        // Subtask menu
+        if let addSubtask = onAddSubtask {
+            Button("Add Subtask", systemImage: "plus.circle") {
+                addSubtask()
+            }
+            .keyboardShortcut("s", modifiers: [.command, .option])
 
             Divider()
         }
@@ -366,7 +570,7 @@ struct TaskRowView: View {
         // Calendar option
         if let addToCalendar = onAddToCalendar {
             if task.isSyncedToCalendar {
-                Button("View in Calendar", systemImage: "calendar") {
+                Button("View in Calendar", systemImage: "calendar.badge.checkmark") {
                     addToCalendar()
                 }
             } else {
@@ -378,49 +582,243 @@ struct TaskRowView: View {
 
         // Reminder option
         if let addReminder = onAddReminder {
-            Button("Add Reminder", systemImage: task.notificationIds.isEmpty ? "bell.badge.plus" : "bell.badge") {
+            Button(task.notificationIds.isEmpty ? "Add Reminder" : "Edit Reminder",
+                   systemImage: task.notificationIds.isEmpty ? "bell.badge.plus" : "bell.badge") {
                 addReminder()
             }
-
-            Divider()
-        }
-
-        Menu("Change Status") {
-            Button("Inbox") { task.status = .inbox }
-            Button("Next Action") { task.status = .nextAction }
-            Button("Waiting") { task.status = .waiting }
-            Button("Someday") { task.status = .someday }
-        }
-
-        Menu("Change Priority") {
-            Button("High") { task.priority = .high }
-            Button("Medium") { task.priority = .medium }
-            Button("Low") { task.priority = .low }
-        }
-
-        Menu("Set Color") {
-            // Quick color options
-            Button("Red") { task.color = ColorPalette.red.hex }
-            Button("Orange") { task.color = ColorPalette.orange.hex }
-            Button("Yellow") { task.color = ColorPalette.yellow.hex }
-            Button("Green") { task.color = ColorPalette.green.hex }
-            Button("Blue") { task.color = ColorPalette.blue.hex }
-            Button("Purple") { task.color = ColorPalette.purple.hex }
-
-            Divider()
-
-            Button("No Color") { task.color = nil }
+            .keyboardShortcut("r", modifiers: [.command, .option])
         }
 
         Divider()
 
-        Button("Duplicate") {
+        // SECTION 5: Board Management
+        Menu("Add to Board", systemImage: "square.grid.2x2") {
+            // This would show actual boards from the data store
+            // For now, showing placeholder options
+            Button("Inbox", systemImage: "tray") {
+                // Add task to Inbox board
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("AddTaskToBoard"),
+                    object: ["taskId": task.id, "boardId": "inbox"]
+                )
+            }
+
+            Button("Next Actions", systemImage: "arrow.right.circle") {
+                // Add task to Next Actions board
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("AddTaskToBoard"),
+                    object: ["taskId": task.id, "boardId": "next-actions"]
+                )
+            }
+
+            Button("Flagged", systemImage: "flag") {
+                // Add task to Flagged board
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("AddTaskToBoard"),
+                    object: ["taskId": task.id, "boardId": "flagged"]
+                )
+            }
+
+            Divider()
+
+            Button("New Board...", systemImage: "plus.square") {
+                // This would open a board creation dialog
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("CreateNewBoard"),
+                    object: task.id
+                )
+            }
+        }
+        .accessibilityLabel("Add task to a board")
+
+        Divider()
+
+        // SECTION 6: Copy & Share Actions
+        Menu("Copy", systemImage: "doc.on.doc") {
+            Button("Copy Title", systemImage: "text.quote") {
+                #if os(macOS)
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(task.title, forType: .string)
+                #endif
+            }
+            .keyboardShortcut("c", modifiers: [.command, .shift])
+            .accessibilityLabel("Copy task title to clipboard")
+
+            Button("Copy as Markdown", systemImage: "doc.text") {
+                let markdown = generateMarkdown(for: task)
+                #if os(macOS)
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(markdown, forType: .string)
+                #endif
+            }
+            .keyboardShortcut("m", modifiers: [.command, .option])
+            .accessibilityLabel("Copy task as markdown to clipboard")
+
+            Button("Copy Link", systemImage: "link") {
+                let link = "stickytodo://task/\(task.id.uuidString)"
+                #if os(macOS)
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(link, forType: .string)
+                #endif
+            }
+            .keyboardShortcut("l", modifiers: [.command, .option])
+            .accessibilityLabel("Copy task link to clipboard")
+
+            Divider()
+
+            Button("Copy as Plain Text", systemImage: "doc.plaintext") {
+                let plainText = generatePlainText(for: task)
+                #if os(macOS)
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(plainText, forType: .string)
+                #endif
+            }
+            .accessibilityLabel("Copy task as plain text to clipboard")
+        }
+        .accessibilityLabel("Copy task in various formats")
+
+        Button("Share...", systemImage: "square.and.arrow.up") {
+            #if os(macOS)
+            // Use macOS Share Sheet
+            let sharingItems = [task.title, generateMarkdown(for: task)]
+            NotificationCenter.default.post(
+                name: NSNotification.Name("ShareTask"),
+                object: ["taskId": task.id, "items": sharingItems]
+            )
+            #endif
+        }
+        .keyboardShortcut("s", modifiers: [.command, .shift])
+        .accessibilityLabel("Share task using system share sheet")
+
+        // SECTION 7: View Options
+        Menu("Open", systemImage: "arrow.up.forward.app") {
+            Button("Open in New Window", systemImage: "rectangle.badge.plus") {
+                // This would open the task in a new window - handled by parent view
+                #if os(macOS)
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("OpenTaskInNewWindow"),
+                    object: task.id
+                )
+                #endif
+            }
+            .keyboardShortcut("o", modifiers: [.command, .shift])
+            .accessibilityLabel("Open task in a new window")
+
+            Button("Show in Finder", systemImage: "folder") {
+                // This would show the task file in Finder if applicable
+                #if os(macOS)
+                // Placeholder - would need actual file path
+                #endif
+            }
+            .accessibilityLabel("Show task file in Finder")
+        }
+        .accessibilityLabel("Open task in different ways")
+
+        Divider()
+
+        // SECTION 8: Task Actions
+        Button("Duplicate", systemImage: "doc.on.doc.fill") {
             // This would need to be handled by the parent view
+            NotificationCenter.default.post(
+                name: NSNotification.Name("DuplicateTask"),
+                object: task.id
+            )
+        }
+        .keyboardShortcut("d", modifiers: .command)
+        .accessibilityLabel("Duplicate this task")
+
+        // Only show archive for completed tasks
+        if task.status == .completed {
+            Button("Archive", systemImage: "archivebox") {
+                // This would archive the task
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("ArchiveTask"),
+                    object: task.id
+                )
+            }
+            .accessibilityLabel("Archive completed task")
         }
 
         Button("Delete", systemImage: "trash", role: .destructive) {
             onDelete()
         }
+        .keyboardShortcut(.delete, modifiers: .command)
+        .accessibilityLabel("Delete this task")
+    }
+
+    // MARK: - Helper Methods (Extended)
+
+    private var priorityIcon: String {
+        switch task.priority {
+        case .high:
+            return "exclamationmark.3"
+        case .medium:
+            return "exclamationmark.2"
+        case .low:
+            return "exclamationmark"
+        }
+    }
+
+    private func generateMarkdown(for task: Task) -> String {
+        var markdown = "- [\(task.status == .completed ? "x" : " ")] \(task.title)\n"
+
+        if let project = task.project {
+            markdown += "  - Project: \(project)\n"
+        }
+
+        if let context = task.context {
+            markdown += "  - Context: \(context)\n"
+        }
+
+        if task.priority != .medium {
+            markdown += "  - Priority: \(task.priority.displayName)\n"
+        }
+
+        if let due = task.due {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            markdown += "  - Due: \(formatter.string(from: due))\n"
+        }
+
+        if !task.notes.isEmpty {
+            markdown += "\n\(task.notes)\n"
+        }
+
+        return markdown
+    }
+
+    private func generatePlainText(for task: Task) -> String {
+        var text = "\(task.title)"
+
+        var details: [String] = []
+
+        if let project = task.project {
+            details.append("Project: \(project)")
+        }
+
+        if let context = task.context {
+            details.append("Context: \(context)")
+        }
+
+        if task.priority != .medium {
+            details.append("Priority: \(task.priority.displayName)")
+        }
+
+        if let due = task.due {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            details.append("Due: \(formatter.string(from: due))")
+        }
+
+        if !details.isEmpty {
+            text += "\n" + details.joined(separator: " | ")
+        }
+
+        if !task.notes.isEmpty {
+            text += "\n\n\(task.notes)"
+        }
+
+        return text
     }
 
     // MARK: - Helper Methods
