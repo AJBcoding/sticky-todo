@@ -780,6 +780,7 @@ struct TaskInspectorView: View {
             Text("Notes")
                 .font(.caption)
                 .foregroundColor(.secondary)
+                .accessibilityHidden(true)
 
             TextEditor(text: binding(for: \.notes))
                 .font(.body)
@@ -788,6 +789,8 @@ struct TaskInspectorView: View {
                 .onChange(of: task.notes) { _ in
                     onTaskModified()
                 }
+                .accessibilityLabel("Task notes")
+                .accessibilityHint("Enter additional details and notes for this task")
         }
     }
 
@@ -846,6 +849,8 @@ struct TaskInspectorView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
+            .accessibilityLabel("Duplicate task")
+            .accessibilityHint("Double tap to create a copy of this task")
 
             Button(action: {
                 showingSaveTemplateDialog = true
@@ -854,6 +859,8 @@ struct TaskInspectorView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
+            .accessibilityLabel("Save as template")
+            .accessibilityHint("Double tap to save this task as a reusable template")
             .sheet(isPresented: $showingSaveTemplateDialog) {
                 if let task = task {
                     SaveAsTemplateView(
@@ -889,6 +896,8 @@ struct TaskInspectorView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
+            .accessibilityLabel("Delete task")
+            .accessibilityHint("Double tap to permanently delete this task")
             .alert("Delete Task?", isPresented: $showingDeleteAlert) {
                 Button("Cancel", role: .cancel) {}
                 Button("Delete", role: .destructive) {
@@ -911,16 +920,21 @@ struct TaskInspectorView: View {
             Image(systemName: "sidebar.right")
                 .font(.system(size: 48))
                 .foregroundColor(.secondary)
+                .accessibilityHidden(true)
 
             Text("No Selection")
                 .font(.title3)
                 .foregroundColor(.secondary)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityLabel("No task selected")
 
             Text("Select a task to view details")
                 .font(.caption)
                 .foregroundColor(.secondary)
+                .accessibilityLabel("Select a task from the list to view and edit its details")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
     }
 
     // MARK: - Computed Properties

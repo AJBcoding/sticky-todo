@@ -168,7 +168,19 @@ When you delete a template task, you'll be asked whether to:
 
 ### Completing a Series
 
-(Coming soon) Complete all future instances at once.
+To complete all future instances of a recurring task at once:
+
+1. Select the **template task** (the recurring task itself, not an instance)
+2. Open the Inspector panel
+3. In the Recurrence section, click "Complete Series"
+4. Confirm the action
+
+This will:
+- Mark the template as completed
+- Delete all future uncompleted instances
+- Keep all completed historical instances
+
+**Note**: This action cannot be undone. Use this when you want to permanently stop a recurring task series.
 
 ## Examples
 

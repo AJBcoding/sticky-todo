@@ -91,6 +91,8 @@ struct GeneralSettingsView: View {
                     ))
                         .textFieldStyle(.roundedBorder)
                         .disabled(true)
+                        .accessibilityLabel("Current storage location: \(configManager.dataDirectory.path)")
+                        .accessibilityHint("This field shows the current data directory")
 
                     Button("Choose...") {
                         chooseStorageLocation()
@@ -102,13 +104,16 @@ struct GeneralSettingsView: View {
                 Text("All tasks and boards are stored in plain text markdown files")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .accessibilityLabel("Information: All tasks and boards are stored in plain text markdown files")
 
                 if showingRestartAlert {
                     Text("⚠️ Restart required to use new location")
                         .font(.caption)
                         .foregroundColor(.orange)
+                        .accessibilityLabel("Warning: Restart required to use new location")
                 }
             }
+            .accessibilityElement(children: .contain)
 
             Section("Defaults") {
                 Picker("Default Board on Launch", selection: $configManager.defaultBoardOnLaunch) {
@@ -125,8 +130,12 @@ struct GeneralSettingsView: View {
                     TextField("Days", value: $configManager.autoHideInactiveBoardsDays, format: .number)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 60)
+                        .accessibilityLabel("Auto-hide inactive projects after \(configManager.autoHideInactiveBoardsDays) days")
+                        .accessibilityHint("Set the number of days before inactive boards are automatically hidden")
                     Text("days")
+                        .accessibilityHidden(true)
                 }
+                .accessibilityElement(children: .contain)
             }
 
             Section("Performance") {
@@ -135,12 +144,17 @@ struct GeneralSettingsView: View {
                     TextField("Seconds", value: $configManager.autoSaveInterval, format: .number)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 80)
+                        .accessibilityLabel("Auto-save interval: \(configManager.autoSaveInterval) seconds")
+                        .accessibilityHint("Set how frequently tasks are automatically saved")
                     Text("seconds")
+                        .accessibilityHidden(true)
                 }
+                .accessibilityElement(children: .contain)
 
                 Text("Lower values save more frequently but may impact performance")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .accessibilityLabel("Note: Lower values save more frequently but may impact performance")
             }
         }
         .formStyle(.grouped)
@@ -191,6 +205,8 @@ struct QuickCaptureSettingsView: View {
         Form {
             Section("Global Hotkey") {
                 Toggle("Enable Global Quick Capture", isOn: $quickCaptureEnabled)
+                    .accessibilityLabel("Enable global quick capture")
+                    .accessibilityHint("Toggle the global hotkey for quick task capture")
 
                 HStack {
                     Text("Hotkey")
@@ -202,6 +218,7 @@ struct QuickCaptureSettingsView: View {
                             RoundedRectangle(cornerRadius: 4)
                                 .fill(Color.secondary.opacity(0.2))
                         )
+                        .accessibilityLabel("Current hotkey: \(currentHotkeyDisplay)")
 
                     Button("Change...") {
                         showingHotkeyRecorder = true
@@ -209,11 +226,13 @@ struct QuickCaptureSettingsView: View {
                     .accessibilityLabel("Change hotkey")
                     .accessibilityHint("Opens the hotkey recorder to set a custom keyboard shortcut")
                 }
+                .accessibilityElement(children: .contain)
 
                 if !GlobalHotkeyManager.hasAccessibilityPermissions() {
                     HStack {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundColor(.orange)
+                            .accessibilityHidden(true)
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Accessibility Permissions Required")
@@ -228,6 +247,8 @@ struct QuickCaptureSettingsView: View {
                                 GlobalHotkeyManager.requestAccessibilityPermissions()
                             }
                             .font(.caption)
+                            .accessibilityLabel("Open System Preferences to grant accessibility permissions")
+                            .accessibilityHint("Opens System Preferences to enable accessibility permissions for global hotkeys")
                         }
                     }
                     .padding(8)
@@ -235,11 +256,15 @@ struct QuickCaptureSettingsView: View {
                         RoundedRectangle(cornerRadius: 6)
                             .fill(Color.orange.opacity(0.1))
                     )
+                    .accessibilityElement(children: .contain)
+                    .accessibilityLabel("Warning: Accessibility permissions required for global hotkeys")
                 }
             }
 
             Section("Natural Language Parsing") {
                 Toggle("Enable Natural Language Parsing", isOn: $enableNaturalLanguageParsing)
+                    .accessibilityLabel("Enable natural language parsing")
+                    .accessibilityHint("Automatically extract metadata from text like @phone, #Project, !high")
 
                 Text("Automatically extract metadata from text like @phone, #Project, !high")
                     .font(.caption)
@@ -301,10 +326,13 @@ struct QuickCaptureSettingsView: View {
 
             Section("Suggestions") {
                 Toggle("Show Recent Projects and Contexts", isOn: $showRecentSuggestions)
+                    .accessibilityLabel("Show recent projects and contexts")
+                    .accessibilityHint("Display quick-select pills for recently used projects and contexts")
 
                 Text("Display quick-select pills for recently used projects and contexts")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .accessibilityLabel("Note: Display quick-select pills for recently used projects and contexts")
             }
         }
         .formStyle(.grouped)
@@ -386,6 +414,7 @@ struct ContextsSettingsView: View {
             HStack {
                 Text("Manage Contexts")
                     .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
 
                 Spacer()
 
@@ -398,6 +427,7 @@ struct ContextsSettingsView: View {
             .padding()
 
             Divider()
+                .accessibilityHidden(true)
 
             // Contexts list
             List(selection: $selectedContext) {
@@ -412,8 +442,11 @@ struct ContextsSettingsView: View {
                     contexts.remove(atOffsets: indices)
                 }
             }
+            .accessibilityLabel("Contexts list")
+            .accessibilityHint("Select a context to edit or delete, drag to reorder")
 
             Divider()
+                .accessibilityHidden(true)
 
             // Actions
             HStack {
@@ -453,6 +486,7 @@ struct ContextRow: View {
         HStack {
             Text(context.icon)
                 .font(.title2)
+                .accessibilityHidden(true)
 
             Text(context.displayName)
                 .font(.body)
@@ -462,8 +496,11 @@ struct ContextRow: View {
             Circle()
                 .fill(colorForName(context.color))
                 .frame(width: 20, height: 20)
+                .accessibilityLabel("\(context.color) color")
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Context: \(context.displayName), icon: \(context.icon), color: \(context.color)")
     }
 
     private func colorForName(_ name: String) -> Color {
@@ -493,10 +530,15 @@ struct AddContextSheet: View {
         VStack(spacing: 20) {
             Text("Add New Context")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
 
             Form {
                 TextField("Name (e.g., @computer)", text: $name)
+                    .accessibilityLabel("Context name")
+                    .accessibilityHint("Enter the context name, starting with @ symbol")
                 TextField("Icon/Emoji", text: $icon)
+                    .accessibilityLabel("Context icon or emoji")
+                    .accessibilityHint("Enter an emoji to represent this context")
 
                 Picker("Color", selection: $color) {
                     Text("Blue").tag("blue")
@@ -506,6 +548,8 @@ struct AddContextSheet: View {
                     Text("Red").tag("red")
                     Text("Yellow").tag("yellow")
                 }
+                .accessibilityLabel("Context color")
+                .accessibilityHint("Select a color for this context")
             }
             .formStyle(.grouped)
 
@@ -513,6 +557,8 @@ struct AddContextSheet: View {
                 Button("Cancel") {
                     dismiss()
                 }
+                .accessibilityLabel("Cancel adding context")
+                .accessibilityHint("Close without creating a new context")
 
                 Button("Add") {
                     let context = Context(
@@ -526,6 +572,8 @@ struct AddContextSheet: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(name.isEmpty)
+                .accessibilityLabel("Add context")
+                .accessibilityHint("Create new context with the specified settings")
             }
         }
         .padding()
@@ -550,10 +598,20 @@ struct BoardsSettingsView: View {
         Form {
             Section("Built-in Boards Visibility") {
                 Toggle("📥 Inbox", isOn: $showInbox)
+                    .accessibilityLabel("Show Inbox board")
+                    .accessibilityHint("Toggle visibility of the Inbox board")
                 Toggle("▶️ Next Actions", isOn: $showNextActions)
+                    .accessibilityLabel("Show Next Actions board")
+                    .accessibilityHint("Toggle visibility of the Next Actions board")
                 Toggle("⭐ Flagged", isOn: $showFlagged)
+                    .accessibilityLabel("Show Flagged board")
+                    .accessibilityHint("Toggle visibility of the Flagged board")
                 Toggle("⏳ Waiting For", isOn: $showWaiting)
+                    .accessibilityLabel("Show Waiting For board")
+                    .accessibilityHint("Toggle visibility of the Waiting For board")
                 Toggle("💭 Someday/Maybe", isOn: $showSomeday)
+                    .accessibilityLabel("Show Someday/Maybe board")
+                    .accessibilityHint("Toggle visibility of the Someday/Maybe board")
             }
 
             Section("New Board Defaults") {
@@ -562,16 +620,20 @@ struct BoardsSettingsView: View {
                     Text("Kanban").tag("kanban")
                     Text("Grid").tag("grid")
                 }
+                .accessibilityLabel("Default layout for new boards")
+                .accessibilityHint("Select the default layout for newly created boards")
 
                 Text("New boards will use this layout by default")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .accessibilityLabel("Note: New boards will use this layout by default")
             }
 
             Section("Sidebar Organization") {
                 Text("Drag boards in the sidebar to reorder")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .accessibilityLabel("Tip: Drag boards in the sidebar to reorder them")
             }
         }
         .formStyle(.grouped)
@@ -591,34 +653,46 @@ struct AdvancedSettingsView: View {
         Form {
             Section("File Watching") {
                 Toggle("Watch for External Changes", isOn: $configManager.enableFileWatching)
+                    .accessibilityLabel("Watch for external file changes")
+                    .accessibilityHint("Automatically reload tasks when files are modified externally")
 
                 Text("Automatically reload tasks when files are modified externally")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .accessibilityLabel("Note: Automatically reload tasks when files are modified externally")
 
                 Picker("Conflict Resolution", selection: $conflictResolution) {
                     Text("Always Prompt").tag("prompt")
                     Text("Keep Local Version").tag("local")
                     Text("Keep External Version").tag("external")
                 }
+                .accessibilityLabel("Conflict resolution strategy")
+                .accessibilityHint("Choose how to handle conflicts when files are modified externally")
             }
 
             Section("Debug") {
                 Toggle("Enable Debug Mode", isOn: $configManager.enableLogging)
+                    .accessibilityLabel("Enable debug mode")
+                    .accessibilityHint("Show additional debugging information in console")
 
                 Text("Show additional debugging information in console")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .accessibilityLabel("Note: Show additional debugging information in console")
 
                 if configManager.enableLogging {
                     Button("Export Diagnostic Logs") {
                         exportLogs()
                     }
+                    .accessibilityLabel("Export diagnostic logs")
+                    .accessibilityHint("Export debugging information for troubleshooting")
 
                     Button("Reset to Defaults") {
                         configManager.resetToDefaults()
                     }
                     .foregroundColor(.orange)
+                    .accessibilityLabel("Reset to defaults")
+                    .accessibilityHint("Warning: Reset all settings to default values")
                 }
             }
 
@@ -629,6 +703,8 @@ struct AdvancedSettingsView: View {
                     Text("1.0.0")
                         .foregroundColor(.secondary)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Version: 1.0.0")
 
                 HStack {
                     Text("Storage Format")
@@ -636,10 +712,14 @@ struct AdvancedSettingsView: View {
                     Text("Markdown + YAML")
                         .foregroundColor(.secondary)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Storage format: Markdown + YAML")
 
                 Button("View Documentation") {
                     openDocumentation()
                 }
+                .accessibilityLabel("View documentation")
+                .accessibilityHint("Open StickyToDo documentation in web browser")
             }
         }
         .formStyle(.grouped)
@@ -745,6 +825,8 @@ struct HotkeyRecorderView: View {
                     }
                 }
                 .keyboardShortcut(.defaultAction)
+                .accessibilityLabel(isRecording ? "Stop recording hotkey" : "Start recording hotkey")
+                .accessibilityHint(isRecording ? "Stop capturing keyboard input" : "Start capturing keyboard input for the hotkey")
             }
 
             // Conflict warning
@@ -752,6 +834,7 @@ struct HotkeyRecorderView: View {
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(.orange)
+                        .accessibilityHidden(true)
                     Text(warning)
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -761,6 +844,8 @@ struct HotkeyRecorderView: View {
                     RoundedRectangle(cornerRadius: 6)
                         .fill(Color.orange.opacity(0.1))
                 )
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Warning: \(warning)")
             }
 
             // Requirements
@@ -803,12 +888,16 @@ struct HotkeyRecorderView: View {
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
+                .accessibilityLabel("Cancel hotkey recording")
+                .accessibilityHint("Close without saving the new hotkey")
 
                 Button("Save") {
                     saveHotkey()
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(!hasValidShortcut)
+                .accessibilityLabel("Save hotkey")
+                .accessibilityHint("Save the recorded keyboard shortcut")
             }
         }
         .padding(24)
