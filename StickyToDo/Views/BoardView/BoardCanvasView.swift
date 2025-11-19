@@ -86,6 +86,9 @@ struct BoardCanvasView: View {
                 .contextMenu {
                     boardHeaderContextMenu
                 }
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityLabel("Board: \(board.displayTitle)")
+                .accessibilityHint("Right-click for board options")
 
             Spacer()
 
@@ -100,6 +103,9 @@ struct BoardCanvasView: View {
             .onChange(of: board.layout) { newLayout in
                 onLayoutChanged?(newLayout)
             }
+            .accessibilityLabel("Board layout")
+            .accessibilityHint("Choose between freeform, kanban, or grid layout")
+            .accessibilityValue(board.layout.displayName)
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
@@ -201,6 +207,9 @@ struct BoardCanvasView: View {
                 lassoSelectionOverlay(selection)
             }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Freeform canvas with \(boardTasks.count) task\(boardTasks.count == 1 ? "" : "s")")
+        .accessibilityHint("Drag to pan canvas, pinch to zoom, option-drag to select multiple tasks")
     }
 
     // MARK: - Kanban Layout
@@ -497,6 +506,7 @@ struct TaskNoteView: View {
                     HStack(spacing: 2) {
                         Image(systemName: "checklist")
                             .font(.system(size: 9))
+                            .accessibilityHidden(true)
                         Text("\(progress.completed)/\(progress.total)")
                             .font(.caption2)
                     }
@@ -514,6 +524,8 @@ struct TaskNoteView: View {
                             ? .green
                             : .orange
                     )
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(progress.completed) of \(progress.total) subtasks completed")
                 }
 
                 if let context = task.context {
@@ -522,18 +534,21 @@ struct TaskNoteView: View {
                         .padding(.horizontal, 4)
                         .padding(.vertical, 2)
                         .background(Capsule().fill(Color.blue.opacity(0.2)))
+                        .accessibilityLabel("Context: \(context)")
                 }
 
                 if task.flagged {
                     Image(systemName: "star.fill")
                         .font(.caption2)
                         .foregroundColor(.yellow)
+                        .accessibilityLabel("Flagged")
                 }
 
                 if task.priority == .high {
                     Image(systemName: "exclamationmark.circle.fill")
                         .font(.caption2)
                         .foregroundColor(.red)
+                        .accessibilityLabel("High priority")
                 }
             }
         }
@@ -569,6 +584,36 @@ struct TaskNoteView: View {
         .contextMenu {
             contextMenuContent
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(taskAccessibilityLabel)
+        .accessibilityHint("Double-tap to select, drag to move, right-click for options")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private var taskAccessibilityLabel: String {
+        var label = "Task: \(task.title)"
+
+        if task.status == .completed {
+            label += ", completed"
+        }
+
+        if task.priority == .high {
+            label += ", high priority"
+        }
+
+        if task.flagged {
+            label += ", flagged"
+        }
+
+        if let context = task.context {
+            label += ", context: \(context)"
+        }
+
+        if let progress = subtaskProgress {
+            label += ", \(progress.completed) of \(progress.total) subtasks completed"
+        }
+
+        return label
     }
 
     // MARK: - Context Menu

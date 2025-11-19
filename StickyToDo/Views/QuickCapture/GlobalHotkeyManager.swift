@@ -8,6 +8,7 @@
 import AppKit
 import Combine
 import Carbon.HIToolbox
+import StickyToDoCore
 
 /// Manages global keyboard shortcuts for quick capture
 ///
@@ -88,6 +89,49 @@ class GlobalHotkeyManager: ObservableObject {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 self?.hotkeyPressed = false
             }
+        }
+    }
+
+    // MARK: - Persistence
+
+    /// Saves the current hotkey configuration to UserDefaults
+    func saveHotkey() {
+        let shortcut = KeyboardShortcut(
+            key: keyNameForCode(hotkeyConfig.keyCode),
+            modifiers: hotkeyConfig.modifiers,
+            keyCode: hotkeyConfig.keyCode
+        )
+        shortcut.save(forKey: "globalHotkey")
+    }
+
+    /// Loads the saved hotkey configuration from UserDefaults
+    /// - Returns: The loaded keyboard shortcut, or nil if not found
+    func loadSavedHotkey() -> KeyboardShortcut? {
+        return KeyboardShortcut.load(forKey: "globalHotkey")
+    }
+
+    /// Updates the hotkey from a KeyboardShortcut model
+    /// - Parameter shortcut: The new keyboard shortcut
+    func updateHotkey(from shortcut: KeyboardShortcut) {
+        let config = shortcut.toHotkeyConfig()
+        updateHotkey(config)
+        saveHotkey()
+    }
+
+    // MARK: - Helpers
+
+    private func keyNameForCode(_ keyCode: UInt16) -> String {
+        switch keyCode {
+        case UInt16(kVK_Space):
+            return "Space"
+        case UInt16(kVK_Return):
+            return "Return"
+        case UInt16(kVK_Escape):
+            return "Escape"
+        case UInt16(kVK_Tab):
+            return "Tab"
+        default:
+            return "Key(\(keyCode))"
         }
     }
 

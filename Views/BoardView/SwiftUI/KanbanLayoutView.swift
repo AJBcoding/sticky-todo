@@ -81,6 +81,9 @@ struct KanbanLayoutView: View {
             .padding(LayoutEngine.gridSpacing)
         }
         .background(Color(NSColor.windowBackgroundColor))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Kanban board with \(columns.count) columns")
+        .accessibilityHint("Scroll horizontally to view all columns, drag tasks between columns")
     }
 
     // MARK: - Column View
@@ -124,13 +127,17 @@ struct KanbanLayoutView: View {
                 Text(column)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(.primary)
+                    .accessibilityAddTraits(.isHeader)
 
                 Spacer()
 
                 Text("\(taskCount)")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.secondary)
+                    .accessibilityLabel("\(taskCount) task\(taskCount == 1 ? "" : "s")")
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Column: \(column), \(taskCount) task\(taskCount == 1 ? "" : "s")")
 
             Button(action: {
                 onCreateTask(column)
@@ -145,6 +152,8 @@ struct KanbanLayoutView: View {
                 .padding(.vertical, 4)
             }
             .buttonStyle(.bordered)
+            .accessibilityLabel("Add task to \(column)")
+            .accessibilityHint("Create a new task in the \(column) column")
         }
         .padding(12)
         .background(Color(NSColor.controlBackgroundColor))
@@ -179,22 +188,26 @@ struct KanbanLayoutView: View {
             HStack(spacing: 4) {
                 if let context = task.context {
                     metadataBadge(text: context, color: .blue)
+                        .accessibilityLabel("Context: \(context)")
                 }
 
                 if let project = task.project {
                     metadataBadge(text: project, color: .purple)
+                        .accessibilityLabel("Project: \(project)")
                 }
 
                 if task.priority == .high {
                     Image(systemName: "exclamationmark.circle.fill")
                         .font(.system(size: 12))
                         .foregroundColor(.red)
+                        .accessibilityLabel("High priority")
                 }
 
                 if task.flagged {
                     Image(systemName: "star.fill")
                         .font(.system(size: 12))
                         .foregroundColor(.yellow)
+                        .accessibilityLabel("Flagged")
                 }
 
                 if let dueDesc = task.dueDescription {
@@ -202,6 +215,7 @@ struct KanbanLayoutView: View {
                         text: dueDesc,
                         color: task.isOverdue ? .red : .gray
                     )
+                    .accessibilityLabel(task.isOverdue ? "Overdue: \(dueDesc)" : "Due: \(dueDesc)")
                 }
 
                 Spacer()
@@ -229,6 +243,40 @@ struct KanbanLayoutView: View {
         .contextMenu {
             kanbanTaskContextMenu(task: taskBinding)
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(kanbanTaskAccessibilityLabel(task: task, column: column))
+        .accessibilityHint("Double-tap to select, drag to move between columns")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private func kanbanTaskAccessibilityLabel(task: Task, column: String) -> String {
+        var label = "Task: \(task.title), in \(column) column"
+
+        if task.status == .completed {
+            label += ", completed"
+        }
+
+        if task.priority == .high {
+            label += ", high priority"
+        }
+
+        if task.flagged {
+            label += ", flagged"
+        }
+
+        if let context = task.context {
+            label += ", context: \(context)"
+        }
+
+        if let project = task.project {
+            label += ", project: \(project)"
+        }
+
+        if let dueDesc = task.dueDescription {
+            label += task.isOverdue ? ", overdue: \(dueDesc)" : ", due: \(dueDesc)"
+        }
+
+        return label
     }
 
     // MARK: - Kanban Task Context Menu

@@ -122,7 +122,8 @@ struct ContentView: View {
                 onSaveAsTemplate: saveTaskAsTemplate,
                 onCreateSubtask: createSubtask,
                 onCompleteSeries: completeRecurringSeries,
-                availableTags: Tag.defaultTags
+                availableTags: Tag.defaultTags,
+                taskStore: taskStore
             )
             .navigationSplitViewColumnWidth(min: 250, ideal: 300, max: 400)
         }
